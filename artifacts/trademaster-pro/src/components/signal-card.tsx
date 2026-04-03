@@ -102,8 +102,8 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
       {isLocked && (
         <div className="absolute inset-0 bg-black/75 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10 gap-2">
           <div className="text-4xl">🔒</div>
-          <div className="text-sm font-bold text-white">Professional Signal</div>
-          <div className="text-xs text-gray-400 text-center px-4">Upgrade to Professional Plan to unlock all signals</div>
+          <div className="text-sm font-bold text-white">Elite Technical Data</div>
+          <div className="text-xs text-gray-400 text-center px-4">Upgrade to Elite to unlock full S&amp;R levels and price objectives</div>
         </div>
       )}
 
@@ -113,7 +113,7 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
             <span className={`text-xs font-black px-2 py-0.5 rounded border tracking-wide ${
               isBuy ? "bg-green-500/20 text-green-400 border-green-500/40" : "bg-red-500/20 text-red-400 border-red-500/40"
             }`}>
-              {isBuy ? "▲ BUY" : "▼ SELL"}
+              {isBuy ? "▲ Bullish Setup" : "▼ Bearish Setup"}
             </span>
             <span className="text-xs text-gray-500 bg-[hsl(220,13%,18%)] px-2 py-0.5 rounded">
               {SEGMENT_LABELS[signal.segment] ?? signal.segment.toUpperCase()}
@@ -134,25 +134,25 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
 
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="bg-[hsl(220,13%,16%)] rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">Entry Price</div>
+          <div className="text-xs text-gray-500 mb-0.5">Support Level</div>
           <div className="text-white font-black font-mono text-sm">₹{signal.entryPrice}</div>
         </div>
         <div className="bg-red-950/40 border border-red-900/30 rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">Stop Loss</div>
+          <div className="text-xs text-gray-500 mb-0.5">Resistance Level</div>
           <div className="text-red-400 font-black font-mono text-sm">₹{signal.stopLoss}</div>
         </div>
         <div className="bg-green-950/40 border border-green-900/30 rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">Target 1</div>
+          <div className="text-xs text-gray-500 mb-0.5">Price Objective 1</div>
           <div className="text-green-400 font-black font-mono text-sm">₹{signal.target1}</div>
         </div>
         {signal.target2 ? (
           <div className="bg-emerald-950/40 border border-emerald-900/30 rounded-lg p-2.5">
-            <div className="text-xs text-gray-500 mb-0.5">Target 2</div>
+            <div className="text-xs text-gray-500 mb-0.5">Price Objective 2</div>
             <div className="text-emerald-400 font-black font-mono text-sm">₹{signal.target2}</div>
           </div>
         ) : (
           <div className="bg-[hsl(220,13%,16%)] rounded-lg p-2.5 opacity-40">
-            <div className="text-xs text-gray-500 mb-0.5">Target 2</div>
+            <div className="text-xs text-gray-500 mb-0.5">Price Objective 2</div>
             <div className="text-gray-600 font-mono text-sm">—</div>
           </div>
         )}

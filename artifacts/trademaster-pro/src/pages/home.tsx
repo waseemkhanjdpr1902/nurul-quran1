@@ -71,10 +71,10 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
         <div className="flex items-center justify-between mb-5">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-bold text-white">Live Trading Signals</h1>
+              <h1 className="text-2xl font-bold text-white">Market Watchlist</h1>
               <span className="hidden sm:inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full tracking-widest uppercase">Elite</span>
             </div>
-            <p className="text-sm text-gray-500">Institutional-grade analyst calls · 87% verified accuracy · Nifty · BankNifty · F&O</p>
+            <p className="text-sm text-gray-500">Technical analysis levels · Support &amp; Resistance data · Nifty · BankNifty · F&amp;O · Educational reference only</p>
           </div>
           <div className="flex items-center gap-3">
             {!isPremium && !subLoading && (
@@ -165,9 +165,9 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-amber-400 text-xs font-black tracking-widest uppercase bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">Elite Only</span>
                   </div>
-                  <div className="text-white font-bold text-lg mt-1">🔒 {lockedCount} premium signals locked</div>
-                  <div className="text-gray-400 text-sm mt-1">Elite members get institutional-grade intraday calls, F&O with IV/PCR intelligence, commodity & currency setups — delivered before market opens.</div>
-                  <div className="text-green-400 text-xs font-semibold mt-2">87% verified success rate · Avg R:R 1:3.1 · ₹166/day</div>
+                  <div className="text-white font-bold text-lg mt-1">🔒 {lockedCount} premium watchlist entries locked</div>
+                  <div className="text-gray-400 text-sm mt-1">Elite members get full technical analysis levels, IV/PCR data, support &amp; resistance zones, and Fibonacci levels — across Nifty, BankNifty, F&amp;O, commodities &amp; currencies.</div>
+                  <div className="text-green-400 text-xs font-semibold mt-2">Full technical data · S&amp;R zones · Pivot levels · ₹166/day</div>
                 </div>
                 <button
                   onClick={onNavigatePricing}

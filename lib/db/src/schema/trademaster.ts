@@ -66,3 +66,28 @@ export const tradeMasterSubscriptions = pgTable("trademaster_subscriptions", {
 });
 
 export type TradeMasterSubscription = typeof tradeMasterSubscriptions.$inferSelect;
+
+export const tradeDirectionEnum = pgEnum("tm_trade_direction", ["long", "short"]);
+export const tradeOutcomeEnum = pgEnum("tm_trade_outcome", ["open", "win", "loss", "breakeven"]);
+
+export const tradeMasterJournal = pgTable("trademaster_journal", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  assetName: text("asset_name").notNull(),
+  assetType: text("asset_type").notNull().default("equity"),
+  direction: tradeDirectionEnum("direction").notNull().default("long"),
+  entryPrice: numeric("entry_price", { precision: 12, scale: 4 }).notNull(),
+  exitPrice: numeric("exit_price", { precision: 12, scale: 4 }),
+  quantity: integer("quantity").notNull(),
+  strategyUsed: text("strategy_used"),
+  notes: text("notes"),
+  entryDate: timestamp("entry_date", { withTimezone: true }).notNull().defaultNow(),
+  exitDate: timestamp("exit_date", { withTimezone: true }),
+  outcome: tradeOutcomeEnum("outcome").notNull().default("open"),
+  pnl: numeric("pnl", { precision: 12, scale: 2 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertJournalTradeSchema = createInsertSchema(tradeMasterJournal).omit({ id: true, createdAt: true });
+export type InsertJournalTrade = z.infer<typeof insertJournalTradeSchema>;
+export type JournalTrade = typeof tradeMasterJournal.$inferSelect;

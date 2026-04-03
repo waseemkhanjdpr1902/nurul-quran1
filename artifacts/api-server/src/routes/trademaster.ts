@@ -1,8 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createHmac } from "crypto";
 import { db } from "@workspace/db";
-import { tradeMasterSignals, tradeMasterSubscriptions, tradeMasterInvestmentReports } from "@workspace/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { tradeMasterSignals, tradeMasterSubscriptions, tradeMasterInvestmentReports, tradeMasterJournal } from "@workspace/db/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -482,6 +482,122 @@ router.get("/trademaster/performance", async (req: Request, res: Response): Prom
   } catch (err) {
     req.log.error({ err }, "Failed to fetch performance data");
     res.status(500).json({ error: "Failed to fetch performance data" });
+  }
+});
+
+
+router.get("/trademaster/journal", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { session_id } = req.query;
+    if (!session_id || typeof session_id !== "string") { res.status(400).json({ error: "session_id required" }); return; }
+    const trades = await db.select().from(tradeMasterJournal).where(eq(tradeMasterJournal.sessionId, session_id)).orderBy(desc(tradeMasterJournal.entryDate));
+    res.json({ trades });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch journal");
+    res.status(500).json({ error: "Failed to fetch journal" });
+  }
+});
+
+router.post("/trademaster/journal", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sessionId, assetName, assetType, direction, entryPrice, exitPrice, quantity, strategyUsed, notes, entryDate, exitDate } = req.body as Record<string, unknown>;
+    if (!sessionId || !assetName || !entryPrice || !quantity) { res.status(400).json({ error: "sessionId, assetName, entryPrice, quantity required" }); return; }
+    const ep = parseFloat(entryPrice as string);
+    const xp = exitPrice ? parseFloat(exitPrice as string) : null;
+    const qty = parseInt(quantity as string, 10);
+    let pnl: number | null = null;
+    let outcome: "open" | "win" | "loss" | "breakeven" = "open";
+    if (xp !== null) {
+      pnl = direction === "short" ? (ep - xp) * qty : (xp - ep) * qty;
+      outcome = Math.abs(pnl) < 0.01 ? "breakeven" : pnl > 0 ? "win" : "loss";
+    }
+    const [trade] = await db.insert(tradeMasterJournal).values({
+      sessionId: sessionId as string,
+      assetName: assetName as string,
+      assetType: (assetType as string) || "equity",
+      direction: ((direction as string) || "long") as "long" | "short",
+      entryPrice: ep.toString(),
+      exitPrice: xp !== null ? xp.toString() : null,
+      quantity: qty,
+      strategyUsed: (strategyUsed as string) || null,
+      notes: (notes as string) || null,
+      entryDate: entryDate ? new Date(entryDate as string) : new Date(),
+      exitDate: exitDate ? new Date(exitDate as string) : null,
+      outcome,
+      pnl: pnl !== null ? pnl.toFixed(2) : null,
+    }).returning();
+    res.json({ trade });
+  } catch (err) {
+    req.log.error({ err }, "Failed to add trade");
+    res.status(500).json({ error: "Failed to add trade" });
+  }
+});
+
+router.put("/trademaster/journal/:id", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { exitPrice, exitDate, notes, strategyUsed } = req.body as Record<string, unknown>;
+    const existing = await db.select().from(tradeMasterJournal).where(eq(tradeMasterJournal.id, id)).then(r => r[0]);
+    if (!existing) { res.status(404).json({ error: "Trade not found" }); return; }
+    const xp = exitPrice ? parseFloat(exitPrice as string) : null;
+    const ep = parseFloat(existing.entryPrice);
+    const qty = existing.quantity;
+    let pnl = existing.pnl;
+    let outcome = existing.outcome;
+    if (xp !== null) {
+      const rawPnl = existing.direction === "short" ? (ep - xp) * qty : (xp - ep) * qty;
+      pnl = rawPnl.toFixed(2);
+      outcome = Math.abs(rawPnl) < 0.01 ? "breakeven" : rawPnl > 0 ? "win" : "loss";
+    }
+    const [updated] = await db.update(tradeMasterJournal).set({
+      exitPrice: xp !== null ? xp.toString() : existing.exitPrice,
+      exitDate: exitDate ? new Date(exitDate as string) : existing.exitDate,
+      notes: notes !== undefined ? (notes as string) : existing.notes,
+      strategyUsed: strategyUsed !== undefined ? (strategyUsed as string) : existing.strategyUsed,
+      outcome,
+      pnl,
+    }).where(eq(tradeMasterJournal.id, id)).returning();
+    res.json({ trade: updated });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update trade");
+    res.status(500).json({ error: "Failed to update trade" });
+  }
+});
+
+router.delete("/trademaster/journal/:id", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    await db.delete(tradeMasterJournal).where(eq(tradeMasterJournal.id, id));
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete trade");
+    res.status(500).json({ error: "Failed to delete trade" });
+  }
+});
+
+router.get("/trademaster/journal/analytics", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { session_id } = req.query;
+    if (!session_id || typeof session_id !== "string") { res.status(400).json({ error: "session_id required" }); return; }
+    const trades = await db.select().from(tradeMasterJournal).where(eq(tradeMasterJournal.sessionId, session_id)).orderBy(tradeMasterJournal.entryDate);
+    const closed = trades.filter(t => t.outcome !== "open");
+    const wins = closed.filter(t => t.outcome === "win");
+    const losses = closed.filter(t => t.outcome === "loss");
+    const totalPnl = closed.reduce((s, t) => s + parseFloat(t.pnl ?? "0"), 0);
+    const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + parseFloat(t.pnl ?? "0"), 0) / wins.length : 0;
+    const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((s, t) => s + parseFloat(t.pnl ?? "0"), 0) / losses.length) : 0;
+    const winRate = closed.length > 0 ? (wins.length / closed.length) * 100 : 0;
+    const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const dayPnl: Record<string, number> = {};
+    closed.forEach(t => { const d = DAYS[new Date(t.entryDate).getDay()]; dayPnl[d] = (dayPnl[d] ?? 0) + parseFloat(t.pnl ?? "0"); });
+    const bestDay = Object.entries(dayPnl).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const pnlCurve = closed.map((t, i) => ({ index: i + 1, pnl: parseFloat(t.pnl ?? "0"), cumulative: closed.slice(0, i + 1).reduce((s, x) => s + parseFloat(x.pnl ?? "0"), 0), asset: t.assetName, date: t.entryDate }));
+    const strategyBreakdown: Record<string, { count: number; pnl: number }> = {};
+    closed.forEach(t => { const s = t.strategyUsed || "Untagged"; if (!strategyBreakdown[s]) strategyBreakdown[s] = { count: 0, pnl: 0 }; strategyBreakdown[s].count++; strategyBreakdown[s].pnl += parseFloat(t.pnl ?? "0"); });
+    res.json({ total: trades.length, closed: closed.length, wins: wins.length, losses: losses.length, winRate: winRate.toFixed(1), totalPnl: totalPnl.toFixed(2), avgWin: avgWin.toFixed(2), avgLoss: avgLoss.toFixed(2), bestDay, pnlCurve, strategyBreakdown, dayPnl });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch analytics");
+    res.status(500).json({ error: "Failed to fetch analytics" });
   }
 });
 

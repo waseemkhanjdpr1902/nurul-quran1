@@ -1,17 +1,9 @@
-import { useState, useEffect } from "react";
-
-const DISCLAIMER_KEY = "trademaster_disclaimer_accepted";
+import { useState } from "react";
 
 export function DisclaimerModal() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const accepted = localStorage.getItem(DISCLAIMER_KEY);
-    if (!accepted) setOpen(true);
-  }, []);
+  const [open, setOpen] = useState(true);
 
   const accept = () => {
-    localStorage.setItem(DISCLAIMER_KEY, "true");
     setOpen(false);
   };
 

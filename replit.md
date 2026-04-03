@@ -62,42 +62,46 @@ Home → Library → Courses → Halal Stocks → Support
 
 ## TradeMaster Pro (`artifacts/trademaster-pro`)
 
-Standalone trading signals web app for Indian retail traders, at preview path `/trademaster/`.
+Professional Trading Journal & Analytics Dashboard for Indian retail traders, at preview path `/trademaster/`. Fully SEBI-compliant SaaS (self-tracking tool, not investment advice).
 
-### Features
-- Dark TradingView-style UI with signal cards (Asset Name, Entry/SL/Target 1/Target 2, R:R)
-- Market segment tabs: Nifty, Bank Nifty, Options (IV/PCR), Equity, Commodity, Currency
-- Live price ticker bar fetching from Finnhub (`FINNHUB_API_KEY` secret, optional)
-- Admin dashboard (protected by `TRADEMASTER_ADMIN_TOKEN` JWT/Bearer token)
-- Signal CRUD: create, edit, delete, status updates (Active / Target Hit / SL Hit)
-- "Share to WhatsApp" via `whatsapp://send?text=` deep link on each card
-- "Post to Telegram" via Bot API (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID` secrets)
-- Stripe "Premium Pro" monthly subscription (₹499/month) via `/api/trademaster/subscribe`
-- Premium signals locked with overlay for non-subscribers
-- One-time disclaimer modal on first visit (localStorage) + scrolling footer
-- SEBI/educational-use compliance disclaimers on all pages
+### Pages (Nav)
+1. **My Trades (Journal)** — primary landing; log trades manually (Asset, Entry/Exit, Qty, Strategy, Notes); auto-calculate P&L, win/loss outcome
+2. **Analytics** — P&L curve (recharts AreaChart), win/loss pie, day-of-week bar chart, strategy breakdown table; powered by journal data
+3. **Market Watchlist** — formerly "Signals"; renamed to technical levels (Support Level / Resistance Level / Price Objectives); premium gated
+4. **Calculators** — 3 tools: Position Sizer (risk per trade → shares), Option Greeks (Black-Scholes: Delta/Gamma/Theta/Vega), Pivot Points & Fibonacci levels
+5. **Reports** — investment reports by category (premium gated)
+6. **Elite Pricing** — Razorpay Elite Monthly ₹4,999/month subscription
+
+### Compliance (Legal-First)
+- Disclaimer modal shown on **every launch** (not cached in localStorage)
+- Permanent footer: "TradeMaster Pro is a self-tracking tool. We do not provide SEBI-registered investment advice."
+- Signal card labels: "Bullish/Bearish Setup" (not BUY/SELL); "Support Level" (not Entry Price); "Resistance Level" (not Stop Loss); "Price Objective 1/2" (not Target)
+- Watchlist sub-header: "Technical analysis levels · Educational reference only"
 
 ### DB Tables
-- `trademaster_signals` — signal data with segment, prices, status
-- `trademaster_subscriptions` — Stripe subscription sessions
+- `trademaster_signals` — market watchlist entries with segment, prices, status
+- `trademaster_subscriptions` — Razorpay subscription sessions
+- `trademaster_journal` — user trade log (asset, entry/exit, qty, strategy, P&L, outcome)
+- `trademaster_investment_reports` — curated investment reports by category
 
-### API Routes
-- `GET /api/trademaster/signals` — list signals (optional ?segment= filter)
-- `POST /api/trademaster/signals` — create signal (admin auth)
-- `PATCH /api/trademaster/signals/:id` — update/status (admin auth)
-- `DELETE /api/trademaster/signals/:id` — delete (admin auth)
-- `GET /api/trademaster/ticker` — live Nifty/BankNifty prices from Finnhub
-- `POST /api/trademaster/telegram` — broadcast signal to Telegram channel
-- `POST /api/trademaster/subscribe` — create Stripe checkout session
-- `POST /api/trademaster/subscribe/webhook` — Stripe webhook handler
-- `GET /api/trademaster/subscription/check` — check subscription status by sessionId
+### API Routes (Journal)
+- `GET /api/trademaster/journal?session_id=` — list all trades for session
+- `POST /api/trademaster/journal` — log a new trade
+- `PUT /api/trademaster/journal/:id` — close trade / update exit price → auto-calc P&L
+- `DELETE /api/trademaster/journal/:id` — delete trade
+- `GET /api/trademaster/journal/analytics?session_id=` — win rate, P&L curve, day analysis, strategy breakdown
+
+### Monetization
+- Free: Journal + Calculators + 3 Watchlist entries
+- Elite (₹4,999/month): Full Watchlist, Reports, Advanced Analytics — Razorpay order at `POST /api/trademaster/payment/order` (amount: 499900 paise)
 
 ### Required Secrets
 - `TRADEMASTER_ADMIN_TOKEN` — admin login token (set)
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` — live Razorpay keys (set)
+- `ADMOB_BANNER_UNIT_ID`, `ADMOB_INTERSTITIAL_UNIT_ID`, `ADMOB_PUBLISHER_ID` — AdMob (set)
 - `TELEGRAM_BOT_TOKEN` — Telegram Bot API token (optional)
 - `TELEGRAM_CHANNEL_ID` — Telegram channel/group ID (optional)
 - `FINNHUB_API_KEY` — Finnhub free tier for price ticker (optional)
-- `STRIPE_SECRET_KEY` — Stripe for subscriptions (optional)
 
 ## Important Notes
 - `@tanstack/react-query` is in vite dedupe list (prevents duplicate React context errors)

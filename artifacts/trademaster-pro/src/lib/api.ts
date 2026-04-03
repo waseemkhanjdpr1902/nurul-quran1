@@ -190,6 +190,59 @@ export type PerformanceStats = {
   avgRR: string | null;
 };
 
+export type JournalTrade = {
+  id: number;
+  sessionId: string;
+  assetName: string;
+  assetType: string;
+  direction: "long" | "short";
+  entryPrice: string;
+  exitPrice: string | null;
+  quantity: number;
+  strategyUsed: string | null;
+  notes: string | null;
+  entryDate: string;
+  exitDate: string | null;
+  outcome: "open" | "win" | "loss" | "breakeven";
+  pnl: string | null;
+  createdAt: string;
+};
+
+export type JournalAnalytics = {
+  total: number;
+  closed: number;
+  wins: number;
+  losses: number;
+  winRate: string;
+  totalPnl: string;
+  avgWin: string;
+  avgLoss: string;
+  bestDay: string | null;
+  pnlCurve: { index: number; pnl: number; cumulative: number; asset: string; date: string }[];
+  strategyBreakdown: Record<string, { count: number; pnl: number }>;
+  dayPnl: Record<string, number>;
+};
+
+export async function fetchJournal(sessionId: string): Promise<{ trades: JournalTrade[] }> {
+  return apiFetch(`${API_BASE}/journal?session_id=${encodeURIComponent(sessionId)}`);
+}
+
+export async function addJournalTrade(data: Record<string, unknown>): Promise<{ trade: JournalTrade }> {
+  return apiFetch(`${API_BASE}/journal`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+}
+
+export async function updateJournalTrade(id: number, data: Record<string, unknown>): Promise<{ trade: JournalTrade }> {
+  return apiFetch(`${API_BASE}/journal/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+}
+
+export async function deleteJournalTrade(id: number): Promise<{ success: boolean }> {
+  return apiFetch(`${API_BASE}/journal/${id}`, { method: "DELETE" });
+}
+
+export async function fetchJournalAnalytics(sessionId: string): Promise<JournalAnalytics> {
+  return apiFetch(`${API_BASE}/journal/analytics?session_id=${encodeURIComponent(sessionId)}`);
+}
+
 export async function fetchPerformance(params: { segment?: string; from?: string; to?: string; sessionId?: string | null }): Promise<{ stats: PerformanceStats; signals: PerformanceSignal[]; isPremium: boolean }> {
   const p = new URLSearchParams();
   if (params.segment) p.set("segment", params.segment);
