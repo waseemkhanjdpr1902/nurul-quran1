@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { AudioPlayer } from "./audio-player";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "./ui/button";
-import { BookOpen, Library, GraduationCap, HeartHandshake, UserCircle } from "lucide-react";
+import { BookOpen, Library, GraduationCap, HeartHandshake, UserCircle, TrendingUp } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -12,6 +12,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/", label: "Home", icon: BookOpen },
     { href: "/library", label: "Library", icon: Library },
     { href: "/courses", label: "Courses", icon: GraduationCap },
+    { href: "/halal-stocks", label: "Halal Stocks", icon: TrendingUp },
     { href: "/support", label: "Support", icon: HeartHandshake },
   ];
 

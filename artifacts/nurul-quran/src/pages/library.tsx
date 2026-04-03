@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Play, Lock, Heart, ChevronRight, ChevronLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
-const CATEGORIES = ["All", "Tafseer", "Fiqh", "Aqeedah", "Hadith", "Spirituality", "Islamic History", "Quran Recitation"];
-const LANGUAGES = ["All", "English", "Urdu"];
+const CATEGORIES = ["All", "Quran Recitation", "Tafseer", "Fiqh", "Aqeedah", "Hadith", "Spirituality", "Islamic History"];
+const LANGUAGES = ["All", "English", "Arabic", "Urdu"];
 const PAGE_SIZE = 9;
 
 function formatDuration(seconds?: number | null) {

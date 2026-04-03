@@ -7,7 +7,7 @@ import { Lock, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 
-const CATEGORIES = ["All", "Tafseer", "Word-to-Word", "Fiqh", "Aqeedah", "Hadith", "Quran Recitation"];
+const CATEGORIES = ["All", "Quran Recitation", "Tafseer", "Fiqh", "Aqeedah", "Hadith", "Spirituality", "Islamic History", "Word-to-Word"];
 
 export default function Courses() {
   const [category, setCategory] = useState("All");

@@ -14,6 +14,7 @@ import Support from "@/pages/support";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Profile from "@/pages/profile";
+import HalalStocks from "@/pages/halal-stocks";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/profile" component={Profile} />
+        <Route path="/halal-stocks" component={HalalStocks} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

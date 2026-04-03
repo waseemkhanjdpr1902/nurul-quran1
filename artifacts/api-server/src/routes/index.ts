@@ -7,6 +7,7 @@ import ayahRouter from "./ayah";
 import dashboardRouter from "./dashboard";
 import usersRouter from "./users";
 import paymentsRouter from "./payments";
+import halalStocksRouter from "./halal-stocks";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(ayahRouter);
 router.use(dashboardRouter);
 router.use(usersRouter);
 router.use(paymentsRouter);
+router.use(halalStocksRouter);
 
 export default router;
