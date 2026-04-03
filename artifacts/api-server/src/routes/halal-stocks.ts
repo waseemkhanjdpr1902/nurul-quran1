@@ -72,19 +72,23 @@ async function fetchQuote(symbol: string): Promise<{ price: number | null; chang
   }
 }
 
-async function fetchQuotesBatch(symbols: string[]): Promise<Record<string, { price: number | null; change: number | null; changePercent: number | null; marketCap: number | null }>> {
-  const results: Record<string, any> = {};
-  const batchSize = 5;
-  for (let i = 0; i < symbols.length; i += batchSize) {
-    const batch = symbols.slice(i, i + batchSize);
-    const promises = batch.map(async (sym) => {
-      results[sym] = await fetchQuote(sym);
-    });
-    await Promise.all(promises);
-    if (i + batchSize < symbols.length) {
-      await new Promise(r => setTimeout(r, 200));
-    }
+const quoteCache = new Map<string, { data: { price: number | null; change: number | null; changePercent: number | null; marketCap: number | null }; ts: number }>();
+const CACHE_TTL = 3 * 60 * 1000;
+
+async function fetchQuotesCached(symbols: string[]): Promise<Record<string, { price: number | null; change: number | null; changePercent: number | null; marketCap: number | null }>> {
+  const now = Date.now();
+  const toFetch = symbols.filter(s => {
+    const c = quoteCache.get(s);
+    return !c || now - c.ts > CACHE_TTL;
+  });
+  if (toFetch.length > 0) {
+    await Promise.all(toFetch.map(async (sym) => {
+      const data = await fetchQuote(sym);
+      quoteCache.set(sym, { data, ts: Date.now() });
+    }));
   }
+  const results: Record<string, any> = {};
+  symbols.forEach(s => { results[s] = quoteCache.get(s)?.data ?? { price: null, change: null, changePercent: null, marketCap: null }; });
   return results;
 }
 
@@ -105,7 +109,12 @@ router.get("/halal-stocks", async (req, res): Promise<void> => {
     );
   }
 
-  const quotes = await fetchQuotesBatch(stocks.map(s => s.symbol));
+  const emptyQuotes: Record<string, { price: null; change: null; changePercent: null; marketCap: null }> = {};
+  stocks.forEach(s => { emptyQuotes[s.symbol] = { price: null, change: null, changePercent: null, marketCap: null }; });
+
+  const quotePromise = fetchQuotesCached(stocks.map(s => s.symbol));
+  const quoteTimeout = new Promise<typeof emptyQuotes>(resolve => setTimeout(() => resolve(emptyQuotes), 3000));
+  const quotes = await Promise.race([quotePromise, quoteTimeout]);
 
   const results = stocks.map(stock => ({
     ...stock,
