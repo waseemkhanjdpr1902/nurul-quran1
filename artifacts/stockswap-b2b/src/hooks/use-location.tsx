@@ -18,12 +18,18 @@ export function useLocation() {
   const getLocation = () => {
     setState((s) => ({ ...s, loading: true, error: null }));
     if (!navigator.geolocation) {
-      setState({ lat: null, lng: null, error: "Geolocation is not supported by your browser", loading: false });
+      setState({ lat: null, lng: null, error: "Geolocation not supported", loading: false });
       return;
     }
 
+    // Auto-fallback after 6 seconds so listings always load
+    const fallbackTimer = setTimeout(() => {
+      setState((s) => s.loading ? { lat: null, lng: null, error: "Location unavailable", loading: false } : s);
+    }, 6000);
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        clearTimeout(fallbackTimer);
         setState({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
@@ -32,13 +38,15 @@ export function useLocation() {
         });
       },
       (error) => {
+        clearTimeout(fallbackTimer);
         setState({
           lat: null,
           lng: null,
           error: error.message,
           loading: false,
         });
-      }
+      },
+      { timeout: 5000, maximumAge: 60000 }
     );
   };
 
