@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { AudioPlayer } from "./audio-player";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "./ui/button";
-import { BookOpen, Library, GraduationCap, HeartHandshake, UserCircle, TrendingUp } from "lucide-react";
+import { BookOpen, Library, GraduationCap, HeartHandshake, UserCircle, TrendingUp, Moon } from "lucide-react";
 import { PwaInstallPrompt } from "./pwa-install-prompt";
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -11,6 +11,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: "/", label: "Home", icon: BookOpen },
+    { href: "/quran", label: "Quran", icon: Moon },
     { href: "/library", label: "Library", icon: Library },
     { href: "/courses", label: "Courses", icon: GraduationCap },
     { href: "/halal-stocks", label: "Halal Stocks", icon: TrendingUp },

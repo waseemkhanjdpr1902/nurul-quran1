@@ -20,6 +20,7 @@
     "jsonwebtoken": "^9.0.3",
     "pino": "^9",
     "pino-http": "^10",
+    "razorpay": "^2.9.6",
     "stripe": "^21.0.1",
     "yahoo-finance2": "^3.14.0"
   },

@@ -1,66 +1,233 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCreateCheckoutSession, useCreateSubscription } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
-import { Heart, Star, Crown, Check, Loader2 } from "lucide-react";
+import { Heart, Star, Crown, Check, Loader2, CreditCard, IndianRupee } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const DONATION_AMOUNTS = [500, 1000, 2500, 5000];
+const DONATION_AMOUNTS_INR = [499, 999, 2499, 4999];
+const DONATION_AMOUNTS_USD = [500, 1000, 2500, 5000];
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
+function useRazorpayConfig() {
+  const [config, setConfig] = useState<{ configured: boolean; key_id?: string } | null>(null);
+  useEffect(() => {
+    fetch("/api/payments/razorpay/config")
+      .then(r => r.json())
+      .then(setConfig)
+      .catch(() => setConfig({ configured: false }));
+  }, []);
+  return config;
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise(resolve => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 export default function Support() {
-  const [selectedAmount, setSelectedAmount] = useState(1000);
+  const [currency, setCurrency] = useState<"INR" | "USD">("INR");
+  const [selectedAmount, setSelectedAmount] = useState(999);
   const [customAmount, setCustomAmount] = useState("");
+  const [donating, setDonating] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
   const { toast } = useToast();
+
+  const razorpayConfig = useRazorpayConfig();
   const checkoutMutation = useCreateCheckoutSession();
   const subscriptionMutation = useCreateSubscription();
 
+  const amounts = currency === "INR" ? DONATION_AMOUNTS_INR : DONATION_AMOUNTS_USD;
+  const symbol = currency === "INR" ? "₹" : "$";
+
   const getAmount = () => {
     if (customAmount) return Math.round(parseFloat(customAmount) * 100);
-    return selectedAmount;
+    return selectedAmount * 100;
   };
 
-  const handleDonate = async () => {
+  // ── Razorpay donate ────────────────────────────────────────────────
+  const handleRazorpayDonate = async () => {
+    const amount = getAmount();
+    if (!amount || amount < 100) {
+      toast({ title: "Invalid amount", description: "Minimum donation is ₹1", variant: "destructive" });
+      return;
+    }
+    setDonating(true);
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Failed to load Razorpay");
+
+      const res = await fetch("/api/payments/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, currency }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const order = await res.json();
+
+      const options = {
+        key: razorpayConfig?.key_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Nurul Quran",
+        description: "Donation to support Islamic education",
+        order_id: order.id,
+        theme: { color: "#004d40" },
+        handler: async (response: any) => {
+          const verify = await fetch("/api/payments/razorpay/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(response),
+          });
+          const result = await verify.json();
+          if (result.success) {
+            toast({ title: "JazakAllah Khair!", description: "Your donation has been received. May Allah reward you abundantly." });
+          } else {
+            toast({ title: "Verification failed", description: result.error, variant: "destructive" });
+          }
+        },
+        modal: { ondismiss: () => setDonating(false) },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", (resp: any) => {
+        toast({ title: "Payment failed", description: resp.error?.description || "Please try again.", variant: "destructive" });
+        setDonating(false);
+      });
+      rzp.open();
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Could not initiate payment. Please try again.", variant: "destructive" });
+    } finally {
+      setDonating(false);
+    }
+  };
+
+  // ── Razorpay subscribe ─────────────────────────────────────────────
+  const handleRazorpaySubscribe = async () => {
+    setSubscribing(true);
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Failed to load Razorpay");
+
+      const res = await fetch("/api/payments/razorpay/subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const order = await res.json();
+
+      const options = {
+        key: razorpayConfig?.key_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Nurul Quran Premium",
+        description: "Monthly Premium Membership — ₹999/month",
+        order_id: order.id,
+        theme: { color: "#004d40" },
+        handler: async (response: any) => {
+          const verify = await fetch("/api/payments/razorpay/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(response),
+          });
+          const result = await verify.json();
+          if (result.success) {
+            toast({ title: "Welcome to Premium!", description: "Your subscription is now active. JazakAllah Khair!" });
+          }
+        },
+        modal: { ondismiss: () => setSubscribing(false) },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Could not initiate subscription. Please try again.", variant: "destructive" });
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  // ── Stripe fallback donate ─────────────────────────────────────────
+  const handleStripeDonate = () => {
     const amount = getAmount();
     if (!amount || amount < 100) {
       toast({ title: "Invalid amount", description: "Minimum donation is $1", variant: "destructive" });
       return;
     }
-
     const base = window.location.origin;
     checkoutMutation.mutate(
       { data: { amount, currency: "usd", successUrl: `${base}/?donation=success`, cancelUrl: `${base}/support` } },
       {
         onSuccess: (data) => { if (data.url) window.location.href = data.url; },
-        onError: () => toast({ title: "Error", description: "Stripe is not configured yet. Add your STRIPE_SECRET_KEY to get started.", variant: "destructive" }),
+        onError: () => toast({ title: "Stripe not configured", description: "Please add your Stripe keys or use Razorpay.", variant: "destructive" }),
       }
     );
   };
 
-  const handleSubscribe = async () => {
+  const handleStripeSubscribe = () => {
     const base = window.location.origin;
     subscriptionMutation.mutate(
       { data: { successUrl: `${base}/?premium=success`, cancelUrl: `${base}/support` } },
       {
         onSuccess: (data) => { if (data.url) window.location.href = data.url; },
-        onError: () => toast({ title: "Error", description: "Stripe is not configured yet. Add your STRIPE_SECRET_KEY to get started.", variant: "destructive" }),
+        onError: () => toast({ title: "Stripe not configured", description: "Please add your Stripe keys or use Razorpay.", variant: "destructive" }),
       }
     );
   };
 
+  const useRazorpay = razorpayConfig?.configured;
+
   return (
     <div className="container mx-auto max-w-5xl px-4 py-10">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <Heart className="w-8 h-8 text-primary" />
         </div>
         <h1 className="text-4xl font-serif font-bold text-foreground mb-3">Support Nurul Quran</h1>
         <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
           Your generosity helps us provide free access to authentic Islamic education for Muslims around the world.
-          Every contribution, big or small, makes a difference.
         </p>
+
+        {/* Payment provider badge */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          {useRazorpay ? (
+            <Badge className="bg-[#072654] text-white text-xs gap-1"><IndianRupee className="w-3 h-3" /> Powered by Razorpay</Badge>
+          ) : (
+            <Badge variant="outline" className="text-xs gap-1"><CreditCard className="w-3 h-3" /> Stripe Checkout</Badge>
+          )}
+        </div>
       </motion.div>
+
+      {/* Currency toggle (only for Razorpay) */}
+      {useRazorpay && (
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {(["INR", "USD"] as const).map(c => (
+            <button
+              key={c}
+              onClick={() => { setCurrency(c); setSelectedAmount(c === "INR" ? 999 : 1000); setCustomAmount(""); }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                currency === c ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/40"
+              }`}
+            >
+              {c === "INR" ? "₹ INR" : "$ USD"}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* Donation Card */}
@@ -77,7 +244,7 @@ export default function Support() {
           <p className="text-muted-foreground text-sm mb-6">One-time contribution to support our mission</p>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
-            {DONATION_AMOUNTS.map(amount => (
+            {amounts.map(amount => (
               <button
                 key={amount}
                 onClick={() => { setSelectedAmount(amount); setCustomAmount(""); }}
@@ -88,17 +255,17 @@ export default function Support() {
                     : "bg-background border-border text-foreground hover:border-primary/40"
                 }`}
               >
-                ${(amount / 100).toFixed(0)}
+                {symbol}{amount.toLocaleString()}
               </button>
             ))}
           </div>
 
           <div className="mb-6">
-            <label className="text-xs text-muted-foreground mb-1 block">Custom amount ($)</label>
+            <label className="text-xs text-muted-foreground mb-1 block">Custom amount ({currency})</label>
             <input
               type="number"
               min="1"
-              placeholder="Enter amount"
+              placeholder={`Enter amount in ${currency}`}
               value={customAmount}
               onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(0); }}
               className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -107,17 +274,23 @@ export default function Support() {
           </div>
 
           <Button
-            onClick={handleDonate}
-            disabled={checkoutMutation.isPending}
+            onClick={useRazorpay ? handleRazorpayDonate : handleStripeDonate}
+            disabled={donating || checkoutMutation.isPending}
             className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
             data-testid="button-donate"
           >
-            {checkoutMutation.isPending ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+            {(donating || checkoutMutation.isPending) ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing…</>
             ) : (
-              <><Heart className="w-4 h-4 mr-2" /> Donate ${customAmount || (getAmount() / 100).toFixed(0)}</>
+              <><Heart className="w-4 h-4 mr-2" /> Donate {symbol}{customAmount || selectedAmount.toLocaleString()}</>
             )}
           </Button>
+
+          {!useRazorpay && (
+            <p className="text-xs text-muted-foreground text-center mt-3">
+              Add RAZORPAY_KEY_ID &amp; RAZORPAY_KEY_SECRET secrets to enable Razorpay
+            </p>
+          )}
         </motion.div>
 
         {/* Premium Card */}
@@ -133,7 +306,9 @@ export default function Support() {
               <Crown className="w-5 h-5 text-secondary" />
               <h2 className="text-xl font-serif font-bold">Premium Membership</h2>
             </div>
-            <p className="text-primary-foreground/70 text-sm mb-2">$9.99 / month</p>
+            <p className="text-primary-foreground/70 text-sm mb-2">
+              {useRazorpay ? "₹999 / month" : "$9.99 / month"}
+            </p>
             <Badge className="bg-secondary text-secondary-foreground text-xs mb-6">Most Popular</Badge>
 
             <ul className="space-y-3 mb-8">
@@ -142,8 +317,8 @@ export default function Support() {
                 "Complete Tafseer of Al-Baqarah",
                 "Advanced Fiqh courses",
                 "Hadith Sciences curriculum",
+                "Quran with Tafseer Ibn Katheer",
                 "Ad-free experience",
-                "Offline listening (coming soon)",
               ].map(feature => (
                 <li key={feature} className="flex items-start gap-2.5 text-sm">
                   <Check className="w-4 h-4 text-secondary mt-0.5 shrink-0" />
@@ -153,23 +328,23 @@ export default function Support() {
             </ul>
 
             <Button
-              onClick={handleSubscribe}
-              disabled={subscriptionMutation.isPending}
+              onClick={useRazorpay ? handleRazorpaySubscribe : handleStripeSubscribe}
+              disabled={subscribing || subscriptionMutation.isPending}
               variant="secondary"
               className="w-full h-12 font-semibold"
               data-testid="button-subscribe"
             >
-              {subscriptionMutation.isPending ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+              {(subscribing || subscriptionMutation.isPending) ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing…</>
               ) : (
-                <><Crown className="w-4 h-4 mr-2" /> Start Premium Access</>
+                <><Crown className="w-4 h-4 mr-2" /> Subscribe {useRazorpay ? "₹999/month" : "$9.99/month"}</>
               )}
             </Button>
           </div>
         </motion.div>
       </div>
 
-      {/* Mission section */}
+      {/* Mission */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
