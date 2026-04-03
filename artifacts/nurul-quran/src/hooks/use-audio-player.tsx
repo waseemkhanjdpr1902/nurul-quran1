@@ -13,6 +13,7 @@ interface AudioPlayerContextType {
   skipForward: () => void;
   skipBackward: () => void;
   setPlaybackRate: (rate: number) => void;
+  onEnded: (cb: () => void) => () => void;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined);
@@ -43,6 +44,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [playbackRate, setPlaybackRateState] = useState(1);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const endedCallbacksRef = useRef<Set<() => void>>(new Set());
 
   // Audio element setup
   useEffect(() => {
@@ -60,6 +62,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'paused';
       }
+      endedCallbacksRef.current.forEach(cb => cb());
     };
     const onPlay = () => {
       setIsPlaying(true);
@@ -228,6 +231,11 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  const onEnded = useCallback((cb: () => void) => {
+    endedCallbacksRef.current.add(cb);
+    return () => { endedCallbacksRef.current.delete(cb); };
+  }, []);
+
   return (
     <AudioPlayerContext.Provider
       value={{
@@ -242,6 +250,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         skipForward,
         skipBackward,
         setPlaybackRate,
+        onEnded,
       }}
     >
       {children}

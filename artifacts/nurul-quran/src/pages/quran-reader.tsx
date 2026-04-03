@@ -270,6 +270,16 @@ export default function QuranReader() {
 
   useEffect(() => { setAudioPage(0); setSurahAudioPlaying(false); setPlayingAyah(null); }, [selectedSurah]);
 
+  // Stop audio when navigating away from the Quran Reader completely
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
+
   if (selectedSurah) {
     return (
       <div className="container mx-auto max-w-4xl px-4 py-6 pb-40">

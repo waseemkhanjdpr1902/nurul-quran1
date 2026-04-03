@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -8,8 +8,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { PremiumGate } from "@/components/premium-gate";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronLeft, BookOpen, Lock, Play, Pause, Clock,
-  User, GraduationCap, Globe, Crown
+  ChevronLeft, ChevronDown, BookOpen, Lock, Play, Pause, Clock,
+  GraduationCap, Globe, SkipForward, Crown, User
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Lecture } from "@workspace/api-client-react";
@@ -61,10 +61,12 @@ const WHAT_YOU_LEARN: Record<string, string[]> = {
 export default function CourseDetail() {
   const params = useParams<{ id: string }>();
   const courseId = parseInt(params.id ?? "0", 10);
-  const { playLecture, currentLecture, isPlaying } = useAudioPlayer();
+  const { playLecture, currentLecture, isPlaying, onEnded } = useAudioPlayer();
   const { isAuthenticated } = useAuth();
   const [premiumGate, setPremiumGate] = useState<{ title: string } | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [autoPlay, setAutoPlay] = useState(true);
+  const lecturesRef = useRef<Lecture[]>([]);
 
   const { data: course, isLoading: courseLoading } = useQuery<CourseDetail>({
     queryKey: ["course", courseId],
@@ -77,6 +79,27 @@ export default function CourseDetail() {
     queryFn: () => fetch(`/api/courses/${courseId}/lectures`).then(r => r.json()),
     enabled: !!courseId,
   });
+
+  // Keep lectures ref in sync for the auto-play callback
+  useEffect(() => { lecturesRef.current = lectures ?? []; }, [lectures]);
+
+  // Auto-play next lecture when current one ends
+  useEffect(() => {
+    const unsubscribe = onEnded(() => {
+      if (!autoPlay) return;
+      const list = lecturesRef.current;
+      if (!list.length) return;
+      const currentId = currentLecture?.id;
+      const idx = list.findIndex(l => l.id === currentId);
+      if (idx >= 0 && idx < list.length - 1) {
+        const next = list[idx + 1];
+        if (!next.isPremium || isAuthenticated) {
+          playLecture(next);
+        }
+      }
+    });
+    return unsubscribe;
+  }, [onEnded, currentLecture, autoPlay, isAuthenticated, playLecture]);
 
   const handlePlay = (lecture: Lecture) => {
     if (course?.isPremium && !isAuthenticated) {
@@ -169,7 +192,20 @@ export default function CourseDetail() {
         <div className="grid md:grid-cols-3 gap-8">
           {/* Lectures list */}
           <div className="md:col-span-2">
-            <h2 className="text-lg font-serif font-bold text-foreground mb-4">Course Curriculum</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-serif font-bold text-foreground">Course Curriculum</h2>
+              <button
+                onClick={() => setAutoPlay(a => !a)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all ${
+                  autoPlay
+                    ? "bg-primary/10 border-primary/30 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/20"
+                }`}
+              >
+                <SkipForward className="w-3.5 h-3.5" />
+                Auto-play {autoPlay ? "On" : "Off"}
+              </button>
+            </div>
             {lecturesLoading ? (
               <div className="space-y-3">
                 {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
@@ -242,8 +278,8 @@ export default function CourseDetail() {
                             onClick={e => { e.stopPropagation(); setExpandedId(isExpanded ? null : lecture.id); }}
                             className="ml-1 p-1 rounded text-muted-foreground hover:text-foreground transition-colors shrink-0"
                           >
-                            <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}>
-                              <Play className="w-3 h-3 rotate-90" />
+                            <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.15 }}>
+                              <ChevronDown className="w-4 h-4" />
                             </motion.div>
                           </button>
                         )}
