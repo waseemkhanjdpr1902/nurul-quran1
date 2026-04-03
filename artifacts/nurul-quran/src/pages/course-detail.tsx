@@ -64,6 +64,7 @@ export default function CourseDetail() {
   const { playLecture, currentLecture, isPlaying } = useAudioPlayer();
   const { isAuthenticated } = useAuth();
   const [premiumGate, setPremiumGate] = useState<{ title: string } | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const { data: course, isLoading: courseLoading } = useQuery<CourseDetail>({
     queryKey: ["course", courseId],
@@ -183,52 +184,94 @@ export default function CourseDetail() {
                 {lectures.map((lecture, i) => {
                   const isCurrentlyPlaying = currentLecture?.id === lecture.id && isPlaying;
                   const isActive = currentLecture?.id === lecture.id;
+                  const isExpanded = expandedId === lecture.id;
                   return (
                     <motion.div
                       key={lecture.id}
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04 }}
-                      className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer group ${
+                      className={`rounded-xl border transition-all overflow-hidden ${
                         isActive
                           ? "bg-primary/5 border-primary/30"
-                          : "bg-card border-border hover:border-primary/20 hover:bg-card/80"
+                          : "bg-card border-border hover:border-primary/20"
                       }`}
-                      onClick={() => handlePlay(lecture)}
                     >
-                      {/* Track number / play icon */}
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                        isCurrentlyPlaying ? "bg-primary text-primary-foreground" : "bg-muted group-hover:bg-primary/10"
-                      }`}>
-                        {isCurrentlyPlaying ? (
-                          <Pause className="w-4 h-4" />
-                        ) : lecture.isPremium ? (
-                          <Lock className="w-3.5 h-3.5 text-amber-500" />
-                        ) : (
-                          <span className="text-xs font-mono text-muted-foreground group-hover:hidden">{i + 1}</span>
-                        )}
-                        {!isCurrentlyPlaying && !lecture.isPremium && (
-                          <Play className="w-4 h-4 text-primary hidden group-hover:block ml-0.5" />
+                      {/* Main row */}
+                      <div
+                        className="flex items-center gap-3 p-3.5 cursor-pointer group"
+                        onClick={() => handlePlay(lecture)}
+                      >
+                        {/* Track number / play icon */}
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                          isCurrentlyPlaying ? "bg-primary text-primary-foreground" : "bg-muted group-hover:bg-primary/10"
+                        }`}>
+                          {isCurrentlyPlaying ? (
+                            <Pause className="w-4 h-4" />
+                          ) : lecture.isPremium ? (
+                            <Lock className="w-3.5 h-3.5 text-amber-500" />
+                          ) : (
+                            <>
+                              <span className="text-xs font-mono text-muted-foreground group-hover:hidden">{i + 1}</span>
+                              <Play className="w-4 h-4 text-primary hidden group-hover:block ml-0.5" />
+                            </>
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium line-clamp-1 ${isActive ? "text-primary" : "text-foreground"}`}>
+                            {lecture.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{lecture.speakerName || "Scholar"}</span>
+                            {lecture.duration && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                                <Clock className="w-3 h-3" /> {formatDuration(lecture.duration)}
+                              </span>
+                            )}
+                            {lecture.isPremium && (
+                              <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-600 border-0">Premium</Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Expand toggle */}
+                        {lecture.description && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setExpandedId(isExpanded ? null : lecture.id); }}
+                            className="ml-1 p-1 rounded text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          >
+                            <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}>
+                              <Play className="w-3 h-3 rotate-90" />
+                            </motion.div>
+                          </button>
                         )}
                       </div>
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium line-clamp-1 ${isActive ? "text-primary" : "text-foreground"}`}>
-                          {lecture.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-muted-foreground">{lecture.language}</span>
-                          {lecture.duration && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                              <Clock className="w-3 h-3" /> {formatDuration(lecture.duration)}
-                            </span>
-                          )}
-                          {lecture.isPremium && (
-                            <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-600 border-0">Premium</Badge>
-                          )}
-                        </div>
-                      </div>
+                      {/* Expanded description */}
+                      <AnimatePresence>
+                        {isExpanded && lecture.description && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-4 pb-4 pt-0 border-t border-border/50">
+                              <p className="text-sm text-muted-foreground leading-relaxed mt-3">{lecture.description}</p>
+                              <button
+                                onClick={() => handlePlay(lecture)}
+                                className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                              >
+                                <Play className="w-3 h-3 fill-current" />
+                                {isCurrentlyPlaying ? "Pause lecture" : "Play this lecture"}
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   );
                 })}
