@@ -45,53 +45,51 @@ export default function Courses() {
         {isLoading
           ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)
           : courses?.map((course, i) => (
-              <motion.div
-                key={course.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
-                data-testid={`card-course-${course.id}`}
-                className="group bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-all hover:border-primary/30 flex flex-col"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-primary" />
-                  </div>
-                  {course.isPremium && (
-                    <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 text-xs font-medium px-2.5 py-1 rounded-full">
-                      <Lock className="w-3 h-3" />
-                      Premium
+              <Link key={course.id} href={`/courses/${course.id}`} data-testid={`card-course-${course.id}`}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  className="group bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-all hover:border-primary/30 flex flex-col h-full cursor-pointer"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                      <BookOpen className="w-6 h-6 text-primary" />
                     </div>
-                  )}
-                </div>
-
-                <div className="flex-1">
-                  <Badge variant="secondary" className="text-[10px] mb-2">{course.category}</Badge>
-                  <h3 className="font-semibold text-foreground mb-2 line-clamp-2 text-base leading-snug">{course.title}</h3>
-                  {course.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{course.description}</p>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                  <div className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{course.lectureCount}</span> lectures
-                  </div>
-                  {course.speakerName && (
-                    <p className="text-xs text-muted-foreground truncate max-w-[140px]">{course.speakerName}</p>
-                  )}
-                </div>
-
-                <Button asChild className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90 w-full font-medium" data-testid={`button-enroll-${course.id}`}>
-                  <Link href={`/courses/${course.id}`}>
-                    {course.isPremium ? (
-                      <><Lock className="w-4 h-4 mr-1.5" /> View Course</>
-                    ) : (
-                      <><BookOpen className="w-4 h-4 mr-1.5" /> Start Learning</>
+                    {course.isPremium && (
+                      <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 text-xs font-medium px-2.5 py-1 rounded-full">
+                        <Lock className="w-3 h-3" />
+                        Premium
+                      </div>
                     )}
-                  </Link>
-                </Button>
-              </motion.div>
+                  </div>
+
+                  <div className="flex-1">
+                    <Badge variant="secondary" className="text-[10px] mb-2">{course.category}</Badge>
+                    <h3 className="font-semibold text-foreground mb-2 line-clamp-2 text-base leading-snug group-hover:text-primary transition-colors">{course.title}</h3>
+                    {course.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{course.description}</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">{course.lectureCount}</span> lectures
+                    </div>
+                    {course.speakerName && (
+                      <p className="text-xs text-muted-foreground truncate max-w-[140px]">{course.speakerName}</p>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-1.5 text-sm font-medium text-primary group-hover:gap-2.5 transition-all" data-testid={`button-enroll-${course.id}`}>
+                    {course.isPremium ? (
+                      <><Lock className="w-4 h-4" /> View Course</>
+                    ) : (
+                      <><BookOpen className="w-4 h-4" /> Start Learning</>
+                    )}
+                  </div>
+                </motion.div>
+              </Link>
             ))}
       </div>
 

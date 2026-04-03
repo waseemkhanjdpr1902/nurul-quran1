@@ -158,25 +158,25 @@ export default function Home() {
                   <Skeleton key={i} className="h-40 rounded-xl" />
                 ))
               : courses?.slice(0, 3).map((course, i) => (
-                  <motion.div
-                    key={course.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    data-testid={`card-course-${course.id}`}
-                    className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all hover:border-primary/30"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <Badge className="text-[10px] bg-primary/10 text-primary border-0">{course.category}</Badge>
-                      {course.isPremium && <Lock className="w-4 h-4 text-amber-500" />}
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-1 line-clamp-2">{course.title}</h3>
-                    <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{course.description}</p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{course.lectureCount} lectures</span>
-                      {course.speakerName && <span className="truncate">{course.speakerName}</span>}
-                    </div>
-                  </motion.div>
+                  <Link key={course.id} href={`/courses/${course.id}`} data-testid={`card-course-${course.id}`}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="group bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all hover:border-primary/30 cursor-pointer h-full"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <Badge className="text-[10px] bg-primary/10 text-primary border-0">{course.category}</Badge>
+                        {course.isPremium && <Lock className="w-4 h-4 text-amber-500" />}
+                      </div>
+                      <h3 className="font-semibold text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors">{course.title}</h3>
+                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{course.description}</p>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{course.lectureCount} lectures</span>
+                        {course.speakerName && <span className="truncate">{course.speakerName}</span>}
+                      </div>
+                    </motion.div>
+                  </Link>
                 ))}
           </div>
         </section>
