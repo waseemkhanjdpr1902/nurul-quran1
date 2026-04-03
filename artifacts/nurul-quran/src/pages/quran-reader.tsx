@@ -29,13 +29,7 @@ interface Ayah {
 
 type DisplayLang = "arabic" | "english" | "urdu" | "tafseer";
 
-const RECITERS = [
-  { id: "ar.alafasy", label: "Mishary Alafasy", lang: "Arabic" },
-  { id: "ar.abdurrahmaansudais", label: "Abdurrahman Sudais", lang: "Arabic" },
-  { id: "ar.husary", label: "Mahmoud Husary", lang: "Arabic" },
-  { id: "ar.mahermuaiqly", label: "Maher Al-Muaiqly", lang: "Arabic" },
-  { id: "ar.shaatree", label: "Abu Bakr Shatri", lang: "Arabic" },
-];
+const RECITER_ID = "ar.alafasy";
 
 const AYAH_LIMIT = 10;
 
@@ -218,7 +212,6 @@ export default function QuranReader() {
   const [selectedSurah, setSelectedSurah] = useState<SurahMeta | null>(null);
   const [search, setSearch] = useState("");
   const [displayLangs, setDisplayLangs] = useState<DisplayLang[]>(["english"]);
-  const [reciter, setReciter] = useState(RECITERS[0]);
   const [audioPage, setAudioPage] = useState(0);
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
 
@@ -245,7 +238,7 @@ export default function QuranReader() {
 
   const playSurahAudio = useCallback(() => {
     if (!selectedSurah) return;
-    const url = `https://cdn.islamic.network/quran/audio-surah/128/${reciter.id}/${selectedSurah.number}.mp3`;
+    const url = `https://cdn.islamic.network/quran/audio-surah/128/${RECITER_ID}/${selectedSurah.number}.mp3`;
     if (!audioRef.current) audioRef.current = new Audio();
     if (surahAudioPlaying) {
       audioRef.current.pause();
@@ -255,11 +248,11 @@ export default function QuranReader() {
       audioRef.current.play().then(() => setSurahAudioPlaying(true)).catch(console.error);
       audioRef.current.onended = () => setSurahAudioPlaying(false);
     }
-  }, [selectedSurah, reciter, surahAudioPlaying]);
+  }, [selectedSurah, surahAudioPlaying]);
 
   const playAyahAudio = useCallback((globalAyahNum: number) => {
     // globalAyahNum is the absolute ayah number (1–6236), from ayah.number in the API response
-    const url = `https://cdn.islamic.network/quran/audio/128/${reciter.id}/${globalAyahNum}.mp3`;
+    const url = `https://cdn.islamic.network/quran/audio/128/${RECITER_ID}/${globalAyahNum}.mp3`;
     if (!audioRef.current) audioRef.current = new Audio();
     if (playingAyah === globalAyahNum) {
       audioRef.current.pause();
@@ -269,7 +262,7 @@ export default function QuranReader() {
       audioRef.current.play().then(() => setPlayingAyah(globalAyahNum)).catch(console.error);
       audioRef.current.onended = () => setPlayingAyah(null);
     }
-  }, [reciter, playingAyah]);
+  }, [playingAyah]);
 
   // Pagination for ayahs
   const totalPages = Math.ceil(ayahs.length / AYAH_LIMIT);
@@ -317,23 +310,14 @@ export default function QuranReader() {
             ))}
           </div>
 
-          {/* Reciter + play surah */}
-          <div className="flex items-center gap-2">
-            <select
-              value={reciter.id}
-              onChange={e => setReciter(RECITERS.find(r => r.id === e.target.value) || RECITERS[0])}
-              className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-            >
-              {RECITERS.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-            </select>
-            <Button
-              size="sm"
-              onClick={playSurahAudio}
-              className={`h-8 text-xs gap-1.5 ${surahAudioPlaying ? "bg-red-600 hover:bg-red-700" : "bg-primary hover:bg-primary/90"} text-primary-foreground`}
-            >
-              {surahAudioPlaying ? <><Pause className="w-3.5 h-3.5" /> Stop</> : <><Volume2 className="w-3.5 h-3.5" /> Play Surah</>}
-            </Button>
-          </div>
+          {/* Play surah — Mishary Alafasy */}
+          <Button
+            size="sm"
+            onClick={playSurahAudio}
+            className={`h-8 text-xs gap-1.5 ${surahAudioPlaying ? "bg-red-600 hover:bg-red-700" : "bg-primary hover:bg-primary/90"} text-primary-foreground`}
+          >
+            {surahAudioPlaying ? <><Pause className="w-3.5 h-3.5" /> Stop</> : <><Volume2 className="w-3.5 h-3.5" /> Play Surah</>}
+          </Button>
         </div>
 
         {/* Bismillah */}
@@ -365,7 +349,7 @@ export default function QuranReader() {
                   ayah={ayah}
                   surahNum={selectedSurah.number}
                   displayLangs={displayLangs}
-                  isPlaying={playingAyah === ayah.numberInSurah}
+                  isPlaying={playingAyah === ayah.number}
                   onPlay={playAyahAudio}
                 />
               ))}
