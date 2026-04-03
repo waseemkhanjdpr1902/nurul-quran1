@@ -9,6 +9,7 @@ import usersRouter from "./users";
 import paymentsRouter from "./payments";
 import halalStocksRouter from "./halal-stocks";
 import razorpayRouter from "./razorpay";
+import tradeMasterRouter from "./trademaster";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(usersRouter);
 router.use(paymentsRouter);
 router.use(halalStocksRouter);
 router.use(razorpayRouter);
+router.use(tradeMasterRouter);
 
 export default router;

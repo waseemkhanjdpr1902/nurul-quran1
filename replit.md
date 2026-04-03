@@ -60,7 +60,47 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 ## Navigation Order
 Home → Library → Courses → Halal Stocks → Support
 
+## TradeMaster Pro (`artifacts/trademaster-pro`)
+
+Standalone trading signals web app for Indian retail traders, at preview path `/trademaster/`.
+
+### Features
+- Dark TradingView-style UI with signal cards (Asset Name, Entry/SL/Target 1/Target 2, R:R)
+- Market segment tabs: Nifty, Bank Nifty, Options (IV/PCR), Equity, Commodity, Currency
+- Live price ticker bar fetching from Finnhub (`FINNHUB_API_KEY` secret, optional)
+- Admin dashboard (protected by `TRADEMASTER_ADMIN_TOKEN` JWT/Bearer token)
+- Signal CRUD: create, edit, delete, status updates (Active / Target Hit / SL Hit)
+- "Share to WhatsApp" via `whatsapp://send?text=` deep link on each card
+- "Post to Telegram" via Bot API (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID` secrets)
+- Stripe "Premium Pro" monthly subscription (₹499/month) via `/api/trademaster/subscribe`
+- Premium signals locked with overlay for non-subscribers
+- One-time disclaimer modal on first visit (localStorage) + scrolling footer
+- SEBI/educational-use compliance disclaimers on all pages
+
+### DB Tables
+- `trademaster_signals` — signal data with segment, prices, status
+- `trademaster_subscriptions` — Stripe subscription sessions
+
+### API Routes
+- `GET /api/trademaster/signals` — list signals (optional ?segment= filter)
+- `POST /api/trademaster/signals` — create signal (admin auth)
+- `PATCH /api/trademaster/signals/:id` — update/status (admin auth)
+- `DELETE /api/trademaster/signals/:id` — delete (admin auth)
+- `GET /api/trademaster/ticker` — live Nifty/BankNifty prices from Finnhub
+- `POST /api/trademaster/telegram` — broadcast signal to Telegram channel
+- `POST /api/trademaster/subscribe` — create Stripe checkout session
+- `POST /api/trademaster/subscribe/webhook` — Stripe webhook handler
+- `GET /api/trademaster/subscription/check` — check subscription status by sessionId
+
+### Required Secrets
+- `TRADEMASTER_ADMIN_TOKEN` — admin login token (set)
+- `TELEGRAM_BOT_TOKEN` — Telegram Bot API token (optional)
+- `TELEGRAM_CHANNEL_ID` — Telegram channel/group ID (optional)
+- `FINNHUB_API_KEY` — Finnhub free tier for price ticker (optional)
+- `STRIPE_SECRET_KEY` — Stripe for subscriptions (optional)
+
 ## Important Notes
 - `@tanstack/react-query` is in vite dedupe list (prevents duplicate React context errors)
 - Yahoo Finance prices may show N/A in Replit environment (rate-limited) — falls back gracefully
 - Stripe returns 500 if `STRIPE_SECRET_KEY` not configured
+- TradeMaster Pro ticker shows "—" if Finnhub key not configured (graceful fallback)

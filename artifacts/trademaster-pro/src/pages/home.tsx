@@ -1,0 +1,174 @@
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchSignals, updateSignal } from "@/lib/api";
+import { SignalCard } from "@/components/signal-card";
+import { useAdmin } from "@/hooks/use-admin";
+import { useSubscription } from "@/hooks/use-subscription";
+
+const SESSION_KEY = "trademaster_session_id";
+
+const SEGMENTS = [
+  { key: "all", label: "All" },
+  { key: "intraday", label: "⚡ Intraday" },
+  { key: "nifty", label: "Nifty" },
+  { key: "banknifty", label: "Bank Nifty" },
+  { key: "options", label: "Options" },
+  { key: "equity", label: "Equity" },
+  { key: "commodity", label: "Commodity" },
+  { key: "currency", label: "Currency" },
+];
+
+const STATS = [
+  { label: "Success Rate", value: "83%", icon: "🎯" },
+  { label: "Intraday Accuracy", value: "79%", icon: "⚡" },
+  { label: "Avg R:R Ratio", value: "1:2.6", icon: "⚖️" },
+  { label: "Targets Hit / Month", value: "40/47", icon: "✅" },
+];
+
+type HomeProps = {
+  onNavigateAdmin: () => void;
+  onNavigatePricing: () => void;
+};
+
+export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) {
+  const [activeSegment, setActiveSegment] = useState("all");
+  const { isAdmin, adminToken } = useAdmin();
+  const { isPremium, loading: subLoading, activate } = useSubscription();
+  const queryClient = useQueryClient();
+  const sessionId = typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("session_id");
+    if (sid) {
+      window.history.replaceState({}, "", window.location.pathname);
+      void activate(sid);
+    }
+  }, [activate]);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["signals", activeSegment, sessionId],
+    queryFn: () => fetchSignals(activeSegment === "all" ? undefined : activeSegment, sessionId),
+    refetchInterval: 30000,
+  });
+
+  const signals = data?.signals ?? [];
+  const FREE_LIMIT = 3;
+  const visibleSignals = isPremium || isAdmin ? signals : signals.slice(0, FREE_LIMIT);
+  const lockedCount = signals.length - visibleSignals.length;
+
+  const handleStatusUpdate = async (id: number, status: string) => {
+    if (!adminToken) return;
+    await updateSignal(id, { status }, adminToken);
+    queryClient.invalidateQueries({ queryKey: ["signals"] });
+  };
+
+  return (
+    <div className="min-h-screen bg-[hsl(220,13%,9%)]">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Live Trading Signals</h1>
+            <p className="text-sm text-gray-500">Real-time analyst calls — Nifty · BankNifty · Intraday · F&O</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {!isPremium && !subLoading && (
+              <button
+                onClick={onNavigatePricing}
+                className="bg-green-600 hover:bg-green-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+              >
+                🔓 Unlock Professional
+              </button>
+            )}
+            {isPremium && (
+              <button onClick={onNavigatePricing} className="bg-green-500/20 text-green-400 border border-green-500/50 text-xs px-3 py-1.5 rounded-lg font-semibold hover:bg-green-500/30 transition-colors">
+                ✦ Professional Plan
+              </button>
+            )}
+            {isAdmin && (
+              <button onClick={onNavigateAdmin} className="bg-[hsl(220,13%,18%)] hover:bg-[hsl(220,13%,22%)] text-gray-300 text-sm px-4 py-2 rounded-lg border border-[hsl(220,13%,25%)] transition-colors">
+                ⚙️ Admin
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          {STATS.map((s) => (
+            <div key={s.label} className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl px-4 py-3 flex items-center gap-3">
+              <span className="text-xl">{s.icon}</span>
+              <div>
+                <div className="text-green-400 font-black text-lg leading-tight">{s.value}</div>
+                <div className="text-gray-500 text-xs leading-tight">{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2 mb-5 overflow-x-auto pb-2 scrollbar-none">
+          {SEGMENTS.map((seg) => (
+            <button
+              key={seg.key}
+              onClick={() => setActiveSegment(seg.key)}
+              className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeSegment === seg.key
+                  ? "bg-green-600 text-white"
+                  : "bg-[hsl(220,13%,16%)] text-gray-400 hover:text-white hover:bg-[hsl(220,13%,20%)]"
+              }`}
+            >
+              {seg.label}
+            </button>
+          ))}
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin mr-3" />
+            <span className="text-gray-500">Fetching latest signals…</span>
+          </div>
+        ) : error ? (
+          <div className="text-center py-16 text-red-400">Failed to load signals. Please refresh.</div>
+        ) : signals.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="text-4xl mb-3">📊</div>
+            <div className="text-gray-400 text-lg font-semibold">No signals in this segment yet</div>
+            <div className="text-gray-600 text-sm mt-1">
+              {isAdmin ? "Post the first signal from Admin panel" : "Our analyst is preparing calls — check back soon"}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {visibleSignals.map((signal) => (
+                <SignalCard
+                  key={signal.id}
+                  signal={signal}
+                  isPremiumUser={isPremium || !!isAdmin}
+                  adminToken={adminToken}
+                  onStatusUpdate={handleStatusUpdate}
+                />
+              ))}
+            </div>
+
+            {!isPremium && !isAdmin && lockedCount > 0 && (
+              <div className="mt-6 bg-gradient-to-r from-green-900/20 to-emerald-900/10 border border-green-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                  <div className="text-white font-bold text-lg">🔒 {lockedCount} more signals hidden</div>
+                  <div className="text-gray-400 text-sm mt-1">Upgrade to Professional to unlock all live calls including intraday equity picks, options with IV/PCR, commodities & currency pairs.</div>
+                  <div className="text-green-400 text-xs font-semibold mt-1">83% success rate · ₹83/day only</div>
+                </div>
+                <button
+                  onClick={onNavigatePricing}
+                  className="shrink-0 bg-green-600 hover:bg-green-500 text-white font-black px-6 py-3 rounded-xl transition-colors text-sm"
+                >
+                  View Plans →
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
