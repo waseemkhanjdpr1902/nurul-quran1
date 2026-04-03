@@ -13,6 +13,7 @@ Full-stack Islamic education web app built as a pnpm monorepo (React+Vite fronte
 - **`artifacts/mockup-sandbox`** — Vite component preview server
 - **`artifacts/trademaster-pro`** — TradeMaster Pro trading app frontend
 - **`artifacts/inventory-ai-pro`** — Inventory AI Pro MSME stock management PWA (at `/inventory/`)
+- **`artifacts/stockswap-b2b`** — StockSwap B2B hyper-local inventory marketplace (at `/stockswap/`)
 
 ## Stack
 

@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,13 +28,11 @@ function ProtectedRoute({ component: Component, requireShop = false, ...rest }: 
   const { isAuthenticated, shop } = useAuth();
   
   if (!isAuthenticated) {
-    window.location.href = "/stockswap/login";
-    return null;
+    return <Redirect to="/stockswap/login" />;
   }
   
   if (requireShop && !shop) {
-    window.location.href = "/stockswap/onboarding";
-    return null;
+    return <Redirect to="/stockswap/onboarding" />;
   }
   
   return <Component {...rest} />;
@@ -67,10 +65,9 @@ function Router() {
         {() => <ProtectedRoute component={ListingDetailPage} requireShop={true} />}
       </Route>
 
-      <Route path="/" component={() => {
-        window.location.href = "/stockswap/";
-        return null;
-      }} />
+      <Route path="/">
+        {() => <Redirect to="/stockswap/" />}
+      </Route>
 
       <Route component={NotFound} />
     </Switch>

@@ -26,14 +26,13 @@ export default function ListingDetailPage() {
   const [msgContent, setMsgContent] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const peerId = listing && user ? (listing.shopId === user.id ? undefined : listing.shopId) : undefined;
-
   const { data: messages, refetch } = useStockswapGetMessages(
+    id,
     { peerId: listing?.shopId || "" }, 
     { 
       query: { 
         queryKey: ["messages", id, listing?.shopId], 
-        enabled: chatOpen && !!listing?.shopId && listing.shopId !== user?.id,
+        enabled: chatOpen && !!id && !!listing?.shopId && listing.shopId !== user?.id,
         refetchInterval: 3000
       } 
     }
