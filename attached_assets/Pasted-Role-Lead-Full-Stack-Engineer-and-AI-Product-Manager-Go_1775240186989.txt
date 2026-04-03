@@ -1,0 +1,62 @@
+Role: Lead Full-Stack Engineer and AI Product Manager.
+
+Goal: Build a fully functional, mobile-first web app (PWA) called "Inventory AI Pro" for MSMEs (Micro, Small, and Medium Enterprises) to manage stock using their phone camera.
+
+1. Core Technical Stack:
+
+Frontend: React with Vite and Tailwind CSS.
+
+Backend: Node.js (Express).
+
+Database: Supabase (PostgreSQL) for user data, inventory logs, and product images.
+
+AI: Integrate Google Cloud Vision API (or similar like TensorFlow.js) for object detection, barcode scanning, and text recognition (OCR).
+
+2. High-Priority Features (FULLY FUNCTIONAL):
+
+Camera & Scanner: Implement a persistent camera interface. Users must be able to:
+
+Scan a Barcode/QR Code to instantly add/remove an item.
+
+Take a photo of an item, and the AI must attempt to identify it and suggest the product name.
+
+Inventory Dashboard: A clean grid/list view showing Product Name, SKU, Stock Level, Unit Price, and Category.
+
+Low-Stock Alerts: Implement backend logic to flag any item with quantity < 5. Highlight these red and send an in-app notification.
+
+Audit Log: Automatically record every change: "User X added 10 units of Coke at [Timestamp]."
+
+3. Monetization & AdMob:
+
+Freemium: Up to 100 items are free (with ads).
+
+Pro Tier (Stripe): Charge $5/month for unlimited items, multi-user sync, and data export (Excel/PDF).
+
+AdMob Banner: Place a permanent 320x50 banner at the bottom of the Dashboard using my provided ADMOB_BANNER_ID (or test IDs for now).
+
+4. Technical Implementation Flow:
+
+Scaffold the project and set up the Supabase database connection first.
+
+Create a functional CRUD (Create, Read, Update, Delete) UI for inventory.
+
+The "AI Hook": Implement the frontend-to-backend-to-AI-API route that sends a base64 image and receives object/text detection results.
+
+Connect Stripe for the "Upgrade to Pro" button.
+
+Instructions: Scaffold the entire app structure. Write the AdBanner.jsx component, the /api/scan endpoint, and the database schema for the Inventory table. Use dummy data initially to verify the UI.
+
+Critical Next Steps Once Replit Finishes Scaffolding:
+1. Activate the AI (Google Cloud Vision API)
+For the camera to "understand" objects, you need an API key from Google.
+
+Go to the Google Cloud Console.
+
+Enable the Google Vision API.
+
+Create an API Key.
+
+In Replit, go to the Secrets (Padlock) and add a new secret called GOOGLE_VISION_API_KEY and paste the key. The Agent cannot do this for you.
+
+2. Test the Database Connection
+Ask the Replit Agent: "Add a button to the Dashboard that lets me add a dummy product directly into Supabase. If it shows up instantly, my database is live."
