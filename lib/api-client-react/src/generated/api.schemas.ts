@@ -142,6 +142,119 @@ export interface CheckoutSessionResponse {
   sessionId: string;
 }
 
+export interface InventoryProduct {
+  id: number;
+  userId: string;
+  name: string;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  category?: string | null;
+  quantity: number;
+  unitPrice: number;
+  /** @nullable */
+  imageUrl?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateInventoryProductBody {
+  name: string;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  category?: string | null;
+  quantity?: number;
+  unitPrice?: number;
+  /** @nullable */
+  imageUrl?: string | null;
+  userId?: string;
+}
+
+export interface UpdateInventoryProductBody {
+  /** @nullable */
+  name?: string | null;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  quantity?: number | null;
+  /** @nullable */
+  unitPrice?: number | null;
+  /** @nullable */
+  imageUrl?: string | null;
+}
+
+export type InventoryAuditLogAction =
+  (typeof InventoryAuditLogAction)[keyof typeof InventoryAuditLogAction];
+
+export const InventoryAuditLogAction = {
+  added: "added",
+  removed: "removed",
+  edited: "edited",
+  deleted: "deleted",
+} as const;
+
+export interface InventoryAuditLog {
+  id: number;
+  userId: string;
+  /** @nullable */
+  productId?: number | null;
+  /** @nullable */
+  productName?: string | null;
+  action: InventoryAuditLogAction;
+  /** @nullable */
+  delta?: number | null;
+  /** @nullable */
+  note?: string | null;
+  createdAt: string;
+}
+
+export interface ScanInventoryItemBody {
+  /** @nullable */
+  imageBase64?: string | null;
+  /** @nullable */
+  barcode?: string | null;
+}
+
+export interface ScanInventoryItemResponse {
+  suggestedName: string;
+  /** @nullable */
+  confidence?: number | null;
+  labels: string[];
+  isMock: boolean;
+}
+
+export type InventorySummaryCategoriesItem = {
+  name: string;
+  count: number;
+};
+
+export interface InventorySummary {
+  totalProducts: number;
+  lowStockCount: number;
+  totalValue: number;
+  categories: InventorySummaryCategoriesItem[];
+  recentActivity: number;
+}
+
+export interface InventoryCheckoutBody {
+  successUrl: string;
+  cancelUrl: string;
+  /** @nullable */
+  userId?: string | null;
+}
+
+export interface BillingPortalBody {
+  customerId: string;
+  returnUrl: string;
+}
+
+export interface BillingPortalResponse {
+  url: string;
+}
+
 export type GetLecturesParams = {
   search?: string;
   /**
@@ -190,4 +303,28 @@ export type GetCoursesParams = {
 
 export type GetRecentlyPlayedParams = {
   limit?: number;
+};
+
+export type ListInventoryProductsParams = {
+  /**
+   * @nullable
+   */
+  search?: string | null;
+  /**
+   * @nullable
+   */
+  category?: string | null;
+  /**
+   * @nullable
+   */
+  lowStock?: boolean | null;
+};
+
+export type ListInventoryAuditLogsParams = {
+  /**
+   * @nullable
+   */
+  productId?: number | null;
+  limit?: number;
+  offset?: number;
 };

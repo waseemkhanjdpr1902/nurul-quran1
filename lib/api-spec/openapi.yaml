@@ -22,6 +22,8 @@ tags:
     description: Daily Ayah operations
   - name: payments
     description: Payment and subscription operations
+  - name: inventory
+    description: Inventory management operations
 
 paths:
   /healthz:
@@ -482,6 +484,270 @@ paths:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
 
+  /inventory/products:
+    get:
+      operationId: listInventoryProducts
+      tags: [inventory]
+      summary: List all inventory products
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: category
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: lowStock
+          in: query
+          schema:
+            type: ["boolean", "null"]
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryProduct"
+    post:
+      operationId: createInventoryProduct
+      tags: [inventory]
+      summary: Create a new inventory product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInventoryProductBody"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryProduct"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Free tier limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /inventory/products/{id}:
+    get:
+      operationId: getInventoryProduct
+      tags: [inventory]
+      summary: Get a single product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryProduct"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateInventoryProduct
+      tags: [inventory]
+      summary: Update an existing product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInventoryProductBody"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryProduct"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteInventoryProduct
+      tags: [inventory]
+      summary: Delete a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Product deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /inventory/scan:
+    post:
+      operationId: scanInventoryItem
+      tags: [inventory]
+      summary: Scan an item via camera image or barcode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanInventoryItemBody"
+      responses:
+        "200":
+          description: Scan result with suggested product name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanInventoryItemResponse"
+
+  /inventory/audit-logs:
+    get:
+      operationId: listInventoryAuditLogs
+      tags: [inventory]
+      summary: List audit log entries
+      parameters:
+        - name: productId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryAuditLog"
+
+  /inventory/low-stock:
+    get:
+      operationId: getLowStockProducts
+      tags: [inventory]
+      summary: Get products with low stock
+      responses:
+        "200":
+          description: Low stock products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryProduct"
+
+  /inventory/summary:
+    get:
+      operationId: getInventorySummary
+      tags: [inventory]
+      summary: Get inventory dashboard summary stats
+      responses:
+        "200":
+          description: Inventory summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventorySummary"
+
+  /inventory/create-checkout-session:
+    post:
+      operationId: createInventoryCheckoutSession
+      tags: [inventory]
+      summary: Create Stripe checkout for Inventory AI Pro subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InventoryCheckoutBody"
+      responses:
+        "200":
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSessionResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /inventory/webhook:
+    post:
+      operationId: inventoryStripeWebhook
+      tags: [inventory]
+      summary: Handle Stripe webhook for inventory subscription
+      responses:
+        "200":
+          description: Webhook handled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /inventory/billing-portal:
+    post:
+      operationId: createInventoryBillingPortal
+      tags: [inventory]
+      summary: Create Stripe billing portal session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingPortalBody"
+      responses:
+        "200":
+          description: Billing portal session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingPortalResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -779,3 +1045,192 @@ components:
       required:
         - url
         - sessionId
+
+    InventoryProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        name:
+          type: string
+        sku:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        imageUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - name
+        - quantity
+        - unitPrice
+        - createdAt
+        - updatedAt
+
+    CreateInventoryProductBody:
+      type: object
+      properties:
+        name:
+          type: string
+        sku:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        quantity:
+          type: integer
+          default: 0
+        unitPrice:
+          type: number
+          default: 0
+        imageUrl:
+          type: ["string", "null"]
+        userId:
+          type: string
+          default: "demo-user"
+      required:
+        - name
+
+    UpdateInventoryProductBody:
+      type: object
+      properties:
+        name:
+          type: ["string", "null"]
+        sku:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        quantity:
+          type: ["integer", "null"]
+        unitPrice:
+          type: ["number", "null"]
+        imageUrl:
+          type: ["string", "null"]
+
+    InventoryAuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        productId:
+          type: ["integer", "null"]
+        productName:
+          type: ["string", "null"]
+        action:
+          type: string
+          enum: [added, removed, edited, deleted]
+        delta:
+          type: ["integer", "null"]
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - action
+        - createdAt
+
+    ScanInventoryItemBody:
+      type: object
+      properties:
+        imageBase64:
+          type: ["string", "null"]
+        barcode:
+          type: ["string", "null"]
+      required: []
+
+    ScanInventoryItemResponse:
+      type: object
+      properties:
+        suggestedName:
+          type: string
+        confidence:
+          type: ["number", "null"]
+        labels:
+          type: array
+          items:
+            type: string
+        isMock:
+          type: boolean
+      required:
+        - suggestedName
+        - isMock
+        - labels
+
+    InventorySummary:
+      type: object
+      properties:
+        totalProducts:
+          type: integer
+        lowStockCount:
+          type: integer
+        totalValue:
+          type: number
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              count:
+                type: integer
+            required:
+              - name
+              - count
+        recentActivity:
+          type: integer
+      required:
+        - totalProducts
+        - lowStockCount
+        - totalValue
+        - categories
+        - recentActivity
+
+    InventoryCheckoutBody:
+      type: object
+      properties:
+        successUrl:
+          type: string
+        cancelUrl:
+          type: string
+        userId:
+          type: ["string", "null"]
+      required:
+        - successUrl
+        - cancelUrl
+
+    BillingPortalBody:
+      type: object
+      properties:
+        customerId:
+          type: string
+        returnUrl:
+          type: string
+      required:
+        - customerId
+        - returnUrl
+
+    BillingPortalResponse:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url

@@ -11,6 +11,8 @@ Full-stack Islamic education web app built as a pnpm monorepo (React+Vite fronte
 - **`artifacts/nurul-quran`** — React+Vite PWA frontend (port from `PORT` env)
 - **`artifacts/api-server`** — Express 5 REST API (port 8080)
 - **`artifacts/mockup-sandbox`** — Vite component preview server
+- **`artifacts/trademaster-pro`** — TradeMaster Pro trading app frontend
+- **`artifacts/inventory-ai-pro`** — Inventory AI Pro MSME stock management PWA (at `/inventory/`)
 
 ## Stack
 
@@ -103,8 +105,37 @@ Professional Trading Journal & Analytics Dashboard for Indian retail traders, at
 - `TELEGRAM_CHANNEL_ID` — Telegram channel/group ID (optional)
 - `FINNHUB_API_KEY` — Finnhub free tier for price ticker (optional)
 
+## Inventory AI Pro (`artifacts/inventory-ai-pro`)
+
+Mobile-first MSME stock management PWA at `/inventory/`. Features AI-assisted product identification via camera, barcode/QR scanning with ZXing, inventory CRUD, low-stock alerts (< 5 units), full audit log timeline, freemium limits (100 products), Stripe Pro subscription ($5/month), and AdMob test banner for free users.
+
+### Backend routes (`/api/inventory/...`)
+- `GET/POST /api/inventory/products` — CRUD with search/category/lowStock filters; POST enforces 100-item free tier limit
+- `GET/PUT/DELETE /api/inventory/products/:id`
+- `POST /api/inventory/scan` — accepts base64 image (calls Google Vision if `GOOGLE_VISION_API_KEY` set) or barcode string; returns mock label if no key
+- `GET /api/inventory/audit-logs` — paginated audit trail
+- `GET /api/inventory/low-stock` — products with quantity < 5
+- `GET /api/inventory/summary` — dashboard stats (totals, low-stock count, total value, categories, recent activity)
+- `POST /api/inventory/create-checkout-session` — Stripe $5/month subscription checkout
+- `POST /api/inventory/webhook` — Stripe webhook handler
+- `POST /api/inventory/billing-portal` — Stripe billing portal session
+
+### DB tables
+- `inventory_products` — product catalog with userId, name, sku, category, quantity, unit_price, image_url
+- `inventory_audit_logs` — change log: action (added/removed/edited/deleted), delta, note, timestamps
+
+### SQL Migration
+Run `artifacts/inventory-ai-pro/migrations/001_inventory_schema.sql` in Supabase SQL editor for Supabase deployment.
+
+### Required Secrets (optional — app works with mocks if absent)
+- `GOOGLE_VISION_API_KEY` — Google Vision for AI product identification from photos
+- `STRIPE_SECRET_KEY` — Stripe for Pro subscription checkout
+- `STRIPE_INVENTORY_WEBHOOK_SECRET` — Stripe webhook secret for inventory subscription events
+- `ADMOB_BANNER_ID` — AdMob banner unit ID (defaults to test ID ca-app-pub-3940256099942544/6300978111)
+
 ## Important Notes
 - `@tanstack/react-query` is in vite dedupe list (prevents duplicate React context errors)
 - Yahoo Finance prices may show N/A in Replit environment (rate-limited) — falls back gracefully
 - Stripe returns 500 if `STRIPE_SECRET_KEY` not configured
 - TradeMaster Pro ticker shows "—" if Finnhub key not configured (graceful fallback)
+- Inventory AI Pro camera falls back gracefully when camera is unavailable (headless/desktop environments)

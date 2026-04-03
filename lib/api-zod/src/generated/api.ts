@@ -385,3 +385,211 @@ export const StripeWebhookResponse = zod.object({
   success: zod.boolean(),
   message: zod.string().optional(),
 });
+
+/**
+ * @summary List all inventory products
+ */
+export const ListInventoryProductsQueryParams = zod.object({
+  search: zod.coerce.string().nullish(),
+  category: zod.coerce.string().nullish(),
+  lowStock: zod.coerce.boolean().nullish(),
+});
+
+export const ListInventoryProductsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  name: zod.string(),
+  sku: zod.string().nullish(),
+  category: zod.string().nullish(),
+  quantity: zod.number(),
+  unitPrice: zod.number(),
+  imageUrl: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListInventoryProductsResponse = zod.array(
+  ListInventoryProductsResponseItem,
+);
+
+/**
+ * @summary Create a new inventory product
+ */
+export const createInventoryProductBodyQuantityDefault = 0;
+export const createInventoryProductBodyUnitPriceDefault = 0;
+export const createInventoryProductBodyUserIdDefault = `demo-user`;
+
+export const CreateInventoryProductBody = zod.object({
+  name: zod.string(),
+  sku: zod.string().nullish(),
+  category: zod.string().nullish(),
+  quantity: zod.number().default(createInventoryProductBodyQuantityDefault),
+  unitPrice: zod.number().default(createInventoryProductBodyUnitPriceDefault),
+  imageUrl: zod.string().nullish(),
+  userId: zod.string().default(createInventoryProductBodyUserIdDefault),
+});
+
+/**
+ * @summary Get a single product
+ */
+export const GetInventoryProductParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetInventoryProductResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  name: zod.string(),
+  sku: zod.string().nullish(),
+  category: zod.string().nullish(),
+  quantity: zod.number(),
+  unitPrice: zod.number(),
+  imageUrl: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update an existing product
+ */
+export const UpdateInventoryProductParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateInventoryProductBody = zod.object({
+  name: zod.string().nullish(),
+  sku: zod.string().nullish(),
+  category: zod.string().nullish(),
+  quantity: zod.number().nullish(),
+  unitPrice: zod.number().nullish(),
+  imageUrl: zod.string().nullish(),
+});
+
+export const UpdateInventoryProductResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  name: zod.string(),
+  sku: zod.string().nullish(),
+  category: zod.string().nullish(),
+  quantity: zod.number(),
+  unitPrice: zod.number(),
+  imageUrl: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a product
+ */
+export const DeleteInventoryProductParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Scan an item via camera image or barcode
+ */
+export const ScanInventoryItemBody = zod.object({
+  imageBase64: zod.string().nullish(),
+  barcode: zod.string().nullish(),
+});
+
+export const ScanInventoryItemResponse = zod.object({
+  suggestedName: zod.string(),
+  confidence: zod.number().nullish(),
+  labels: zod.array(zod.string()),
+  isMock: zod.boolean(),
+});
+
+/**
+ * @summary List audit log entries
+ */
+export const listInventoryAuditLogsQueryLimitDefault = 50;
+export const listInventoryAuditLogsQueryOffsetDefault = 0;
+
+export const ListInventoryAuditLogsQueryParams = zod.object({
+  productId: zod.coerce.number().nullish(),
+  limit: zod.coerce.number().default(listInventoryAuditLogsQueryLimitDefault),
+  offset: zod.coerce.number().default(listInventoryAuditLogsQueryOffsetDefault),
+});
+
+export const ListInventoryAuditLogsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  productId: zod.number().nullish(),
+  productName: zod.string().nullish(),
+  action: zod.enum(["added", "removed", "edited", "deleted"]),
+  delta: zod.number().nullish(),
+  note: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListInventoryAuditLogsResponse = zod.array(
+  ListInventoryAuditLogsResponseItem,
+);
+
+/**
+ * @summary Get products with low stock
+ */
+export const GetLowStockProductsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  name: zod.string(),
+  sku: zod.string().nullish(),
+  category: zod.string().nullish(),
+  quantity: zod.number(),
+  unitPrice: zod.number(),
+  imageUrl: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const GetLowStockProductsResponse = zod.array(
+  GetLowStockProductsResponseItem,
+);
+
+/**
+ * @summary Get inventory dashboard summary stats
+ */
+export const GetInventorySummaryResponse = zod.object({
+  totalProducts: zod.number(),
+  lowStockCount: zod.number(),
+  totalValue: zod.number(),
+  categories: zod.array(
+    zod.object({
+      name: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  recentActivity: zod.number(),
+});
+
+/**
+ * @summary Create Stripe checkout for Inventory AI Pro subscription
+ */
+export const CreateInventoryCheckoutSessionBody = zod.object({
+  successUrl: zod.string(),
+  cancelUrl: zod.string(),
+  userId: zod.string().nullish(),
+});
+
+export const CreateInventoryCheckoutSessionResponse = zod.object({
+  url: zod.string(),
+  sessionId: zod.string(),
+});
+
+/**
+ * @summary Handle Stripe webhook for inventory subscription
+ */
+export const InventoryStripeWebhookResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Create Stripe billing portal session
+ */
+export const CreateInventoryBillingPortalBody = zod.object({
+  customerId: zod.string(),
+  returnUrl: zod.string(),
+});
+
+export const CreateInventoryBillingPortalResponse = zod.object({
+  url: zod.string(),
+});

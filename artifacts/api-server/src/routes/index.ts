@@ -10,6 +10,7 @@ import paymentsRouter from "./payments";
 import halalStocksRouter from "./halal-stocks";
 import razorpayRouter from "./razorpay";
 import tradeMasterRouter from "./trademaster";
+import inventoryRouter from "./inventory";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(paymentsRouter);
 router.use(halalStocksRouter);
 router.use(razorpayRouter);
 router.use(tradeMasterRouter);
+router.use(inventoryRouter);
 
 export default router;

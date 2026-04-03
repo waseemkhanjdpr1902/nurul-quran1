@@ -7,9 +7,12 @@
  */
 
 export * from "./authResponse";
+export * from "./billingPortalBody";
+export * from "./billingPortalResponse";
 export * from "./checkoutSessionResponse";
 export * from "./course";
 export * from "./createCheckoutSessionBody";
+export * from "./createInventoryProductBody";
 export * from "./createSubscriptionBody";
 export * from "./dailyAyah";
 export * from "./dashboardSummary";
@@ -21,10 +24,21 @@ export * from "./getLecturesParams";
 export * from "./getRecentLecturesParams";
 export * from "./getRecentlyPlayedParams";
 export * from "./healthStatus";
+export * from "./inventoryAuditLog";
+export * from "./inventoryAuditLogAction";
+export * from "./inventoryCheckoutBody";
+export * from "./inventoryProduct";
+export * from "./inventorySummary";
+export * from "./inventorySummaryCategoriesItem";
 export * from "./lecture";
 export * from "./lectureListResponse";
+export * from "./listInventoryAuditLogsParams";
+export * from "./listInventoryProductsParams";
 export * from "./loginUserBody";
 export * from "./registerUserBody";
+export * from "./scanInventoryItemBody";
+export * from "./scanInventoryItemResponse";
 export * from "./speaker";
 export * from "./successResponse";
+export * from "./updateInventoryProductBody";
 export * from "./user";
