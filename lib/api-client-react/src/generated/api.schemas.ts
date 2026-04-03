@@ -255,6 +255,125 @@ export interface BillingPortalResponse {
   url: string;
 }
 
+export interface StockSwapShop {
+  id: string;
+  userId: string;
+  name: string;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  lat?: number | null;
+  /** @nullable */
+  lng?: number | null;
+  isVerified: boolean;
+  /** @nullable */
+  verifiedAt?: string | null;
+  createdAt: string;
+}
+
+export interface StockSwapListing {
+  id: string;
+  shopId: string;
+  /** @nullable */
+  shopName?: string | null;
+  shopVerified: boolean;
+  title: string;
+  category: string;
+  /** @nullable */
+  brand?: string | null;
+  originalPrice: number;
+  discountPrice: number;
+  /** @nullable */
+  expiryDate?: string | null;
+  quantity: number;
+  condition: string;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  lat?: number | null;
+  /** @nullable */
+  lng?: number | null;
+  isBoosted: boolean;
+  /** @nullable */
+  boostedUntil?: string | null;
+  /** @nullable */
+  distanceKm?: number | null;
+  createdAt: string;
+}
+
+export interface StockSwapMessage {
+  id: string;
+  listingId: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface StockSwapUser {
+  id: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  isVerified: boolean;
+  termsAccepted: boolean;
+  createdAt: string;
+}
+
+export interface CreateShopBody {
+  name: string;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  lat?: number | null;
+  /** @nullable */
+  lng?: number | null;
+}
+
+export interface CreateListingBody {
+  title: string;
+  category: string;
+  /** @nullable */
+  brand?: string | null;
+  originalPrice: number;
+  discountPrice: number;
+  /** @nullable */
+  expiryDate?: string | null;
+  quantity: number;
+  condition: string;
+  /** @nullable */
+  imageUrl?: string | null;
+}
+
+export interface SendMessageBody {
+  content: string;
+  receiverId: string;
+}
+
+export interface AISuggestionResponse {
+  category: string;
+  /** @nullable */
+  brand?: string | null;
+  title: string;
+  confidence: number;
+}
+
+export interface BoostListingResponse {
+  url: string;
+  sessionId: string;
+}
+
+export interface StockSwapAuthResponse {
+  user: StockSwapUser;
+  token: string;
+  shop?: StockSwapShop | null;
+}
+
+export interface AcceptTermsBody {
+  userId: string;
+}
+
 export type GetLecturesParams = {
   search?: string;
   /**
@@ -328,3 +447,66 @@ export type ListInventoryAuditLogsParams = {
   limit?: number;
   offset?: number;
 };
+
+export type StockswapRegisterBody = {
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  password: string;
+};
+
+export type StockswapGetListingsParams = {
+  /**
+   * @nullable
+   */
+  lat?: number | null;
+  /**
+   * @nullable
+   */
+  lng?: number | null;
+  radiusKm?: number;
+  /**
+   * @nullable
+   */
+  category?: string | null;
+  /**
+   * @nullable
+   */
+  search?: string | null;
+  limit?: number;
+  offset?: number;
+};
+
+export type StockswapGetListings200 = {
+  listings: StockSwapListing[];
+  total: number;
+};
+
+export type StockswapBoostListingBody = {
+  successUrl: string;
+  cancelUrl: string;
+};
+
+export type StockswapGetMessagesParams = {
+  peerId: string;
+};
+
+export type StockswapAISuggestBody = {
+  imageBase64: string;
+};
+
+export type StockswapVerifyShopBody = {
+  shopId: string;
+  adminKey: string;
+};
+
+export type StockswapUploadImageBody = {
+  imageBase64: string;
+  fileName: string;
+};
+
+export type StockswapUploadImage200 = {
+  url: string;
+};
+

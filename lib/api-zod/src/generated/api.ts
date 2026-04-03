@@ -583,6 +583,52 @@ export const InventoryStripeWebhookResponse = zod.object({
 });
 
 /**
+ * @summary Register or login a StockSwap user
+ */
+export const StockswapRegisterBody = zod.object({
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  password: zod.string(),
+});
+
+export const StockswapRegisterResponse = zod.object({
+  user: zod.object({
+    id: zod.string(),
+    email: zod.string().nullish(),
+    phone: zod.string().nullish(),
+    isVerified: zod.boolean(),
+    termsAccepted: zod.boolean(),
+    createdAt: zod.coerce.date(),
+  }),
+  token: zod.string(),
+  shop: zod
+    .object({
+      id: zod.string(),
+      userId: zod.string(),
+      name: zod.string(),
+      address: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      isVerified: zod.boolean(),
+      verifiedAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Accept terms of service
+ */
+export const StockswapAcceptTermsBody = zod.object({
+  userId: zod.string(),
+});
+
+export const StockswapAcceptTermsResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
  * @summary Create Stripe billing portal session
  */
 export const CreateInventoryBillingPortalBody = zod.object({
@@ -591,5 +637,277 @@ export const CreateInventoryBillingPortalBody = zod.object({
 });
 
 export const CreateInventoryBillingPortalResponse = zod.object({
+  url: zod.string(),
+});
+
+/**
+ * @summary Create a shop for the authenticated user
+ */
+export const StockswapCreateShopBody = zod.object({
+  name: zod.string(),
+  address: zod.string().nullish(),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
+});
+
+/**
+ * @summary Get my shop
+ */
+export const StockswapGetMyShopResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  address: zod.string().nullish(),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
+  isVerified: zod.boolean(),
+  verifiedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get a shop by ID
+ */
+export const StockswapGetShopParams = zod.object({
+  shopId: zod.coerce.string(),
+});
+
+export const StockswapGetShopResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  address: zod.string().nullish(),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
+  isVerified: zod.boolean(),
+  verifiedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Browse nearby listings
+ */
+export const stockswapGetListingsQueryRadiusKmDefault = 10;
+export const stockswapGetListingsQueryLimitDefault = 20;
+export const stockswapGetListingsQueryOffsetDefault = 0;
+
+export const StockswapGetListingsQueryParams = zod.object({
+  lat: zod.coerce.number().nullish(),
+  lng: zod.coerce.number().nullish(),
+  radiusKm: zod.coerce
+    .number()
+    .default(stockswapGetListingsQueryRadiusKmDefault),
+  category: zod.coerce.string().nullish(),
+  search: zod.coerce.string().nullish(),
+  limit: zod.coerce.number().default(stockswapGetListingsQueryLimitDefault),
+  offset: zod.coerce.number().default(stockswapGetListingsQueryOffsetDefault),
+});
+
+export const StockswapGetListingsResponse = zod.object({
+  listings: zod.array(
+    zod.object({
+      id: zod.string(),
+      shopId: zod.string(),
+      shopName: zod.string().nullish(),
+      shopVerified: zod.boolean(),
+      title: zod.string(),
+      category: zod.string(),
+      brand: zod.string().nullish(),
+      originalPrice: zod.number(),
+      discountPrice: zod.number(),
+      expiryDate: zod.string().nullish(),
+      quantity: zod.number(),
+      condition: zod.string(),
+      imageUrl: zod.string().nullish(),
+      lat: zod.number().nullish(),
+      lng: zod.number().nullish(),
+      isBoosted: zod.boolean(),
+      boostedUntil: zod.coerce.date().nullish(),
+      distanceKm: zod.number().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+});
+
+/**
+ * @summary Create a new listing
+ */
+export const StockswapCreateListingBody = zod.object({
+  title: zod.string(),
+  category: zod.string(),
+  brand: zod.string().nullish(),
+  originalPrice: zod.number(),
+  discountPrice: zod.number(),
+  expiryDate: zod.string().nullish(),
+  quantity: zod.number(),
+  condition: zod.string(),
+  imageUrl: zod.string().nullish(),
+});
+
+/**
+ * @summary Get my shop's listings
+ */
+export const StockswapGetMyListingsResponseItem = zod.object({
+  id: zod.string(),
+  shopId: zod.string(),
+  shopName: zod.string().nullish(),
+  shopVerified: zod.boolean(),
+  title: zod.string(),
+  category: zod.string(),
+  brand: zod.string().nullish(),
+  originalPrice: zod.number(),
+  discountPrice: zod.number(),
+  expiryDate: zod.string().nullish(),
+  quantity: zod.number(),
+  condition: zod.string(),
+  imageUrl: zod.string().nullish(),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
+  isBoosted: zod.boolean(),
+  boostedUntil: zod.coerce.date().nullish(),
+  distanceKm: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const StockswapGetMyListingsResponse = zod.array(
+  StockswapGetMyListingsResponseItem,
+);
+
+/**
+ * @summary Get a listing by ID
+ */
+export const StockswapGetListingParams = zod.object({
+  listingId: zod.coerce.string(),
+});
+
+export const StockswapGetListingResponse = zod.object({
+  id: zod.string(),
+  shopId: zod.string(),
+  shopName: zod.string().nullish(),
+  shopVerified: zod.boolean(),
+  title: zod.string(),
+  category: zod.string(),
+  brand: zod.string().nullish(),
+  originalPrice: zod.number(),
+  discountPrice: zod.number(),
+  expiryDate: zod.string().nullish(),
+  quantity: zod.number(),
+  condition: zod.string(),
+  imageUrl: zod.string().nullish(),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
+  isBoosted: zod.boolean(),
+  boostedUntil: zod.coerce.date().nullish(),
+  distanceKm: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a listing
+ */
+export const StockswapDeleteListingParams = zod.object({
+  listingId: zod.coerce.string(),
+});
+
+export const StockswapDeleteListingResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().optional(),
+});
+
+/**
+ * @summary Create Stripe checkout to boost a listing for $1
+ */
+export const StockswapBoostListingParams = zod.object({
+  listingId: zod.coerce.string(),
+});
+
+export const StockswapBoostListingBody = zod.object({
+  successUrl: zod.string(),
+  cancelUrl: zod.string(),
+});
+
+export const StockswapBoostListingResponse = zod.object({
+  url: zod.string(),
+  sessionId: zod.string(),
+});
+
+/**
+ * @summary Get chat messages for a listing thread
+ */
+export const StockswapGetMessagesParams = zod.object({
+  listingId: zod.coerce.string(),
+});
+
+export const StockswapGetMessagesQueryParams = zod.object({
+  peerId: zod.coerce.string(),
+});
+
+export const StockswapGetMessagesResponseItem = zod.object({
+  id: zod.string(),
+  listingId: zod.string(),
+  senderId: zod.string(),
+  receiverId: zod.string(),
+  content: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const StockswapGetMessagesResponse = zod.array(
+  StockswapGetMessagesResponseItem,
+);
+
+/**
+ * @summary Send a chat message
+ */
+export const StockswapSendMessageParams = zod.object({
+  listingId: zod.coerce.string(),
+});
+
+export const StockswapSendMessageBody = zod.object({
+  content: zod.string(),
+  receiverId: zod.string(),
+});
+
+/**
+ * @summary Get AI category and brand suggestion from image
+ */
+export const StockswapAISuggestBody = zod.object({
+  imageBase64: zod.string(),
+});
+
+export const StockswapAISuggestResponse = zod.object({
+  category: zod.string(),
+  brand: zod.string().nullish(),
+  title: zod.string(),
+  confidence: zod.number(),
+});
+
+/**
+ * @summary Admin — verify a shop
+ */
+export const StockswapVerifyShopBody = zod.object({
+  shopId: zod.string(),
+  adminKey: zod.string(),
+});
+
+export const StockswapVerifyShopResponse = zod.object({
+  id: zod.string(),
+  userId: zod.string(),
+  name: zod.string(),
+  address: zod.string().nullish(),
+  lat: zod.number().nullish(),
+  lng: zod.number().nullish(),
+  isVerified: zod.boolean(),
+  verifiedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Upload listing image (base64)
+ */
+export const StockswapUploadImageBody = zod.object({
+  imageBase64: zod.string(),
+  fileName: zod.string(),
+});
+
+export const StockswapUploadImageResponse = zod.object({
   url: zod.string(),
 });

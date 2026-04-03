@@ -1,0 +1,27 @@
+{
+  "name": "StockSwap B2B",
+  "short_name": "StockSwap",
+  "description": "Hyper-local B2B inventory marketplace for retail shop owners",
+  "start_url": "/stockswap/",
+  "scope": "/stockswap/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff8f0",
+  "theme_color": "#ea6c0a",
+  "icons": [
+    {
+      "src": "/stockswap/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/stockswap/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "shopping"],
+  "lang": "en"
+}

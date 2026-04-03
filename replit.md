@@ -133,6 +133,69 @@ Run `artifacts/inventory-ai-pro/migrations/001_inventory_schema.sql` in Supabase
 - `STRIPE_INVENTORY_WEBHOOK_SECRET` — Stripe webhook secret for inventory subscription events
 - `ADMOB_BANNER_ID` — AdMob banner unit ID (defaults to test ID ca-app-pub-3940256099942544/6300978111)
 
+## StockSwap B2B (`artifacts/stockswap-b2b`)
+
+Hyper-local B2B inventory marketplace PWA at `/stockswap/`. Retail shop owners can list unsold/slow-moving stock for other businesses to buy at a discount. Mobile-first, orange market theme.
+
+### Pages (9 total)
+1. **Login** `/stockswap/login` — combined login/register with email or phone
+2. **Onboarding** `/stockswap/onboarding` — shop setup with Leaflet map for geo pin
+3. **Home / Deals** `/stockswap/` — browse listings with geo-search, category filter, map/list view toggle
+4. **Fast List (Camera)** `/stockswap/list` — camera capture → AI vision suggestion → listing form
+5. **My Listings** `/stockswap/my-listings` — manage own listings + Stripe Boost ($1)
+6. **Listing Detail + Chat** `/stockswap/listing/:id` — item detail + B2B chat (3s polling)
+7. **Terms** `/stockswap/terms`
+8. **Privacy** `/stockswap/privacy`
+9. **Not Found** — 404 fallback
+
+### DB Tables
+- `ss_users` — user accounts (email or phone + bcrypt password + terms_accepted flag)
+- `ss_shops` — shop profiles with PostGIS-style lat/lng, verify status
+- `ss_listings` — inventory listings with category, price, condition, image, boosted flag
+- `ss_messages` — B2B chat messages between buyers and sellers
+
+### API Routes (`/api/stockswap/*`)
+- `POST /api/stockswap/auth/register` — combined login+register
+- `POST /api/stockswap/auth/terms` — accept terms of service
+- `GET/POST /api/stockswap/shops` — create own shop
+- `GET /api/stockswap/listings` — geo-distance search (Haversine SQL, boosted first)
+- `POST /api/stockswap/listings` — create listing
+- `GET/PATCH/DELETE /api/stockswap/listings/:id` — listing CRUD
+- `GET /api/stockswap/listings/my` — own listings
+- `POST /api/stockswap/listings/:id/boost` — Stripe $1 boost checkout
+- `GET/POST /api/stockswap/listings/:id/messages` — B2B chat
+- `POST /api/stockswap/ai/suggest` — AI image labeling (Google Vision, mocked fallback)
+- `POST /api/stockswap/images/upload` — image upload (mock/external)
+- `POST /api/stockswap/admin/verify-shop` — admin shop verification
+
+### PWA
+- `public/manifest.json` — name "StockSwap B2B", theme #ea6c0a
+- `public/sw.js` — service worker for offline shell caching
+- Service worker registered in `src/main.tsx`
+
+### Auth
+- JWT stored in `localStorage["stockswap_token"]`
+- `setAuthTokenGetter` configured in `main.tsx` to auto-attach token to all API calls
+- Zustand persist store (`stockswap-auth`) for auth state
+
+### Demo Data
+- Demo user: `demo@stockswap.com` / `password123`
+- Demo shop: "City General Store" (uuid 11111111-..., aaaa-...)
+- 4 demo listings seeded
+
+### Required Secrets (optional/graceful fallback)
+- `JWT_SECRET` — JWT signing secret for auth tokens
+- `STOCKSWAP_ADMIN_KEY` — admin verify-shop endpoint key
+- `GOOGLE_VISION_API_KEY` — AI image label suggestions (mocked if missing)
+- `STRIPE_SECRET_KEY` — listing boost Stripe checkout (returns error if missing)
+- `VITE_ADMOB_BANNER_ID` — AdMob banner (frontend, optional)
+
+### Key Fixes Applied
+- Vite proxy added: `/api` → `localhost:8080` (for local dev server access)
+- All mutation calls wrapped with `{ data: {...} }` pattern as required by Orval-generated hooks
+- Boost listing uses `{ listingId, data }` pattern; send message uses `{ listingId, data }`
+- Demo user password bcrypt hash updated in DB
+
 ## Important Notes
 - `@tanstack/react-query` is in vite dedupe list (prevents duplicate React context errors)
 - Yahoo Finance prices may show N/A in Replit environment (rate-limited) — falls back gracefully

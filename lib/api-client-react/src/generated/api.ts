@@ -17,13 +17,18 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AISuggestionResponse,
+  AcceptTermsBody,
   AuthResponse,
   BillingPortalBody,
   BillingPortalResponse,
+  BoostListingResponse,
   CheckoutSessionResponse,
   Course,
   CreateCheckoutSessionBody,
   CreateInventoryProductBody,
+  CreateListingBody,
+  CreateShopBody,
   CreateSubscriptionBody,
   DailyAyah,
   DashboardSummary,
@@ -45,7 +50,21 @@ import type {
   RegisterUserBody,
   ScanInventoryItemBody,
   ScanInventoryItemResponse,
+  SendMessageBody,
   Speaker,
+  StockSwapAuthResponse,
+  StockSwapListing,
+  StockSwapMessage,
+  StockSwapShop,
+  StockswapAISuggestBody,
+  StockswapBoostListingBody,
+  StockswapGetListings200,
+  StockswapGetListingsParams,
+  StockswapGetMessagesParams,
+  StockswapRegisterBody,
+  StockswapUploadImage200,
+  StockswapUploadImageBody,
+  StockswapVerifyShopBody,
   SuccessResponse,
   UpdateInventoryProductBody,
   User,
@@ -1934,6 +1953,280 @@ export const listInventoryProducts = async (
   });
 };
 
+/**
+ * @summary Register or login a StockSwap user
+ */
+export const getStockswapRegisterUrl = () => {
+  return `/api/stockswap/auth/register`;
+};
+
+export const stockswapRegister = async (
+  stockswapRegisterBody: StockswapRegisterBody,
+  options?: RequestInit,
+): Promise<StockSwapAuthResponse> => {
+  return customFetch<StockSwapAuthResponse>(getStockswapRegisterUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(stockswapRegisterBody),
+  });
+};
+
+export const getStockswapRegisterMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapRegister>>,
+    TError,
+    { data: BodyType<StockswapRegisterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapRegister>>,
+  TError,
+  { data: BodyType<StockswapRegisterBody> },
+  TContext
+> => {
+  const mutationKey = ["stockswapRegister"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapRegister>>,
+    { data: BodyType<StockswapRegisterBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return stockswapRegister(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StockswapRegisterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapRegister>>
+>;
+export type StockswapRegisterMutationBody = BodyType<StockswapRegisterBody>;
+export type StockswapRegisterMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Register or login a StockSwap user
+ */
+export const useStockswapRegister = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapRegister>>,
+    TError,
+    { data: BodyType<StockswapRegisterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapRegister>>,
+  TError,
+  { data: BodyType<StockswapRegisterBody> },
+  TContext
+> => {
+  return useMutation(getStockswapRegisterMutationOptions(options));
+};
+
+/**
+ * @summary Accept terms of service
+ */
+export const getStockswapAcceptTermsUrl = () => {
+  return `/api/stockswap/auth/terms`;
+};
+
+export const stockswapAcceptTerms = async (
+  acceptTermsBody: AcceptTermsBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getStockswapAcceptTermsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(acceptTermsBody),
+  });
+};
+
+export const getStockswapAcceptTermsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapAcceptTerms>>,
+    TError,
+    { data: BodyType<AcceptTermsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapAcceptTerms>>,
+  TError,
+  { data: BodyType<AcceptTermsBody> },
+  TContext
+> => {
+  const mutationKey = ["stockswapAcceptTerms"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapAcceptTerms>>,
+    { data: BodyType<AcceptTermsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return stockswapAcceptTerms(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StockswapAcceptTermsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapAcceptTerms>>
+>;
+export type StockswapAcceptTermsMutationBody = BodyType<AcceptTermsBody>;
+export type StockswapAcceptTermsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Accept terms of service
+ */
+export const useStockswapAcceptTerms = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapAcceptTerms>>,
+    TError,
+    { data: BodyType<AcceptTermsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapAcceptTerms>>,
+  TError,
+  { data: BodyType<AcceptTermsBody> },
+  TContext
+> => {
+  return useMutation(getStockswapAcceptTermsMutationOptions(options));
+};
+
+/**
+ * @summary Create a shop for the authenticated user
+ */
+export const getStockswapCreateShopUrl = () => {
+  return `/api/stockswap/shops`;
+};
+
+export const stockswapCreateShop = async (
+  createShopBody: CreateShopBody,
+  options?: RequestInit,
+): Promise<StockSwapShop> => {
+  return customFetch<StockSwapShop>(getStockswapCreateShopUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createShopBody),
+  });
+};
+
+export const getStockswapCreateShopMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapCreateShop>>,
+    TError,
+    { data: BodyType<CreateShopBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapCreateShop>>,
+  TError,
+  { data: BodyType<CreateShopBody> },
+  TContext
+> => {
+  const mutationKey = ["stockswapCreateShop"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapCreateShop>>,
+    { data: BodyType<CreateShopBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return stockswapCreateShop(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StockswapCreateShopMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapCreateShop>>
+>;
+export type StockswapCreateShopMutationBody = BodyType<CreateShopBody>;
+export type StockswapCreateShopMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a shop for the authenticated user
+ */
+export const useStockswapCreateShop = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapCreateShop>>,
+    TError,
+    { data: BodyType<CreateShopBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapCreateShop>>,
+  TError,
+  { data: BodyType<CreateShopBody> },
+  TContext
+> => {
+  return useMutation(getStockswapCreateShopMutationOptions(options));
+};
+
+/**
+ * @summary Get my shop
+ */
+export const getStockswapGetMyShopUrl = () => {
+  return `/api/stockswap/shops/me`;
+};
+
+export const stockswapGetMyShop = async (
+  options?: RequestInit,
+): Promise<StockSwapShop> => {
+  return customFetch<StockSwapShop>(getStockswapGetMyShopUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
 export const getListInventoryProductsQueryKey = (
   params?: ListInventoryProductsParams,
 ) => {
@@ -1956,13 +2249,11 @@ export const getListInventoryProductsQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey =
-    queryOptions?.queryKey ?? getListInventoryProductsQueryKey(params);
+  const queryKey = queryOptions?.queryKey ?? getListInventoryProductsQueryKey(params);
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof listInventoryProducts>>
-  > = ({ signal }) =>
-    listInventoryProducts(params, { signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listInventoryProducts>>> = ({
+    signal,
+  }) => listInventoryProducts(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listInventoryProducts>>,
@@ -1995,6 +2286,153 @@ export function useListInventoryProducts<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListInventoryProductsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getStockswapGetMyShopQueryKey = () => {
+  return [`/api/stockswap/shops/me`] as const;
+};
+
+export const getStockswapGetMyShopQueryOptions = <
+  TData = Awaited<ReturnType<typeof stockswapGetMyShop>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetMyShop>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getStockswapGetMyShopQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof stockswapGetMyShop>>
+  > = ({ signal }) => stockswapGetMyShop({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetMyShop>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type StockswapGetMyShopQueryResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapGetMyShop>>
+>;
+export type StockswapGetMyShopQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get my shop
+ */
+
+export function useStockswapGetMyShop<
+  TData = Awaited<ReturnType<typeof stockswapGetMyShop>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetMyShop>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getStockswapGetMyShopQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a shop by ID
+ */
+export const getStockswapGetShopUrl = (shopId: string) => {
+  return `/api/stockswap/shops/${shopId}`;
+};
+
+export const stockswapGetShop = async (
+  shopId: string,
+  options?: RequestInit,
+): Promise<StockSwapShop> => {
+  return customFetch<StockSwapShop>(getStockswapGetShopUrl(shopId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getStockswapGetShopQueryKey = (shopId: string) => {
+  return [`/api/stockswap/shops/${shopId}`] as const;
+};
+
+export const getStockswapGetShopQueryOptions = <
+  TData = Awaited<ReturnType<typeof stockswapGetShop>>,
+  TError = ErrorType<unknown>,
+>(
+  shopId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof stockswapGetShop>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getStockswapGetShopQueryKey(shopId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof stockswapGetShop>>
+  > = ({ signal }) => stockswapGetShop(shopId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!shopId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetShop>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type StockswapGetShopQueryResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapGetShop>>
+>;
+export type StockswapGetShopQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get a shop by ID
+ */
+
+export function useStockswapGetShop<
+  TData = Awaited<ReturnType<typeof stockswapGetShop>>,
+  TError = ErrorType<unknown>,
+>(
+  shopId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof stockswapGetShop>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getStockswapGetShopQueryOptions(shopId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -2469,6 +2907,40 @@ export const listInventoryAuditLogs = async (
   );
 };
 
+/**
+ * @summary Browse nearby listings
+ */
+export const getStockswapGetListingsUrl = (
+  params?: StockswapGetListingsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/stockswap/listings?${stringifiedParams}`
+    : `/api/stockswap/listings`;
+};
+
+export const stockswapGetListings = async (
+  params?: StockswapGetListingsParams,
+  options?: RequestInit,
+): Promise<StockswapGetListings200> => {
+  return customFetch<StockswapGetListings200>(
+    getStockswapGetListingsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
 export const getListInventoryAuditLogsQueryKey = (
   params?: ListInventoryAuditLogsParams,
 ) => {
@@ -2506,6 +2978,43 @@ export const getListInventoryAuditLogsQueryOptions = <
   > & { queryKey: QueryKey };
 };
 
+export const getStockswapGetListingsQueryKey = (
+  params?: StockswapGetListingsParams,
+) => {
+  return [`/api/stockswap/listings`, ...(params ? [params] : [])] as const;
+};
+
+export const getStockswapGetListingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof stockswapGetListings>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: StockswapGetListingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof stockswapGetListings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getStockswapGetListingsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof stockswapGetListings>>
+  > = ({ signal }) =>
+    stockswapGetListings(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetListings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
 export type ListInventoryAuditLogsQueryResult = NonNullable<
   Awaited<ReturnType<typeof listInventoryAuditLogs>>
 >;
@@ -2530,6 +3039,38 @@ export function useListInventoryAuditLogs<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListInventoryAuditLogsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export type StockswapGetListingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapGetListings>>
+>;
+export type StockswapGetListingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Browse nearby listings
+ */
+
+export function useStockswapGetListings<
+  TData = Awaited<ReturnType<typeof stockswapGetListings>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: StockswapGetListingsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof stockswapGetListings>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getStockswapGetListingsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
@@ -2861,6 +3402,92 @@ export const useInventoryStripeWebhook = <
 };
 
 /**
+ * @summary Create a new listing
+ */
+export const getStockswapCreateListingUrl = () => {
+  return `/api/stockswap/listings`;
+};
+
+export const stockswapCreateListing = async (
+  createListingBody: CreateListingBody,
+  options?: RequestInit,
+): Promise<StockSwapListing> => {
+  return customFetch<StockSwapListing>(getStockswapCreateListingUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createListingBody),
+  });
+};
+
+export const getStockswapCreateListingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapCreateListing>>,
+    TError,
+    { data: BodyType<CreateListingBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapCreateListing>>,
+  TError,
+  { data: BodyType<CreateListingBody> },
+  TContext
+> => {
+  const mutationKey = ["stockswapCreateListing"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapCreateListing>>,
+    { data: BodyType<CreateListingBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return stockswapCreateListing(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StockswapCreateListingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapCreateListing>>
+>;
+export type StockswapCreateListingMutationBody = BodyType<CreateListingBody>;
+export type StockswapCreateListingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new listing
+ */
+export const useStockswapCreateListing = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapCreateListing>>,
+    TError,
+    { data: BodyType<CreateListingBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapCreateListing>>,
+  TError,
+  { data: BodyType<CreateListingBody> },
+  TContext
+> => {
+  return useMutation(getStockswapCreateListingMutationOptions(options));
+};
+
+/**
  * @summary Create Stripe billing portal session
  */
 export const getCreateInventoryBillingPortalUrl = () => {
@@ -2878,6 +3505,278 @@ export const createInventoryBillingPortal = async (
       method: "POST",
       headers: { "Content-Type": "application/json", ...options?.headers },
       body: JSON.stringify(billingPortalBody),
+    },
+  );
+};
+
+/**
+ * @summary Get my shop's listings
+ */
+export const getStockswapGetMyListingsUrl = () => {
+  return `/api/stockswap/listings/mine`;
+};
+
+export const stockswapGetMyListings = async (
+  options?: RequestInit,
+): Promise<StockSwapListing[]> => {
+  return customFetch<StockSwapListing[]>(getStockswapGetMyListingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getStockswapGetMyListingsQueryKey = () => {
+  return [`/api/stockswap/listings/mine`] as const;
+};
+
+export const getStockswapGetMyListingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof stockswapGetMyListings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetMyListings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getStockswapGetMyListingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof stockswapGetMyListings>>
+  > = ({ signal }) => stockswapGetMyListings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetMyListings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type StockswapGetMyListingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapGetMyListings>>
+>;
+export type StockswapGetMyListingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get my shop's listings
+ */
+
+export function useStockswapGetMyListings<
+  TData = Awaited<ReturnType<typeof stockswapGetMyListings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetMyListings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getStockswapGetMyListingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a listing by ID
+ */
+export const getStockswapGetListingUrl = (listingId: string) => {
+  return `/api/stockswap/listings/${listingId}`;
+};
+
+export const stockswapGetListing = async (
+  listingId: string,
+  options?: RequestInit,
+): Promise<StockSwapListing> => {
+  return customFetch<StockSwapListing>(getStockswapGetListingUrl(listingId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getStockswapGetListingQueryKey = (listingId: string) => {
+  return [`/api/stockswap/listings/${listingId}`] as const;
+};
+
+export const getStockswapGetListingQueryOptions = <
+  TData = Awaited<ReturnType<typeof stockswapGetListing>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  listingId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof stockswapGetListing>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getStockswapGetListingQueryKey(listingId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof stockswapGetListing>>
+  > = ({ signal }) =>
+    stockswapGetListing(listingId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!listingId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetListing>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type StockswapGetListingQueryResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapGetListing>>
+>;
+export type StockswapGetListingQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a listing by ID
+ */
+
+export function useStockswapGetListing<
+  TData = Awaited<ReturnType<typeof stockswapGetListing>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  listingId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof stockswapGetListing>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getStockswapGetListingQueryOptions(listingId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a listing
+ */
+export const getStockswapDeleteListingUrl = (listingId: string) => {
+  return `/api/stockswap/listings/${listingId}`;
+};
+
+export const stockswapDeleteListing = async (
+  listingId: string,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getStockswapDeleteListingUrl(listingId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getStockswapDeleteListingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapDeleteListing>>,
+    TError,
+    { listingId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapDeleteListing>>,
+  TError,
+  { listingId: string },
+  TContext
+> => {
+  const mutationKey = ["stockswapDeleteListing"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapDeleteListing>>,
+    { listingId: string }
+  > = (props) => {
+    const { listingId } = props ?? {};
+
+    return stockswapDeleteListing(listingId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StockswapDeleteListingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapDeleteListing>>
+>;
+
+export type StockswapDeleteListingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a listing
+ */
+export const useStockswapDeleteListing = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapDeleteListing>>,
+    TError,
+    { listingId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapDeleteListing>>,
+  TError,
+  { listingId: string },
+  TContext
+> => {
+  return useMutation(getStockswapDeleteListingMutationOptions(options));
+};
+
+/**
+ * @summary Create Stripe checkout to boost a listing for $1
+ */
+export const getStockswapBoostListingUrl = (listingId: string) => {
+  return `/api/stockswap/listings/${listingId}/boost`;
+};
+
+export const stockswapBoostListing = async (
+  listingId: string,
+  stockswapBoostListingBody: StockswapBoostListingBody,
+  options?: RequestInit,
+): Promise<BoostListingResponse> => {
+  return customFetch<BoostListingResponse>(
+    getStockswapBoostListingUrl(listingId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(stockswapBoostListingBody),
     },
   );
 };
@@ -2920,6 +3819,44 @@ export const getCreateInventoryBillingPortalMutationOptions = <
   return { mutationFn, ...mutationOptions };
 };
 
+export const getStockswapBoostListingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapBoostListing>>,
+    TError,
+    { listingId: string; data: BodyType<StockswapBoostListingBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapBoostListing>>,
+  TError,
+  { listingId: string; data: BodyType<StockswapBoostListingBody> },
+  TContext
+> => {
+  const mutationKey = ["stockswapBoostListing"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapBoostListing>>,
+    { listingId: string; data: BodyType<StockswapBoostListingBody> }
+  > = (props) => {
+    const { listingId, data } = props ?? {};
+
+    return stockswapBoostListing(listingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
 export type CreateInventoryBillingPortalMutationResult = NonNullable<
   Awaited<ReturnType<typeof createInventoryBillingPortal>>
 >;
@@ -2948,4 +3885,501 @@ export const useCreateInventoryBillingPortal = <
   TContext
 > => {
   return useMutation(getCreateInventoryBillingPortalMutationOptions(options));
+};
+
+export type StockswapBoostListingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapBoostListing>>
+>;
+export type StockswapBoostListingMutationBody =
+  BodyType<StockswapBoostListingBody>;
+export type StockswapBoostListingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create Stripe checkout to boost a listing for $1
+ */
+export const useStockswapBoostListing = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapBoostListing>>,
+    TError,
+    { listingId: string; data: BodyType<StockswapBoostListingBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapBoostListing>>,
+  TError,
+  { listingId: string; data: BodyType<StockswapBoostListingBody> },
+  TContext
+> => {
+  return useMutation(getStockswapBoostListingMutationOptions(options));
+};
+
+/**
+ * @summary Get chat messages for a listing thread
+ */
+export const getStockswapGetMessagesUrl = (
+  listingId: string,
+  params: StockswapGetMessagesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/stockswap/listings/${listingId}/messages?${stringifiedParams}`
+    : `/api/stockswap/listings/${listingId}/messages`;
+};
+
+export const stockswapGetMessages = async (
+  listingId: string,
+  params: StockswapGetMessagesParams,
+  options?: RequestInit,
+): Promise<StockSwapMessage[]> => {
+  return customFetch<StockSwapMessage[]>(
+    getStockswapGetMessagesUrl(listingId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getStockswapGetMessagesQueryKey = (
+  listingId: string,
+  params?: StockswapGetMessagesParams,
+) => {
+  return [
+    `/api/stockswap/listings/${listingId}/messages`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getStockswapGetMessagesQueryOptions = <
+  TData = Awaited<ReturnType<typeof stockswapGetMessages>>,
+  TError = ErrorType<unknown>,
+>(
+  listingId: string,
+  params: StockswapGetMessagesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof stockswapGetMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getStockswapGetMessagesQueryKey(listingId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof stockswapGetMessages>>
+  > = ({ signal }) =>
+    stockswapGetMessages(listingId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!listingId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof stockswapGetMessages>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type StockswapGetMessagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapGetMessages>>
+>;
+export type StockswapGetMessagesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get chat messages for a listing thread
+ */
+
+export function useStockswapGetMessages<
+  TData = Awaited<ReturnType<typeof stockswapGetMessages>>,
+  TError = ErrorType<unknown>,
+>(
+  listingId: string,
+  params: StockswapGetMessagesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof stockswapGetMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getStockswapGetMessagesQueryOptions(
+    listingId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Send a chat message
+ */
+export const getStockswapSendMessageUrl = (listingId: string) => {
+  return `/api/stockswap/listings/${listingId}/messages`;
+};
+
+export const stockswapSendMessage = async (
+  listingId: string,
+  sendMessageBody: SendMessageBody,
+  options?: RequestInit,
+): Promise<StockSwapMessage> => {
+  return customFetch<StockSwapMessage>(getStockswapSendMessageUrl(listingId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendMessageBody),
+  });
+};
+
+export const getStockswapSendMessageMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapSendMessage>>,
+    TError,
+    { listingId: string; data: BodyType<SendMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapSendMessage>>,
+  TError,
+  { listingId: string; data: BodyType<SendMessageBody> },
+  TContext
+> => {
+  const mutationKey = ["stockswapSendMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapSendMessage>>,
+    { listingId: string; data: BodyType<SendMessageBody> }
+  > = (props) => {
+    const { listingId, data } = props ?? {};
+
+    return stockswapSendMessage(listingId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StockswapSendMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapSendMessage>>
+>;
+export type StockswapSendMessageMutationBody = BodyType<SendMessageBody>;
+export type StockswapSendMessageMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send a chat message
+ */
+export const useStockswapSendMessage = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapSendMessage>>,
+    TError,
+    { listingId: string; data: BodyType<SendMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapSendMessage>>,
+  TError,
+  { listingId: string; data: BodyType<SendMessageBody> },
+  TContext
+> => {
+  return useMutation(getStockswapSendMessageMutationOptions(options));
+};
+
+/**
+ * @summary Get AI category and brand suggestion from image
+ */
+export const getStockswapAISuggestUrl = () => {
+  return `/api/stockswap/ai/suggest`;
+};
+
+export const stockswapAISuggest = async (
+  stockswapAISuggestBody: StockswapAISuggestBody,
+  options?: RequestInit,
+): Promise<AISuggestionResponse> => {
+  return customFetch<AISuggestionResponse>(getStockswapAISuggestUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(stockswapAISuggestBody),
+  });
+};
+
+export const getStockswapAISuggestMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapAISuggest>>,
+    TError,
+    { data: BodyType<StockswapAISuggestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapAISuggest>>,
+  TError,
+  { data: BodyType<StockswapAISuggestBody> },
+  TContext
+> => {
+  const mutationKey = ["stockswapAISuggest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapAISuggest>>,
+    { data: BodyType<StockswapAISuggestBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return stockswapAISuggest(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StockswapAISuggestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapAISuggest>>
+>;
+export type StockswapAISuggestMutationBody = BodyType<StockswapAISuggestBody>;
+export type StockswapAISuggestMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Get AI category and brand suggestion from image
+ */
+export const useStockswapAISuggest = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapAISuggest>>,
+    TError,
+    { data: BodyType<StockswapAISuggestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapAISuggest>>,
+  TError,
+  { data: BodyType<StockswapAISuggestBody> },
+  TContext
+> => {
+  return useMutation(getStockswapAISuggestMutationOptions(options));
+};
+
+/**
+ * @summary Admin — verify a shop
+ */
+export const getStockswapVerifyShopUrl = () => {
+  return `/api/stockswap/admin/verify-shop`;
+};
+
+export const stockswapVerifyShop = async (
+  stockswapVerifyShopBody: StockswapVerifyShopBody,
+  options?: RequestInit,
+): Promise<StockSwapShop> => {
+  return customFetch<StockSwapShop>(getStockswapVerifyShopUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(stockswapVerifyShopBody),
+  });
+};
+
+export const getStockswapVerifyShopMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapVerifyShop>>,
+    TError,
+    { data: BodyType<StockswapVerifyShopBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapVerifyShop>>,
+  TError,
+  { data: BodyType<StockswapVerifyShopBody> },
+  TContext
+> => {
+  const mutationKey = ["stockswapVerifyShop"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapVerifyShop>>,
+    { data: BodyType<StockswapVerifyShopBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return stockswapVerifyShop(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StockswapVerifyShopMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapVerifyShop>>
+>;
+export type StockswapVerifyShopMutationBody = BodyType<StockswapVerifyShopBody>;
+export type StockswapVerifyShopMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Admin — verify a shop
+ */
+export const useStockswapVerifyShop = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapVerifyShop>>,
+    TError,
+    { data: BodyType<StockswapVerifyShopBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapVerifyShop>>,
+  TError,
+  { data: BodyType<StockswapVerifyShopBody> },
+  TContext
+> => {
+  return useMutation(getStockswapVerifyShopMutationOptions(options));
+};
+
+/**
+ * @summary Upload listing image (base64)
+ */
+export const getStockswapUploadImageUrl = () => {
+  return `/api/stockswap/upload`;
+};
+
+export const stockswapUploadImage = async (
+  stockswapUploadImageBody: StockswapUploadImageBody,
+  options?: RequestInit,
+): Promise<StockswapUploadImage200> => {
+  return customFetch<StockswapUploadImage200>(getStockswapUploadImageUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(stockswapUploadImageBody),
+  });
+};
+
+export const getStockswapUploadImageMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapUploadImage>>,
+    TError,
+    { data: BodyType<StockswapUploadImageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof stockswapUploadImage>>,
+  TError,
+  { data: BodyType<StockswapUploadImageBody> },
+  TContext
+> => {
+  const mutationKey = ["stockswapUploadImage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof stockswapUploadImage>>,
+    { data: BodyType<StockswapUploadImageBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return stockswapUploadImage(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StockswapUploadImageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof stockswapUploadImage>>
+>;
+export type StockswapUploadImageMutationBody =
+  BodyType<StockswapUploadImageBody>;
+export type StockswapUploadImageMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload listing image (base64)
+ */
+export const useStockswapUploadImage = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof stockswapUploadImage>>,
+    TError,
+    { data: BodyType<StockswapUploadImageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof stockswapUploadImage>>,
+  TError,
+  { data: BodyType<StockswapUploadImageBody> },
+  TContext
+> => {
+  return useMutation(getStockswapUploadImageMutationOptions(options));
 };
