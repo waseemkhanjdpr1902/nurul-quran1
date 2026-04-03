@@ -1,0 +1,49 @@
+The "Nurul Quran End-to-End" Master Prompt
+Role: You are a Senior Full-Stack Engineer and Product Manager.
+
+Goal: Create a high-quality, mobile-first web application (PWA) similar to NurulQuran.info. The app is for Islamic education, featuring audio lectures, Quranic studies, and a subscription/donation model.
+
+1. Core App Features:
+
+Home Dashboard: A clean, card-based UI. Sections for "Recent Lectures," "Featured Courses (Tafseer, Word-to-Word, Fiqh)," and a "Daily Ayah" section.
+
+Global Audio Player: A persistent player at the bottom of the screen that continues playing even when the user navigates between pages. Include play/pause, seek (10s back/forward), and playback speed controls.
+
+Library & Search: A searchable archive of audio lectures. Users can filter by Speaker, Language (English/Urdu), and Category.
+
+User Profiles: Auth system (Email/Google) where users can save "Favorites" and track "Recently Played."
+
+2. Monetization & Support (CRITICAL):
+
+Donate Feature: A dedicated "Support Us" page with a clear "Donate" button integrated with Stripe Checkout.
+
+Subscription Tiers: Implement a "Premium" tier for exclusive courses. The UI should show "Locked" icons on premium content, which unlocks after a successful Stripe subscription.
+
+Backend: Use Node.js/Express for the server and PostgreSQL (Replit Database) to store user data, lecture metadata, and subscription status.
+
+3. Design & UX:
+
+Aesthetic: Minimalist, serene, and professional. Use a white/off-white background with deep emerald green (#004d40) and gold accents.
+
+Responsive: The app must be fully optimized for mobile touch targets (min 44px) but look great on desktop.
+
+4. Technical Instructions:
+
+Use React with Vite for the frontend and Tailwind CSS for styling.
+
+Use Stripe API for all payments.
+
+Implement a "Loading State" (Skeleton screen) while audio or database content is fetching.
+
+Deliverable: Scaffold the entire project folder, create the database schema, write the API routes for audio and payments, and build the full mobile UI.
+
+Important Steps After the AI Finishes Building:
+Audio Hosting: The AI will create the player, but you need to provide the links. If your audio is on Google Drive or Dropbox, ensure the links are "Direct Download" links (ending in .mp3).
+
+Stripe Setup: To make the Donate and Subscription features "fully working," you will need a Stripe account.
+
+In Replit, go to the "Secrets" tab (the padlock icon).
+
+Add your STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY.
+
+The "Fix-It" Step: If the AI Agent stops before finishing the payment logic, simply tell it: "The Stripe button is there, but the checkout session isn't triggering. Please write the backend route /create-checkout-session and connect it to the button."

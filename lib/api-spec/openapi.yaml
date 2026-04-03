@@ -3,13 +3,26 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Nurul Quran API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: lectures
+    description: Lecture operations
+  - name: courses
+    description: Course operations
+  - name: speakers
+    description: Speaker operations
+  - name: users
+    description: User operations
+  - name: ayah
+    description: Daily Ayah operations
+  - name: payments
+    description: Payment and subscription operations
+
 paths:
   /healthz:
     get:
@@ -24,6 +37,451 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /lectures:
+    get:
+      operationId: getLectures
+      tags: [lectures]
+      summary: List all lectures
+      description: Returns lectures with optional filters
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: speakerId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: language
+          in: query
+          schema:
+            type: ["string", "null"]
+            enum: ["English", "Urdu", null]
+        - name: category
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: isPremium
+          in: query
+          schema:
+            type: ["boolean", "null"]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of lectures
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LectureListResponse"
+
+  /lectures/recent:
+    get:
+      operationId: getRecentLectures
+      tags: [lectures]
+      summary: Get recent lectures
+      description: Returns the most recently added lectures
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 6
+      responses:
+        "200":
+          description: Recent lectures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lecture"
+
+  /lectures/featured:
+    get:
+      operationId: getFeaturedLectures
+      tags: [lectures]
+      summary: Get featured lectures
+      description: Returns featured/highlighted lectures for the home page
+      responses:
+        "200":
+          description: Featured lectures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lecture"
+
+  /lectures/{id}:
+    get:
+      operationId: getLecture
+      tags: [lectures]
+      summary: Get a single lecture
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lecture detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lecture"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses:
+    get:
+      operationId: getCourses
+      tags: [courses]
+      summary: List all courses
+      description: Returns all courses with optional filters
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: isPremium
+          in: query
+          schema:
+            type: ["boolean", "null"]
+      responses:
+        "200":
+          description: List of courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+
+  /courses/{id}:
+    get:
+      operationId: getCourse
+      tags: [courses]
+      summary: Get a single course
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Course detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /speakers:
+    get:
+      operationId: getSpeakers
+      tags: [speakers]
+      summary: List all speakers
+      responses:
+        "200":
+          description: List of speakers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Speaker"
+
+  /ayah/daily:
+    get:
+      operationId: getDailyAyah
+      tags: [ayah]
+      summary: Get today's daily Ayah
+      description: Returns the Ayah of the day
+      responses:
+        "200":
+          description: Daily Ayah
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyAyah"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [lectures]
+      summary: Get dashboard summary stats
+      description: Returns counts and summary data for the home page
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /users/register:
+    post:
+      operationId: registerUser
+      tags: [users]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterUserBody"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/login:
+    post:
+      operationId: loginUser
+      tags: [users]
+      summary: Login a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginUserBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/logout:
+    post:
+      operationId: logoutUser
+      tags: [users]
+      summary: Logout a user
+      responses:
+        "200":
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /users/me:
+    get:
+      operationId: getCurrentUser
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/favorites:
+    get:
+      operationId: getUserFavorites
+      tags: [users]
+      summary: Get user's favorite lectures
+      responses:
+        "200":
+          description: Favorite lectures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lecture"
+
+  /users/favorites/{lectureId}:
+    post:
+      operationId: addFavorite
+      tags: [users]
+      summary: Add lecture to favorites
+      parameters:
+        - name: lectureId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Added to favorites
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+    delete:
+      operationId: removeFavorite
+      tags: [users]
+      summary: Remove lecture from favorites
+      parameters:
+        - name: lectureId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed from favorites
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /users/recently-played:
+    get:
+      operationId: getRecentlyPlayed
+      tags: [users]
+      summary: Get recently played lectures
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recently played lectures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lecture"
+
+  /users/recently-played/{lectureId}:
+    post:
+      operationId: addRecentlyPlayed
+      tags: [users]
+      summary: Record a lecture play
+      parameters:
+        - name: lectureId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /payments/create-checkout-session:
+    post:
+      operationId: createCheckoutSession
+      tags: [payments]
+      summary: Create a Stripe checkout session for donation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckoutSessionBody"
+      responses:
+        "200":
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSessionResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/create-subscription:
+    post:
+      operationId: createSubscription
+      tags: [payments]
+      summary: Create a Stripe subscription session for premium
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSubscriptionBody"
+      responses:
+        "200":
+          description: Subscription session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSessionResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payments/webhook:
+    post:
+      operationId: stripeWebhook
+      tags: [payments]
+      summary: Handle Stripe webhook events
+      responses:
+        "200":
+          description: Webhook handled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +492,290 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    Speaker:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        bio:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        lectureCount:
+          type: integer
+      required:
+        - id
+        - name
+        - lectureCount
+
+    Lecture:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        audioUrl:
+          type: string
+        duration:
+          type: ["integer", "null"]
+        language:
+          type: string
+        category:
+          type: string
+        isPremium:
+          type: boolean
+        isFeatured:
+          type: boolean
+        playCount:
+          type: integer
+        thumbnailUrl:
+          type: ["string", "null"]
+        speakerId:
+          type: ["integer", "null"]
+        speakerName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - audioUrl
+        - language
+        - category
+        - isPremium
+        - isFeatured
+        - playCount
+        - createdAt
+
+    LectureListResponse:
+      type: object
+      properties:
+        lectures:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lecture"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required:
+        - lectures
+        - total
+        - limit
+        - offset
+
+    Course:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        category:
+          type: string
+        isPremium:
+          type: boolean
+        lectureCount:
+          type: integer
+        thumbnailUrl:
+          type: ["string", "null"]
+        speakerId:
+          type: ["integer", "null"]
+        speakerName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - category
+        - isPremium
+        - lectureCount
+        - createdAt
+
+    DailyAyah:
+      type: object
+      properties:
+        id:
+          type: integer
+        arabicText:
+          type: string
+        translation:
+          type: string
+        surahName:
+          type: string
+        surahNumber:
+          type: integer
+        ayahNumber:
+          type: integer
+        reference:
+          type: string
+      required:
+        - id
+        - arabicText
+        - translation
+        - surahName
+        - surahNumber
+        - ayahNumber
+        - reference
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalLectures:
+          type: integer
+        totalCourses:
+          type: integer
+        totalSpeakers:
+          type: integer
+        totalListeners:
+          type: integer
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              count:
+                type: integer
+            required:
+              - name
+              - count
+      required:
+        - totalLectures
+        - totalCourses
+        - totalSpeakers
+        - totalListeners
+        - categories
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        isPremium:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - name
+        - isPremium
+        - createdAt
+
+    RegisterUserBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+      required:
+        - email
+        - password
+        - name
+
+    LoginUserBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required:
+        - user
+        - token
+
+    CreateCheckoutSessionBody:
+      type: object
+      properties:
+        amount:
+          type: integer
+          description: Amount in cents
+        currency:
+          type: string
+          default: usd
+        successUrl:
+          type: string
+        cancelUrl:
+          type: string
+      required:
+        - amount
+        - successUrl
+        - cancelUrl
+
+    CreateSubscriptionBody:
+      type: object
+      properties:
+        successUrl:
+          type: string
+        cancelUrl:
+          type: string
+        userId:
+          type: ["integer", "null"]
+      required:
+        - successUrl
+        - cancelUrl
+
+    CheckoutSessionResponse:
+      type: object
+      properties:
+        url:
+          type: string
+        sessionId:
+          type: string
+      required:
+        - url
+        - sessionId
