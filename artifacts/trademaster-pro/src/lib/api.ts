@@ -136,3 +136,66 @@ export async function updateSubscription(id: number, status: string, adminToken:
     body: JSON.stringify({ status }),
   });
 }
+
+export type InvestmentReport = {
+  id: number;
+  category: string;
+  instrumentName: string;
+  instrumentCode: string | null;
+  analystRating: string;
+  riskLevel: string;
+  suggestedAllocationPct: number | null;
+  recommendedHorizon: string;
+  rationale: string | null;
+  isActive?: boolean;
+  createdAt?: string;
+};
+
+export async function fetchReports(category?: string, sessionId?: string | null): Promise<{ reports: InvestmentReport[]; isPremium: boolean }> {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  if (sessionId) params.set("sessionId", sessionId);
+  const qs = params.toString();
+  return apiFetch(`${API_BASE}/reports${qs ? `?${qs}` : ""}`);
+}
+
+export async function seedReports(adminToken: string): Promise<{ message: string; count?: number }> {
+  return apiFetch(`${API_BASE}/reports/seed`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+}
+
+export type PerformanceSignal = {
+  id: number;
+  segment: string;
+  assetName: string;
+  signalType: string;
+  entryPrice: string;
+  stopLoss: string;
+  target1: string;
+  target2?: string | null;
+  riskReward?: string | null;
+  status: string;
+  isPremium: boolean;
+  createdAt: string;
+};
+
+export type PerformanceStats = {
+  total: number;
+  targetHit: number;
+  slHit: number;
+  open: number;
+  successRate: string;
+  avgRR: string | null;
+};
+
+export async function fetchPerformance(params: { segment?: string; from?: string; to?: string; sessionId?: string | null }): Promise<{ stats: PerformanceStats; signals: PerformanceSignal[]; isPremium: boolean }> {
+  const p = new URLSearchParams();
+  if (params.segment) p.set("segment", params.segment);
+  if (params.from) p.set("from", params.from);
+  if (params.to) p.set("to", params.to);
+  if (params.sessionId) p.set("sessionId", params.sessionId);
+  const qs = p.toString();
+  return apiFetch(`${API_BASE}/performance${qs ? `?${qs}` : ""}`);
+}

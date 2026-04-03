@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, numeric, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, numeric, pgEnum, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -29,6 +29,29 @@ export const tradeMasterSignals = pgTable("trademaster_signals", {
 export const insertTradeMasterSignalSchema = createInsertSchema(tradeMasterSignals).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTradeMasterSignal = z.infer<typeof insertTradeMasterSignalSchema>;
 export type TradeMasterSignal = typeof tradeMasterSignals.$inferSelect;
+
+export const investmentReportCategoryEnum = pgEnum("trademaster_report_category", [
+  "large_cap_equity", "etf", "mutual_fund", "government_bond", "gold_silver", "reit", "fixed_deposit"
+]);
+export const analystRatingEnum = pgEnum("trademaster_analyst_rating", ["strong_buy", "buy", "hold", "sell"]);
+export const riskLevelEnum = pgEnum("trademaster_risk_level", ["low", "medium", "high"]);
+
+export const tradeMasterInvestmentReports = pgTable("trademaster_investment_reports", {
+  id: serial("id").primaryKey(),
+  category: investmentReportCategoryEnum("category").notNull(),
+  instrumentName: text("instrument_name").notNull(),
+  instrumentCode: text("instrument_code"),
+  analystRating: analystRatingEnum("analyst_rating").notNull().default("buy"),
+  riskLevel: riskLevelEnum("risk_level").notNull().default("medium"),
+  suggestedAllocationPct: integer("suggested_allocation_pct").notNull().default(10),
+  recommendedHorizon: text("recommended_horizon").notNull(),
+  rationale: text("rationale").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type TradeMasterInvestmentReport = typeof tradeMasterInvestmentReports.$inferSelect;
 
 export const tradeMasterSubscriptions = pgTable("trademaster_subscriptions", {
   id: serial("id").primaryKey(),

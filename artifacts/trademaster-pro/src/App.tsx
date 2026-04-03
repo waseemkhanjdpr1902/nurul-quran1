@@ -8,10 +8,12 @@ import { TickerBar } from "@/components/ticker-bar";
 import Home from "@/pages/home";
 import Admin from "@/pages/admin";
 import Pricing from "@/pages/pricing";
+import Reports from "@/pages/reports";
+import Performance from "@/pages/performance";
 
 const queryClient = new QueryClient();
 
-type Page = "home" | "admin" | "pricing";
+type Page = "home" | "admin" | "pricing" | "reports" | "performance";
 
 function App() {
   const [page, setPage] = useState<Page>("home");
@@ -31,12 +33,24 @@ function App() {
                   <div className="text-gray-500 text-xs">Professional Analyst Signals</div>
                 </div>
               </button>
-              <div className="flex items-center gap-5">
+              <div className="flex items-center gap-4">
                 <button
                   onClick={() => setPage("home")}
                   className={`text-xs font-semibold transition-colors ${page === "home" ? "text-white" : "text-gray-500 hover:text-gray-300"}`}
                 >
                   Signals
+                </button>
+                <button
+                  onClick={() => setPage("reports")}
+                  className={`text-xs font-semibold transition-colors ${page === "reports" ? "text-white" : "text-gray-500 hover:text-gray-300"}`}
+                >
+                  Reports
+                </button>
+                <button
+                  onClick={() => setPage("performance")}
+                  className={`text-xs font-semibold transition-colors ${page === "performance" ? "text-white" : "text-gray-500 hover:text-gray-300"}`}
+                >
+                  Performance
                 </button>
                 <button
                   onClick={() => setPage("pricing")}
@@ -62,6 +76,8 @@ function App() {
             )}
             {page === "admin" && <Admin onBack={() => setPage("home")} />}
             {page === "pricing" && <Pricing onBack={() => setPage("home")} />}
+            {page === "reports" && <Reports onNavigatePricing={() => setPage("pricing")} />}
+            {page === "performance" && <Performance onNavigatePricing={() => setPage("pricing")} />}
           </main>
 
           <DisclaimerFooter />

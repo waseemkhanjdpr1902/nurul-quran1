@@ -46,6 +46,9 @@ const PRO_FEATURES = [
   "Options signals with IV & PCR analysis",
   "Commodity signals — Gold, Silver, Crude Oil",
   "Currency signals — USD/INR, EUR/INR",
+  "Investment Analysis Reports (7 asset classes)",
+  "Portfolio Allocator — Conservative / Moderate / Aggressive",
+  "Performance History with detailed breakdowns",
   "Early pre-market research notes",
   "Precise Entry, Stop-Loss & 2 Targets",
   "Risk:Reward analysis on every signal",
@@ -95,7 +98,7 @@ export default function Pricing({ onBack }: { onBack: () => void }) {
         currency: order.currency,
         name: "TradeMaster Pro",
         description: "Professional Trading Signals — Monthly Plan",
-        image: "",
+        image: "https://ui-avatars.com/api/?name=TM&background=16a34a&color=fff&bold=true&size=128",
         order_id: order.orderId,
         handler: async (response) => {
           try {

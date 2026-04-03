@@ -72,11 +72,12 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
   const status = STATUS_CONFIG[signal.status];
 
   const handleWhatsApp = () => {
-    window.open(`whatsapp://send?text=${encodeURIComponent(formatShareMessage(signal))}`, "_blank");
+    window.open(`https://wa.me/?text=${encodeURIComponent(formatShareMessage(signal))}`, "_blank");
   };
 
   const handleTelegramShare = () => {
-    window.open(`https://t.me/share/url?url=https://tradermasterpro.in&text=${encodeURIComponent(formatShareMessage(signal))}`, "_blank");
+    const appUrl = `${window.location.origin}${window.location.pathname}`;
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(formatShareMessage(signal))}`, "_blank");
   };
 
   const handlePostToChannel = async () => {

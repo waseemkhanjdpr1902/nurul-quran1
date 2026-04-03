@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createHmac } from "crypto";
 import { db } from "@workspace/db";
-import { tradeMasterSignals, tradeMasterSubscriptions } from "@workspace/db/schema";
+import { tradeMasterSignals, tradeMasterSubscriptions, tradeMasterInvestmentReports } from "@workspace/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
@@ -341,6 +341,147 @@ router.patch("/trademaster/subscriptions/:id", async (req: Request, res: Respons
   } catch (err) {
     req.log.error({ err }, "Failed to update subscription");
     res.status(500).json({ error: "Failed to update subscription" });
+  }
+});
+
+const VALID_REPORT_CATEGORIES = ["large_cap_equity", "etf", "mutual_fund", "government_bond", "gold_silver", "reit", "fixed_deposit"] as const;
+type ValidReportCategory = typeof VALID_REPORT_CATEGORIES[number];
+
+function isValidReportCategory(s: unknown): s is ValidReportCategory {
+  return typeof s === "string" && (VALID_REPORT_CATEGORIES as readonly string[]).includes(s);
+}
+
+const INVESTMENT_SEED_DATA = [
+  { category: "large_cap_equity" as ValidReportCategory, instrumentName: "Reliance Industries Ltd", instrumentCode: "RELIANCE", analystRating: "strong_buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 8, recommendedHorizon: "3–5 years", rationale: "Diversified conglomerate with dominant positions in telecom (Jio), retail, and petrochemicals. Strong cash generation and aggressive expansion into green energy. Promoter-backed buyback programs and low debt make this a core large-cap holding." },
+  { category: "large_cap_equity" as ValidReportCategory, instrumentName: "HDFC Bank Ltd", instrumentCode: "HDFCBANK", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 7, recommendedHorizon: "2–4 years", rationale: "India's largest private sector bank with best-in-class asset quality, CASA ratio above 43%, and conservative credit risk management. Post-merger integration with HDFC Ltd nearing completion — expect re-rating as margins stabilize." },
+  { category: "large_cap_equity" as ValidReportCategory, instrumentName: "Infosys Ltd", instrumentCode: "INFY", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 6, recommendedHorizon: "2–3 years", rationale: "Tier-1 IT services with strong deal wins in AI/cloud transformation. Free cash flow yield of ~5%, consistent dividend payouts, and improving revenue visibility. FY25 guidance revision risk is priced in at current valuations." },
+  { category: "large_cap_equity" as ValidReportCategory, instrumentName: "Tata Consultancy Services", instrumentCode: "TCS", analystRating: "hold" as const, riskLevel: "low" as const, suggestedAllocationPct: 5, recommendedHorizon: "3+ years", rationale: "India's largest IT bellwether with a fortress balance sheet and premium client relationships. Near-term growth tempered by global discretionary IT spend slowdown, but long-cycle mega-deals provide earnings floor. Hold for quality premium." },
+  { category: "large_cap_equity" as ValidReportCategory, instrumentName: "Larsen & Toubro Ltd", instrumentCode: "LT", analystRating: "strong_buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 6, recommendedHorizon: "3–5 years", rationale: "India's premier infrastructure and engineering conglomerate is the primary beneficiary of the ₹11-lakh-crore capex supercycle. Record order book above ₹5 lakh crore with strong international execution. Compounding play on India's infrastructure decade." },
+  { category: "etf" as ValidReportCategory, instrumentName: "Nifty 50 ETF — Nippon India", instrumentCode: "NIFTYBEES", analystRating: "strong_buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 10, recommendedHorizon: "5–10 years", rationale: "Most liquid Nifty 50 ETF on NSE with AUM above ₹20,000 crore and tracking error under 0.02%. Ideal passive core holding for long-term wealth creation. Expense ratio of 0.04% — one of the lowest in India." },
+  { category: "etf" as ValidReportCategory, instrumentName: "Nifty 50 ETF — SBI", instrumentCode: "SETFNIF50", analystRating: "buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 8, recommendedHorizon: "5–10 years", rationale: "Backed by SBI Mutual Fund with strong institutional support. Excellent liquidity, tight bid-ask spreads, and consistent tracking. Good alternative or complement to NIFTYBEES for Nifty 50 core exposure." },
+  { category: "etf" as ValidReportCategory, instrumentName: "Bank Nifty ETF — Mirae Asset", instrumentCode: "MAFSETF10", analystRating: "buy" as const, riskLevel: "high" as const, suggestedAllocationPct: 5, recommendedHorizon: "2–5 years", rationale: "Concentrated banking sector ETF for investors with higher risk appetite. Benefits from India's credit upcycle and financialization theme. Strong returns in bull markets — tactical allocation only, pair with fixed income for balance." },
+  { category: "etf" as ValidReportCategory, instrumentName: "Nifty Next 50 ETF — UTI", instrumentCode: "UTINEXT50", analystRating: "buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 6, recommendedHorizon: "5–7 years", rationale: "Captures the next generation of Nifty 50 constituents — mid-cap leaders poised for large-cap graduation. Historically delivers alpha over pure Nifty 50 in growth cycles. Higher volatility, rewarding for patient investors." },
+  { category: "etf" as ValidReportCategory, instrumentName: "Gold ETF — HDFC Gold ETF", instrumentCode: "HDFCMFGETF", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 5, recommendedHorizon: "3–7 years", rationale: "Efficient gold exposure without physical storage concerns. Tracks MCX gold spot with tight spreads. Portfolio hedge against INR depreciation and equity market stress. Suitable as 5–8% strategic allocation in any portfolio." },
+  { category: "mutual_fund" as ValidReportCategory, instrumentName: "HDFC Top 100 Fund — Direct Growth", instrumentCode: "HDFC100DIR", analystRating: "strong_buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 10, recommendedHorizon: "5+ years", rationale: "Consistent large-cap outperformer managed by experienced fund managers. 10-year CAGR exceeds benchmark by 2–3%. Heavy allocation to quality businesses with pricing power — HDFC Bank, ICICI Bank, Reliance, Infosys. Minimal style drift." },
+  { category: "mutual_fund" as ValidReportCategory, instrumentName: "Axis Bluechip Fund — Direct Growth", instrumentCode: "AXISBCDIR", analystRating: "buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 8, recommendedHorizon: "5+ years", rationale: "Growth-oriented large-cap fund with concentrated portfolio of 25–30 high-conviction stocks. Focus on businesses with sustainable competitive advantages and clean balance sheets. Some alpha variability year-to-year but strong 5-year track record." },
+  { category: "mutual_fund" as ValidReportCategory, instrumentName: "Parag Parikh Flexi Cap Fund — Direct", instrumentCode: "PPFCFD", analystRating: "strong_buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 10, recommendedHorizon: "5–10 years", rationale: "Unique flexi-cap with 25–35% global diversification (Alphabet, Meta, Amazon). Reduces India-specific risk while capturing domestic growth. Consistent top-quartile performance. Conservative expense ratio and low portfolio churn." },
+  { category: "mutual_fund" as ValidReportCategory, instrumentName: "Mirae Asset Large Cap Fund — Direct", instrumentCode: "MIRAELCDIR", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 8, recommendedHorizon: "4–7 years", rationale: "Disciplined large-cap fund managed with quantitative-qualitative blend. Lower volatility than category average with consistent risk-adjusted returns. Good choice for first-time equity investors seeking large-cap stability." },
+  { category: "mutual_fund" as ValidReportCategory, instrumentName: "SBI Small Cap Fund — Direct Growth", instrumentCode: "SBISMCDIR", analystRating: "hold" as const, riskLevel: "high" as const, suggestedAllocationPct: 5, recommendedHorizon: "7–10 years", rationale: "India's largest small-cap fund — strong long-term track record but periodic closures due to capacity constraints. Entry timing matters in small-cap; current valuations are elevated. Hold existing positions; new entrants should use SIP route only." },
+  { category: "government_bond" as ValidReportCategory, instrumentName: "Sovereign Gold Bond 2025-26 Series", instrumentCode: "SGBBOND", analystRating: "strong_buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 8, recommendedHorizon: "8 years (with 5-yr exit)", rationale: "Government of India guaranteed instrument combining gold price returns with a 2.5% p.a. fixed interest (tax-free for individuals holding to maturity). Capital gains fully exempt on maturity. Superior to physical gold — no making charges, no storage risk, government backing." },
+  { category: "government_bond" as ValidReportCategory, instrumentName: "RBI 7.75% Floating Rate Savings Bond", instrumentCode: "RBIFRB", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 7, recommendedHorizon: "7 years", rationale: "Guaranteed by RBI, linked to NSC rate + 35 bps, reset every 6 months. No credit risk. Ideal for retirees and conservative investors seeking predictable, inflation-adjusting income. Interest taxable but capital fully protected by sovereign guarantee." },
+  { category: "government_bond" as ValidReportCategory, instrumentName: "CPSE ETF — Central PSU Bond Index", instrumentCode: "CPSEETF", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 5, recommendedHorizon: "3–5 years", rationale: "Portfolio of AAA-rated central PSU bonds (ONGC, NTPC, Power Finance Corp). Better yield than government securities with near-sovereign credit quality. Good for tax-efficient bond exposure via ETF route." },
+  { category: "government_bond" as ValidReportCategory, instrumentName: "Nifty G-Sec ETF — Edelweiss", instrumentCode: "GSEC10IETF", analystRating: "hold" as const, riskLevel: "low" as const, suggestedAllocationPct: 5, recommendedHorizon: "5–10 years", rationale: "Pure 10-year G-Sec exposure — high duration risk in a rising rate environment. Ideal for those with a strong view on rate cuts. Currently hold — accumulate on rate hike spikes for long-term bond gains when RBI pivots to easing." },
+  { category: "government_bond" as ValidReportCategory, instrumentName: "PPF (Public Provident Fund)", instrumentCode: "PPF", analystRating: "strong_buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 10, recommendedHorizon: "15 years", rationale: "Sovereign-guaranteed EEE instrument — contributions, interest, and maturity all tax-free. Current rate of 7.1% p.a. (compounded annually). Ideal long-term wealth accumulation vehicle for every Indian investor regardless of income bracket." },
+  { category: "gold_silver" as ValidReportCategory, instrumentName: "Physical Gold — 24K / 999 Fine", instrumentCode: "GOLD999", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 5, recommendedHorizon: "5–10 years", rationale: "Timeless hedge against inflation, currency debasement, and geopolitical uncertainty. Central bank gold accumulation globally supports prices. Recommended 5–10% portfolio allocation in physical hallmarked gold coins or bars via reputed institutions." },
+  { category: "gold_silver" as ValidReportCategory, instrumentName: "Gold ETF — Kotak Gold ETF", instrumentCode: "KOTAKGOLD", analystRating: "strong_buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 6, recommendedHorizon: "3–7 years", rationale: "Best-in-class tracking accuracy with competitive expense ratio. Backed by allocated physical gold stored with SEBI-designated custodians. Global gold at all-time highs driven by DXY weakness and Fed rate cut expectations. Strong buy at current levels." },
+  { category: "gold_silver" as ValidReportCategory, instrumentName: "Silver ETF — Mirae Asset Silver ETF", instrumentCode: "SILVERETF", analystRating: "buy" as const, riskLevel: "high" as const, suggestedAllocationPct: 3, recommendedHorizon: "2–5 years", rationale: "Silver dual demand from industrial (solar panels, EVs, electronics) and investment. Gold-Silver ratio at historically elevated levels — silver historically outperforms in late-cycle gold rallies. Tactical 3–5% allocation for higher-risk, higher-reward precious metals exposure." },
+  { category: "gold_silver" as ValidReportCategory, instrumentName: "Digital Gold — MMTC-PAMP", instrumentCode: "DIGIGOLD", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 3, recommendedHorizon: "1–5 years", rationale: "MMTC-PAMP certified 99.9% pure gold in digital format — start from ₹1. Easy SIP, instant liquidity, and delivery option. Good for young investors building gold positions incrementally. No demat account required." },
+  { category: "gold_silver" as ValidReportCategory, instrumentName: "Multi-Asset Fund with Gold — ICICI Pru", instrumentCode: "ICICIMAF", analystRating: "buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 5, recommendedHorizon: "3–5 years", rationale: "Automatically rebalances across equity, debt, and gold — reduces behavioral bias. Beneficial for one-fund-portfolio investors. ICICI Pru Multi-Asset consistently beats category average due to superior tactical allocation." },
+  { category: "reit" as ValidReportCategory, instrumentName: "Embassy Office Parks REIT", instrumentCode: "EMBASSYREIT", analystRating: "strong_buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 5, recommendedHorizon: "3–7 years", rationale: "India's largest listed REIT by area — 45 million sq ft of Grade-A office parks leased to MNCs including Google, JP Morgan, and IBM. Consistent 6–7% distribution yield with built-in escalation clauses. Beneficiary of India's global capability centre (GCC) boom." },
+  { category: "reit" as ValidReportCategory, instrumentName: "Mindspace Business Parks REIT", instrumentCode: "MINDREIT", analystRating: "buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 4, recommendedHorizon: "3–5 years", rationale: "Mumbai-centric premium office REIT with high occupancy in tech-driven Bandra-Kurla Complex and Pune IT corridors. Tenant profile skewed towards technology and BFSI sectors. Competitive 6% distribution yield with 3-year track record of consistent payouts." },
+  { category: "reit" as ValidReportCategory, instrumentName: "Brookfield India REIT", instrumentCode: "BIRET", analystRating: "buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 3, recommendedHorizon: "3–5 years", rationale: "Backed by global alternative asset manager Brookfield with 18 million sq ft in Mumbai, NCR, Kolkata, and Pune. Development pipeline of 7 million sq ft provides future growth upside. Well-structured leases with escalation — suitable for income-focused investors." },
+  { category: "reit" as ValidReportCategory, instrumentName: "Nexus Select Trust (Retail REIT)", instrumentCode: "NEXUSREIT", analystRating: "hold" as const, riskLevel: "medium" as const, suggestedAllocationPct: 3, recommendedHorizon: "3–5 years", rationale: "India's first listed retail REIT — portfolio of 17 premium malls across Tier-1 cities. Consumer spending recovery supports retail demand. Yields lower than office REITs (~5.5%) but offers diversification with retail-linked upside." },
+  { category: "reit" as ValidReportCategory, instrumentName: "InvIT — IRB Infrastructure Trust", instrumentCode: "IRBINVIT", analystRating: "buy" as const, riskLevel: "medium" as const, suggestedAllocationPct: 3, recommendedHorizon: "5–8 years", rationale: "Infrastructure Investment Trust with toll-road assets providing inflation-linked, government-backed cash flows. 8–9% distribution yield — among the highest in listed yield instruments. Suitable for income investors with 5+ year horizon." },
+  { category: "fixed_deposit" as ValidReportCategory, instrumentName: "SBI Fixed Deposit — 1-3 Year", instrumentCode: "SBIFDR", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 10, recommendedHorizon: "1–3 years", rationale: "State Bank of India offers 6.80–7.00% p.a. for 1–3 year tenure for regular citizens (7.30–7.50% for senior citizens). Zero credit risk — deposits up to ₹5 lakh guaranteed by DICGC. Ideal parking for short-term funds and emergency corpus." },
+  { category: "fixed_deposit" as ValidReportCategory, instrumentName: "HDFC Bank Fixed Deposit — Senior Citizen", instrumentCode: "HDFCFDSR", analystRating: "strong_buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 12, recommendedHorizon: "1–2 years", rationale: "HDFC Bank offers 7.75% p.a. for senior citizens on 1–2 year deposits — one of the best risk-free returns available. DICGC insured up to ₹5 lakh. Auto-renewal option available. Strongly recommended for retired investors as core income instrument." },
+  { category: "fixed_deposit" as ValidReportCategory, instrumentName: "Corporate FD — Bajaj Finance AAA", instrumentCode: "BAJAJFD", analystRating: "buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 5, recommendedHorizon: "2–3 years", rationale: "AAA-rated corporate FD offering 8.05–8.35% p.a. — premium over bank FDs with manageable credit risk. Bajaj Finance is one of India's most financially sound NBFCs with consistent triple-A ratings from ICRA and CRISIL. Suitable for investors comfortable with NBFC exposure." },
+  { category: "fixed_deposit" as ValidReportCategory, instrumentName: "Small Finance Bank FD — ESAF / AU", instrumentCode: "AUSFBFD", analystRating: "hold" as const, riskLevel: "medium" as const, suggestedAllocationPct: 3, recommendedHorizon: "1 year", rationale: "Small finance banks offer 8.50–9.00% p.a. for 1-year FDs — significantly above large banks. DICGC insured up to ₹5 lakh. Higher yield comes with slightly elevated operational risk vs PSU banks. Limit to ₹5 lakh per bank for full insurance cover. Hold/accumulate tactically." },
+  { category: "fixed_deposit" as ValidReportCategory, instrumentName: "Post Office Time Deposit — 5 Year", instrumentCode: "POTD5Y", analystRating: "strong_buy" as const, riskLevel: "low" as const, suggestedAllocationPct: 8, recommendedHorizon: "5 years", rationale: "Government of India backed 5-year time deposit offering 7.5% p.a. with 80C tax deduction benefit — effective post-tax yield exceeds 9% for highest tax bracket. Absolute sovereign guarantee — zero default risk. Ideal for conservative investors in 30% tax bracket maximizing 80C." },
+];
+
+router.get("/trademaster/reports", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { category } = req.query as { category?: string };
+    const accessLevel = resolveAccessLevel(req);
+    const isPremium = accessLevel === "admin" || await isSessionPremium(accessLevel ?? undefined);
+
+    let rows = await db.select().from(tradeMasterInvestmentReports)
+      .where(eq(tradeMasterInvestmentReports.isActive, true))
+      .orderBy(tradeMasterInvestmentReports.category, tradeMasterInvestmentReports.id);
+
+    if (category && isValidReportCategory(category)) {
+      rows = rows.filter((r) => r.category === category);
+    }
+
+    if (!isPremium) {
+      const summary = rows.map((r) => ({
+        id: r.id,
+        category: r.category,
+        instrumentName: r.instrumentName,
+        instrumentCode: r.instrumentCode,
+        analystRating: r.analystRating,
+        riskLevel: r.riskLevel,
+        recommendedHorizon: r.recommendedHorizon,
+        rationale: null,
+        suggestedAllocationPct: null,
+      }));
+      res.json({ reports: summary, isPremium: false });
+      return;
+    }
+
+    res.json({ reports: rows, isPremium: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch investment reports");
+    res.status(500).json({ error: "Failed to fetch investment reports" });
+  }
+});
+
+router.post("/trademaster/reports/seed", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const existing = await db.select({ id: tradeMasterInvestmentReports.id }).from(tradeMasterInvestmentReports).limit(1);
+    if (existing.length > 0) {
+      res.json({ message: "Reports already seeded", count: existing.length });
+      return;
+    }
+    await db.insert(tradeMasterInvestmentReports).values(INVESTMENT_SEED_DATA);
+    res.json({ message: "Seeded investment reports", count: INVESTMENT_SEED_DATA.length });
+  } catch (err) {
+    req.log.error({ err }, "Failed to seed investment reports");
+    res.status(500).json({ error: "Failed to seed reports" });
+  }
+});
+
+router.get("/trademaster/performance", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { segment, from, to } = req.query as { segment?: string; from?: string; to?: string };
+    const accessLevel = resolveAccessLevel(req);
+    const isPremium = accessLevel === "admin" || await isSessionPremium(accessLevel ?? undefined);
+
+    let rows = await db.select().from(tradeMasterSignals).orderBy(desc(tradeMasterSignals.createdAt));
+
+    if (segment && isValidSegment(segment)) {
+      rows = rows.filter((r) => r.segment === segment);
+    }
+    if (from) {
+      const fromDate = new Date(from);
+      if (!isNaN(fromDate.getTime())) rows = rows.filter((r) => new Date(r.createdAt) >= fromDate);
+    }
+    if (to) {
+      const toDate = new Date(to);
+      if (!isNaN(toDate.getTime())) rows = rows.filter((r) => new Date(r.createdAt) <= toDate);
+    }
+
+    const total = rows.length;
+    const targetHit = rows.filter((r) => r.status === "target_hit").length;
+    const slHit = rows.filter((r) => r.status === "sl_hit").length;
+    const open = rows.filter((r) => r.status === "active").length;
+    const closed = total - open;
+    const successRate = closed > 0 ? ((targetHit / closed) * 100).toFixed(1) : "0";
+    const rrValues = rows.filter((r) => r.riskReward != null).map((r) => parseFloat(r.riskReward!));
+    const avgRR = rrValues.length > 0 ? (rrValues.reduce((a, b) => a + b, 0) / rrValues.length).toFixed(2) : null;
+
+    const limitedRows = isPremium ? rows : rows.slice(0, 10);
+    const signals = limitedRows.map((s) => (s.isPremium && !isPremium ? redactPremiumSignal(s) : s));
+
+    res.json({
+      stats: { total, targetHit, slHit, open, successRate, avgRR },
+      signals,
+      isPremium,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch performance data");
+    res.status(500).json({ error: "Failed to fetch performance data" });
   }
 });
 
