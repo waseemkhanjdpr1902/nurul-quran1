@@ -121,7 +121,7 @@ function AyahCard({
   surahNum: number;
   displayLangs: DisplayLang[];
   isPlaying: boolean;
-  onPlay: (num: number) => void;
+  onPlay: (globalNum: number) => void;   // pass ayah.number (global 1-6236)
 }) {
   const [showTafseer, setShowTafseer] = useState(false);
   const { tafseer, loading: tafseerLoading } = useTafseer(surahNum, ayah.numberInSurah, showTafseer);
@@ -143,7 +143,7 @@ function AyahCard({
           variant="ghost"
           size="icon"
           className={`h-8 w-8 rounded-full transition-colors ${isPlaying ? "bg-primary text-primary-foreground" : "hover:bg-primary/10"}`}
-          onClick={() => onPlay(ayah.numberInSurah)}
+          onClick={() => onPlay(ayah.number)}
         >
           {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
         </Button>
@@ -257,21 +257,19 @@ export default function QuranReader() {
     }
   }, [selectedSurah, reciter, surahAudioPlaying]);
 
-  const playAyahAudio = useCallback((ayahNum: number) => {
-    if (!selectedSurah) return;
-    const surahPad = String(selectedSurah.number).padStart(3, "0");
-    const ayahPad = String(ayahNum).padStart(3, "0");
-    const url = `https://cdn.islamic.network/quran/audio/${reciter.id}/${surahPad}${ayahPad}.mp3`;
+  const playAyahAudio = useCallback((globalAyahNum: number) => {
+    // globalAyahNum is the absolute ayah number (1–6236), from ayah.number in the API response
+    const url = `https://cdn.islamic.network/quran/audio/128/${reciter.id}/${globalAyahNum}.mp3`;
     if (!audioRef.current) audioRef.current = new Audio();
-    if (playingAyah === ayahNum) {
+    if (playingAyah === globalAyahNum) {
       audioRef.current.pause();
       setPlayingAyah(null);
     } else {
       audioRef.current.src = url;
-      audioRef.current.play().then(() => setPlayingAyah(ayahNum)).catch(console.error);
+      audioRef.current.play().then(() => setPlayingAyah(globalAyahNum)).catch(console.error);
       audioRef.current.onended = () => setPlayingAyah(null);
     }
-  }, [selectedSurah, reciter, playingAyah]);
+  }, [reciter, playingAyah]);
 
   // Pagination for ayahs
   const totalPages = Math.ceil(ayahs.length / AYAH_LIMIT);

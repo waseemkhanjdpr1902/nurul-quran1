@@ -82,11 +82,15 @@ export default function Courses() {
                   )}
                 </div>
 
-                {course.isPremium && (
-                  <Button asChild className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90 w-full" data-testid={`button-enroll-${course.id}`}>
-                    <Link href="/support">Unlock Premium</Link>
-                  </Button>
-                )}
+                <Button asChild className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90 w-full font-medium" data-testid={`button-enroll-${course.id}`}>
+                  <Link href={`/courses/${course.id}`}>
+                    {course.isPremium ? (
+                      <><Lock className="w-4 h-4 mr-1.5" /> View Course</>
+                    ) : (
+                      <><BookOpen className="w-4 h-4 mr-1.5" /> Start Learning</>
+                    )}
+                  </Link>
+                </Button>
               </motion.div>
             ))}
       </div>
