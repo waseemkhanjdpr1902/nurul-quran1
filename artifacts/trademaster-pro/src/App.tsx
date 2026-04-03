@@ -106,6 +106,11 @@ function App() {
             <p className="text-gray-700 text-xs mt-1">
               Trading involves risk. Past performance does not guarantee future results. Consult a SEBI-registered advisor before investing.
             </p>
+            <p className="text-gray-700 text-xs mt-2">
+              <a href="./privacy.html" className="text-gray-600 hover:text-gray-400 underline" target="_blank" rel="noopener">Privacy Policy</a>
+              {" · "}
+              <span className="text-gray-700">Ads by Google AdMob</span>
+            </p>
           </footer>
         </div>
         <Toaster />
