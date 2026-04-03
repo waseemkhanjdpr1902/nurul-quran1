@@ -4,6 +4,7 @@ import { fetchSignals, updateSignal } from "@/lib/api";
 import { SignalCard } from "@/components/signal-card";
 import { useAdmin } from "@/hooks/use-admin";
 import { useSubscription } from "@/hooks/use-subscription";
+import { AdBanner } from "@/components/ad-banner";
 
 const SESSION_KEY = "trademaster_session_id";
 
@@ -105,6 +106,10 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
             </div>
           ))}
         </div>
+
+        {!isPremium && !isAdmin && (
+          <AdBanner className="mb-5" />
+        )}
 
         <div className="flex gap-2 mb-5 overflow-x-auto pb-2 scrollbar-none">
           {SEGMENTS.map((seg) => (

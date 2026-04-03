@@ -28,6 +28,11 @@ if (!basePath) {
 
 export default defineConfig({
   base: basePath,
+  define: {
+    "import.meta.env.VITE_ADMOB_BANNER_UNIT_ID": JSON.stringify(process.env.ADMOB_BANNER_UNIT_ID ?? ""),
+    "import.meta.env.VITE_ADMOB_INTERSTITIAL_UNIT_ID": JSON.stringify(process.env.ADMOB_INTERSTITIAL_UNIT_ID ?? ""),
+    "import.meta.env.VITE_ADMOB_PUBLISHER_ID": JSON.stringify(process.env.ADMOB_PUBLISHER_ID ?? ""),
+  },
   plugins: [
     react(),
     tailwindcss(),
