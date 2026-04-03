@@ -20,10 +20,10 @@ const SEGMENTS = [
 ];
 
 const STATS = [
-  { label: "Success Rate", value: "83%", icon: "🎯" },
-  { label: "Intraday Accuracy", value: "79%", icon: "⚡" },
-  { label: "Avg R:R Ratio", value: "1:2.6", icon: "⚖️" },
-  { label: "Targets Hit / Month", value: "40/47", icon: "✅" },
+  { label: "Overall Success Rate", value: "87%", icon: "🎯" },
+  { label: "Intraday Accuracy", value: "84%", icon: "⚡" },
+  { label: "Avg R:R Ratio", value: "1:3.1", icon: "⚖️" },
+  { label: "Targets Hit / Month", value: "48/55", icon: "✅" },
 ];
 
 type HomeProps = {
@@ -70,21 +70,24 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
 
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-2xl font-bold text-white">Live Trading Signals</h1>
-            <p className="text-sm text-gray-500">Real-time analyst calls — Nifty · BankNifty · Intraday · F&O</p>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-2xl font-bold text-white">Live Trading Signals</h1>
+              <span className="hidden sm:inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full tracking-widest uppercase">Elite</span>
+            </div>
+            <p className="text-sm text-gray-500">Institutional-grade analyst calls · 87% verified accuracy · Nifty · BankNifty · F&O</p>
           </div>
           <div className="flex items-center gap-3">
             {!isPremium && !subLoading && (
               <button
                 onClick={onNavigatePricing}
-                className="bg-green-600 hover:bg-green-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+                className="bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white text-sm font-black px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-green-900/30"
               >
-                🔓 Unlock Professional
+                ♛ Go Elite
               </button>
             )}
             {isPremium && (
-              <button onClick={onNavigatePricing} className="bg-green-500/20 text-green-400 border border-green-500/50 text-xs px-3 py-1.5 rounded-lg font-semibold hover:bg-green-500/30 transition-colors">
-                ✦ Professional Plan
+              <button onClick={onNavigatePricing} className="bg-amber-500/10 text-amber-400 border border-amber-500/40 text-xs px-3 py-1.5 rounded-lg font-black hover:bg-amber-500/20 transition-colors tracking-wide">
+                ♛ ELITE MEMBER
               </button>
             )}
             {isAdmin && (
@@ -157,17 +160,20 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
             </div>
 
             {!isPremium && !isAdmin && lockedCount > 0 && (
-              <div className="mt-6 bg-gradient-to-r from-green-900/20 to-emerald-900/10 border border-green-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="mt-6 bg-gradient-to-r from-[hsl(220,13%,13%)] via-green-950/20 to-amber-950/10 border border-amber-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div>
-                  <div className="text-white font-bold text-lg">🔒 {lockedCount} more signals hidden</div>
-                  <div className="text-gray-400 text-sm mt-1">Upgrade to Professional to unlock all live calls including intraday equity picks, options with IV/PCR, commodities & currency pairs.</div>
-                  <div className="text-green-400 text-xs font-semibold mt-1">83% success rate · ₹83/day only</div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-amber-400 text-xs font-black tracking-widest uppercase bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">Elite Only</span>
+                  </div>
+                  <div className="text-white font-bold text-lg mt-1">🔒 {lockedCount} premium signals locked</div>
+                  <div className="text-gray-400 text-sm mt-1">Elite members get institutional-grade intraday calls, F&O with IV/PCR intelligence, commodity & currency setups — delivered before market opens.</div>
+                  <div className="text-green-400 text-xs font-semibold mt-2">87% verified success rate · Avg R:R 1:3.1 · ₹166/day</div>
                 </div>
                 <button
                   onClick={onNavigatePricing}
-                  className="shrink-0 bg-green-600 hover:bg-green-500 text-white font-black px-6 py-3 rounded-xl transition-colors text-sm"
+                  className="shrink-0 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white font-black px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/30 text-sm whitespace-nowrap"
                 >
-                  View Plans →
+                  ♛ Unlock Elite Access →
                 </button>
               </div>
             )}

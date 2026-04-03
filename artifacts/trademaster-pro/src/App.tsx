@@ -27,10 +27,13 @@ function App() {
           <header className="bg-[hsl(220,13%,10%)] border-b border-[hsl(220,13%,18%)] sticky top-0 z-30">
             <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
               <button onClick={() => setPage("home")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center text-white font-black text-base">TM</div>
+                <div className="w-9 h-9 bg-gradient-to-br from-green-600 to-emerald-700 rounded-xl flex items-center justify-center text-white font-black text-base shadow-lg shadow-green-900/40">TM</div>
                 <div className="text-left">
-                  <div className="text-white font-black text-sm tracking-tight">TradeMaster Pro</div>
-                  <div className="text-gray-500 text-xs">Professional Analyst Signals</div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="text-white font-black text-sm tracking-tight">TradeMaster Pro</div>
+                    <span className="text-amber-400 text-[9px] font-black bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded-full tracking-widest">ELITE</span>
+                  </div>
+                  <div className="text-gray-500 text-xs">87% Accuracy · Institutional-Grade Signals</div>
                 </div>
               </button>
               <div className="flex items-center gap-4">

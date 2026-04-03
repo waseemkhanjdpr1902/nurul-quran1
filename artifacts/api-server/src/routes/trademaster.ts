@@ -260,10 +260,10 @@ router.post("/trademaster/payment/order", async (req: Request, res: Response): P
     const Razorpay = require("razorpay");
     const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
     const order = await rzp.orders.create({
-      amount: 249900,
+      amount: 499900,
       currency: "INR",
-      receipt: `tm_${Date.now()}`,
-      notes: { product: "TradeMaster Pro — Professional Plan" },
+      receipt: `tm_elite_${Date.now()}`,
+      notes: { product: "TradeMaster Pro — Elite Monthly Plan" },
     });
     res.json({ orderId: order.id as string, amount: order.amount as number, currency: order.currency as string, keyId });
   } catch (err) {
