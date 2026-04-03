@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { useGetLectures, useGetSpeakers } from "@workspace/api-client-react";
+import { useGetLectures } from "@workspace/api-client-react";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import { useAuth } from "@/hooks/use-auth";
+import { PremiumGate } from "@/components/premium-gate";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Play, Lock, Heart, ChevronRight, ChevronLeft } from "lucide-react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 const CATEGORIES = ["All", "Quran Recitation", "Tafseer", "Fiqh", "Aqeedah", "Hadith", "Spirituality", "Islamic History"];
 const LANGUAGES = ["All", "English", "Arabic", "Urdu"];
@@ -30,10 +31,10 @@ export default function Library() {
   const [language, setLanguage] = useState("All");
   const [offset, setOffset] = useState(0);
   const [favs, setFavs] = useState<Set<number>>(new Set());
+  const [premiumGate, setPremiumGate] = useState<{ title: string } | null>(null);
 
   const { playLecture } = useAudioPlayer();
   const { isAuthenticated, user } = useAuth();
-  const { data: speakers } = useGetSpeakers();
 
   const { data, isLoading } = useGetLectures({
     search: debouncedSearch || undefined,
@@ -73,6 +74,15 @@ export default function Library() {
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
 
   return (
+    <>
+    <AnimatePresence>
+      {premiumGate && (
+        <PremiumGate
+          lectureTitle={premiumGate.title}
+          onClose={() => setPremiumGate(null)}
+        />
+      )}
+    </AnimatePresence>
     <div className="container mx-auto max-w-6xl px-4 py-8">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-3xl font-serif font-bold text-foreground mb-2">Lecture Library</h1>
@@ -147,9 +157,15 @@ export default function Library() {
                       </Button>
                     )}
                     {lecture.isPremium ? (
-                      <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full bg-amber-500/10 hover:bg-amber-500/20 transition-colors"
+                        onClick={() => setPremiumGate({ title: lecture.title })}
+                        data-testid={`button-premium-${lecture.id}`}
+                      >
                         <Lock className="w-4 h-4 text-amber-500" />
-                      </div>
+                      </Button>
                     ) : (
                       <Button
                         variant="ghost"
@@ -203,5 +219,6 @@ export default function Library() {
         </div>
       )}
     </div>
+    </>
   );
 }

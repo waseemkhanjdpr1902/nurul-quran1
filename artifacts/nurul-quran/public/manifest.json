@@ -1,0 +1,89 @@
+{
+  "name": "Nurul Quran — Islamic Education",
+  "short_name": "Nurul Quran",
+  "description": "Authentic Islamic lectures, Quran recitation, courses, and Halal investment guidance.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#004d40",
+  "background_color": "#004d40",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education", "lifestyle", "religion"],
+  "icons": [
+    {
+      "src": "/icons/icon-72.svg",
+      "sizes": "72x72",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-96.svg",
+      "sizes": "96x96",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-128.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-144.svg",
+      "sizes": "144x144",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-152.svg",
+      "sizes": "152x152",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-384.svg",
+      "sizes": "384x384",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Lecture Library",
+      "short_name": "Library",
+      "description": "Browse Islamic lectures",
+      "url": "/library",
+      "icons": [{ "src": "/icons/icon-96.svg", "sizes": "96x96", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Quran Recitation",
+      "short_name": "Recitation",
+      "description": "Listen to Quran recitation",
+      "url": "/library",
+      "icons": [{ "src": "/icons/icon-96.svg", "sizes": "96x96", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Halal Stocks",
+      "short_name": "Stocks",
+      "description": "Shariah-compliant investments",
+      "url": "/halal-stocks",
+      "icons": [{ "src": "/icons/icon-96.svg", "sizes": "96x96", "type": "image/svg+xml" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/opengraph.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Nurul Quran Home Screen"
+    }
+  ]
+}

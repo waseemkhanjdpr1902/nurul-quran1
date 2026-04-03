@@ -3,6 +3,7 @@ import { AudioPlayer } from "./audio-player";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "./ui/button";
 import { BookOpen, Library, GraduationCap, HeartHandshake, UserCircle, TrendingUp } from "lucide-react";
+import { PwaInstallPrompt } from "./pwa-install-prompt";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -90,6 +91,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <AudioPlayer />
+      <PwaInstallPrompt />
     </div>
   );
 }
