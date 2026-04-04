@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGetLectures } from "@workspace/api-client-react";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,6 +31,7 @@ export default function Library() {
   const [language, setLanguage] = useState("All");
   const [offset, setOffset] = useState(0);
   const [favs, setFavs] = useState<Set<number>>(new Set());
+  const [favsLoaded, setFavsLoaded] = useState(false);
   const [premiumGate, setPremiumGate] = useState<{ title: string } | null>(null);
 
   const { playLecture } = useAudioPlayer();
@@ -43,6 +44,30 @@ export default function Library() {
     limit: PAGE_SIZE,
     offset,
   });
+
+  // Load existing favorites from server when user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated || favsLoaded) return;
+    const token = localStorage.getItem("nurulquran_token");
+    if (!token) return;
+    fetch("/api/users/favorites", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then((lectures: { id: number }[]) => {
+        setFavs(new Set(lectures.map(l => l.id)));
+        setFavsLoaded(true);
+      })
+      .catch(() => setFavsLoaded(true));
+  }, [isAuthenticated, favsLoaded]);
+
+  // Reset favorites state if user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setFavs(new Set());
+      setFavsLoaded(false);
+    }
+  }, [isAuthenticated]);
 
   const handleSearch = (val: string) => {
     setSearch(val);

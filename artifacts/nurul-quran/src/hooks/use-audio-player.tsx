@@ -18,7 +18,8 @@ interface AudioPlayerContextType {
 
 const AudioPlayerContext = createContext<AudioPlayerContextType | undefined>(undefined);
 
-const ICON_URL = '/icons/icon-192.svg';
+const ICON_192 = '/icons/icon-192.png';
+const ICON_512 = '/icons/icon-512.png';
 
 function updateMediaSession(lecture: Lecture, isPlaying: boolean) {
   if (!('mediaSession' in navigator)) return;
@@ -28,8 +29,8 @@ function updateMediaSession(lecture: Lecture, isPlaying: boolean) {
     artist: lecture.speakerName ?? 'Nurul Quran',
     album: lecture.category ?? 'Islamic Lecture',
     artwork: [
-      { src: lecture.thumbnailUrl ?? ICON_URL, sizes: '192x192', type: 'image/svg+xml' },
-      { src: lecture.thumbnailUrl ?? ICON_URL, sizes: '512x512', type: 'image/svg+xml' },
+      { src: ICON_192, sizes: '192x192', type: 'image/png' },
+      { src: ICON_512, sizes: '512x512', type: 'image/png' },
     ],
   });
 

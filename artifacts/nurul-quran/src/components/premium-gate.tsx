@@ -25,7 +25,6 @@ export function PremiumGate({ onClose, lectureTitle }: PremiumGateProps) {
         className="bg-card rounded-2xl p-7 max-w-sm w-full shadow-2xl border border-primary/20"
         onClick={e => e.stopPropagation()}
       >
-        {/* Icon */}
         <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4">
           <Lock className="w-8 h-8 text-primary-foreground" />
         </div>
@@ -38,12 +37,11 @@ export function PremiumGate({ onClose, lectureTitle }: PremiumGateProps) {
           This lecture is available to Premium members. Subscribe to access our full library of exclusive Islamic content.
         </p>
 
-        {/* Features */}
         <ul className="space-y-2 mb-6">
           {[
             "Access all premium lectures",
             "Complete Tafseer courses",
-            "Advanced Fiqh curriculum",
+            "Full Halal Stock Screener",
             "Ad-free experience",
           ].map(f => (
             <li key={f} className="flex items-center gap-2 text-sm text-foreground">
@@ -53,16 +51,15 @@ export function PremiumGate({ onClose, lectureTitle }: PremiumGateProps) {
           ))}
         </ul>
 
-        {/* Pricing */}
         <div className="bg-primary/5 rounded-xl p-3 text-center mb-5">
-          <div className="text-2xl font-bold text-primary">$9.99<span className="text-sm font-normal text-muted-foreground">/month</span></div>
-          <p className="text-xs text-muted-foreground">Cancel anytime</p>
+          <div className="text-2xl font-bold text-primary">₹999<span className="text-sm font-normal text-muted-foreground">/month</span></div>
+          <p className="text-xs text-muted-foreground">or ₹7,999/year · Cancel anytime</p>
         </div>
 
         <Button asChild className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold mb-2">
           <Link href="/support">
             <Crown className="w-4 h-4 mr-2" />
-            Subscribe — $9.99/month
+            Subscribe — ₹999/month
           </Link>
         </Button>
 

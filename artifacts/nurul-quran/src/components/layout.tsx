@@ -2,6 +2,12 @@ import { Link, useLocation } from "wouter";
 import { AudioPlayer } from "./audio-player";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "./ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { BookOpen, Library, GraduationCap, HeartHandshake, UserCircle, TrendingUp, Moon } from "lucide-react";
 import { PwaInstallPrompt } from "./pwa-install-prompt";
 
@@ -30,8 +36,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           <nav className="hidden md:flex items-center gap-6">
             {navItems.map((item) => (
-              <Link 
-                key={item.href} 
+              <Link
+                key={item.href}
                 href={item.href}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
                   location === item.href ? "text-primary border-b-2 border-primary py-5" : "text-muted-foreground"
@@ -96,11 +102,3 @@ export function Layout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
-// Inline Dropdown for Layout to avoid circular imports if not needed globally, or import correctly:
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
