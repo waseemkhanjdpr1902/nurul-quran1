@@ -64,6 +64,8 @@ router.post("/users/register", async (req, res): Promise<void> => {
       email: user.email,
       name: user.name,
       isPremium: user.isPremium,
+      subscriptionPlan: user.subscriptionPlan,
+      subscriptionEnd: user.subscriptionEnd,
       createdAt: user.createdAt,
     },
     token,
@@ -99,6 +101,8 @@ router.post("/users/login", async (req, res): Promise<void> => {
       email: user.email,
       name: user.name,
       isPremium: user.isPremium,
+      subscriptionPlan: user.subscriptionPlan,
+      subscriptionEnd: user.subscriptionEnd,
       createdAt: user.createdAt,
     },
     token,
@@ -122,11 +126,20 @@ router.get("/users/me", async (req, res): Promise<void> => {
     return;
   }
 
+  const now = new Date();
+  const isPremiumActive = user.isPremium && (!user.subscriptionEnd || user.subscriptionEnd > now);
+
+  if (user.isPremium && user.subscriptionEnd && user.subscriptionEnd <= now) {
+    await db.update(usersTable).set({ isPremium: false, updatedAt: new Date() }).where(eq(usersTable.id, userId));
+  }
+
   res.json({
     id: user.id,
     email: user.email,
     name: user.name,
-    isPremium: user.isPremium,
+    isPremium: isPremiumActive,
+    subscriptionPlan: user.subscriptionPlan,
+    subscriptionEnd: user.subscriptionEnd,
     createdAt: user.createdAt,
   });
 });
