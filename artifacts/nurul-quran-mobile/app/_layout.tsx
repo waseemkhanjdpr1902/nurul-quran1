@@ -10,16 +10,23 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AudioProvider } from "@/context/AudioContext";
 import { AuthProvider } from "@/context/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 
@@ -32,8 +39,13 @@ function RootLayoutNav() {
         options={{
           headerShown: false,
           presentation: "modal",
+          animation: "slide_from_bottom",
         }}
       />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
+      <Stack.Screen name="stocks" options={{ headerShown: false }} />
+      <Stack.Screen name="surah/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" />
     </Stack>
   );
 }
@@ -58,12 +70,12 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView>
-            <KeyboardProvider>
-              <AuthProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <AuthProvider>
+              <AudioProvider>
                 <RootLayoutNav />
-              </AuthProvider>
-            </KeyboardProvider>
+              </AudioProvider>
+            </AuthProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>

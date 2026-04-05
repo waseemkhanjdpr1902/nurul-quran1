@@ -13,7 +13,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LectureCard } from "@/components/LectureCard";
+import { AudioPlayerBar } from "@/components/AudioPlayerBar";
 import { useColors } from "@/hooks/useColors";
+import { useAudio } from "@/context/AudioContext";
 import { useGetLectures } from "@workspace/api-client-react";
 
 const CATEGORIES = ["All", "Fiqh", "Aqeedah", "Tafseer", "Seerah", "Hadith", "Arabic"];
@@ -21,6 +23,7 @@ const CATEGORIES = ["All", "Fiqh", "Aqeedah", "Tafseer", "Seerah", "Hadith", "Ar
 export default function LibraryScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { play, currentTrack, isPlaying, pause, resume } = useAudio();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
 
@@ -102,23 +105,40 @@ export default function LibraryScreen() {
           }}
           onRefresh={refetch}
           refreshing={false}
-          renderItem={({ item }) => (
-            <LectureCard
-              lecture={{
-                id: item.id,
-                title: item.title,
-                speaker: item.speakerName ?? undefined,
-                duration: item.duration ?? undefined,
-                category: item.category ?? undefined,
-                isPremium: item.isPremium ?? false,
-                language: item.language ?? undefined,
-              }}
-              onPress={() => {}}
-              horizontal
-            />
-          )}
+          renderItem={({ item }) => {
+            const isActive = currentTrack?.id === String(item.id);
+            return (
+              <LectureCard
+                lecture={{
+                  id: item.id,
+                  title: item.title,
+                  speaker: item.speakerName ?? undefined,
+                  duration: item.duration ?? undefined,
+                  category: item.category ?? undefined,
+                  isPremium: item.isPremium ?? false,
+                  language: item.language ?? undefined,
+                }}
+                onPress={() => {
+                  if (isActive && isPlaying) {
+                    pause();
+                  } else if (isActive && !isPlaying) {
+                    resume();
+                  } else {
+                    play({
+                      id: String(item.id),
+                      title: item.title,
+                      scholar: item.speakerName ?? "Unknown Scholar",
+                      audioUrl: (item as any).audioUrl,
+                    });
+                  }
+                }}
+                horizontal
+              />
+            );
+          }}
         />
       )}
+      <AudioPlayerBar />
     </View>
   );
 }

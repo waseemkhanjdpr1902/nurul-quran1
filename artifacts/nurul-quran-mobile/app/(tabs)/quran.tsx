@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -208,6 +209,7 @@ export default function QuranScreen() {
         }}
         renderItem={({ item }) => (
           <Pressable
+            onPress={() => router.push(`/surah/${item.number}` as any)}
             style={({ pressed }) => [
               styles.surahRow,
               {

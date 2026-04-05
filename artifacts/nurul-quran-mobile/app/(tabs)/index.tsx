@@ -31,7 +31,7 @@ const QUICK_LINKS = [
   { icon: "book-open", label: "Quran", href: "/(tabs)/quran" },
   { icon: "play-circle", label: "Lectures", href: "/(tabs)/library" },
   { icon: "layers", label: "Courses", href: "/(tabs)/courses" },
-  { icon: "star", label: "Premium", href: "/(tabs)/support" },
+  { icon: "trending-up", label: "Halal Stocks", href: "/stocks" },
 ];
 
 export default function HomeScreen() {
@@ -72,7 +72,7 @@ export default function HomeScreen() {
             </Text>
             <Text style={styles.subGreeting}>May Allah bless your learning journey</Text>
           </View>
-          <Pressable onPress={() => router.push("/(tabs)/support")} hitSlop={8}>
+          <Pressable onPress={() => router.push("/profile" as any)} hitSlop={8}>
             {user?.isPremium ? (
               <View style={styles.premiumBadge}>
                 <Feather name="star" size={14} color="#C8A04A" />
