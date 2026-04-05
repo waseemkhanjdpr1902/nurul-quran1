@@ -17,6 +17,7 @@ export const lecturesTable = pgTable("lectures", {
   playCount: integer("play_count").notNull().default(0),
   thumbnailUrl: text("thumbnail_url"),
   speakerId: integer("speaker_id").references(() => speakersTable.id),
+  courseId: integer("course_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

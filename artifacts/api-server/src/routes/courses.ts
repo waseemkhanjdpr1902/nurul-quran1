@@ -95,14 +95,14 @@ router.get("/courses/:id/lectures", async (req, res): Promise<void> => {
     return;
   }
 
-  const conditions: ReturnType<typeof eq>[] = [eq(lecturesTable.category, course.category)];
-
+  // Fetch lectures linked to this course via course_id FK
   const lectures = await db
     .select({
       id: lecturesTable.id,
       title: lecturesTable.title,
       description: lecturesTable.description,
       audioUrl: lecturesTable.audioUrl,
+      youtubeUrl: lecturesTable.youtubeUrl,
       duration: lecturesTable.duration,
       language: lecturesTable.language,
       category: lecturesTable.category,
@@ -116,9 +116,8 @@ router.get("/courses/:id/lectures", async (req, res): Promise<void> => {
     })
     .from(lecturesTable)
     .leftJoin(speakersTable, eq(lecturesTable.speakerId, speakersTable.id))
-    .where(and(...conditions))
-    .orderBy(lecturesTable.id)
-    .limit(20);
+    .where(eq(lecturesTable.courseId, courseId))
+    .orderBy(lecturesTable.id);
 
   res.json(lectures);
 });

@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useGetCourses } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Lock, BookOpen } from "lucide-react";
+import { Lock, BookOpen, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 
@@ -44,29 +43,50 @@ export default function Courses() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading
           ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)
-          : courses?.map((course, i) => (
-              <Link key={course.id} href={`/courses/${course.id}`} data-testid={`card-course-${course.id}`}>
+          : courses?.map((course, i) => {
+              const hasContent = (course.lectureCount ?? 0) > 0;
+
+              // Courses with content are clickable; others show a "Coming Soon" state
+              const Card = (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06 }}
-                  className="group bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-all hover:border-primary/30 flex flex-col h-full cursor-pointer"
+                  className={`group bg-card border border-border rounded-xl p-6 transition-all flex flex-col h-full ${
+                    hasContent
+                      ? "hover:shadow-lg hover:border-primary/30 cursor-pointer"
+                      : "opacity-60 cursor-default"
+                  }`}
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                      <BookOpen className="w-6 h-6 text-primary" />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+                      hasContent ? "bg-primary/10 group-hover:bg-primary/20" : "bg-muted"
+                    }`}>
+                      <BookOpen className={`w-6 h-6 ${hasContent ? "text-primary" : "text-muted-foreground"}`} />
                     </div>
-                    {course.isPremium && (
-                      <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 text-xs font-medium px-2.5 py-1 rounded-full">
-                        <Lock className="w-3 h-3" />
-                        Premium
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {!hasContent && (
+                        <div className="flex items-center gap-1 bg-muted text-muted-foreground text-xs font-medium px-2.5 py-1 rounded-full">
+                          <Clock className="w-3 h-3" />
+                          Coming Soon
+                        </div>
+                      )}
+                      {course.isPremium && hasContent && (
+                        <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 text-xs font-medium px-2.5 py-1 rounded-full">
+                          <Lock className="w-3 h-3" />
+                          Premium
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex-1">
                     <Badge variant="secondary" className="text-[10px] mb-2">{course.category}</Badge>
-                    <h3 className="font-semibold text-foreground mb-2 line-clamp-2 text-base leading-snug group-hover:text-primary transition-colors">{course.title}</h3>
+                    <h3 className={`font-semibold mb-2 line-clamp-2 text-base leading-snug ${
+                      hasContent ? "text-foreground group-hover:text-primary transition-colors" : "text-muted-foreground"
+                    }`}>
+                      {course.title}
+                    </h3>
                     {course.description && (
                       <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{course.description}</p>
                     )}
@@ -74,23 +94,42 @@ export default function Courses() {
 
                   <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
                     <div className="text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground">{course.lectureCount}</span> lectures
+                      {hasContent ? (
+                        <><span className="font-medium text-foreground">{course.lectureCount}</span> lectures</>
+                      ) : (
+                        <span className="italic text-xs">Curriculum in preparation</span>
+                      )}
                     </div>
-                    {course.speakerName && (
+                    {course.speakerName && hasContent && (
                       <p className="text-xs text-muted-foreground truncate max-w-[140px]">{course.speakerName}</p>
                     )}
                   </div>
 
-                  <div className="mt-4 flex items-center gap-1.5 text-sm font-medium text-primary group-hover:gap-2.5 transition-all" data-testid={`button-enroll-${course.id}`}>
-                    {course.isPremium ? (
-                      <><Lock className="w-4 h-4" /> View Course</>
-                    ) : (
-                      <><BookOpen className="w-4 h-4" /> Start Learning</>
-                    )}
-                  </div>
+                  {hasContent && (
+                    <div
+                      className="mt-4 flex items-center gap-1.5 text-sm font-medium text-primary group-hover:gap-2.5 transition-all"
+                      data-testid={`button-enroll-${course.id}`}
+                    >
+                      {course.isPremium ? (
+                        <><Lock className="w-4 h-4" /> View Course</>
+                      ) : (
+                        <><BookOpen className="w-4 h-4" /> Start Learning</>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
-              </Link>
-            ))}
+              );
+
+              return hasContent ? (
+                <Link key={course.id} href={`/courses/${course.id}`} data-testid={`card-course-${course.id}`}>
+                  {Card}
+                </Link>
+              ) : (
+                <div key={course.id} data-testid={`card-course-${course.id}`}>
+                  {Card}
+                </div>
+              );
+            })}
       </div>
 
       {courses?.length === 0 && !isLoading && (

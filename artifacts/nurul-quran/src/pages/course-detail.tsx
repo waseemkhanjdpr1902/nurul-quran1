@@ -211,9 +211,16 @@ export default function CourseDetail() {
                 {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
               </div>
             ) : !lectures?.length ? (
-              <div className="text-center py-12 text-muted-foreground bg-card border border-border rounded-xl">
-                <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p>No lectures available yet for this course.</p>
+              <div className="text-center py-14 text-muted-foreground bg-gradient-to-b from-primary/5 to-transparent border border-dashed border-primary/20 rounded-xl space-y-3 px-6">
+                <div className="text-4xl">🕌</div>
+                <h3 className="text-base font-semibold text-foreground">Curriculum Coming Soon</h3>
+                <p className="text-sm leading-relaxed">
+                  Our scholars are preparing structured lessons for this course.
+                  Check back soon — or explore our <strong>Library</strong> for available Arabic learning sessions in the meantime.
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-2">
+                  <Link href="/library">Browse the Library</Link>
+                </Button>
               </div>
             ) : (
               <div className="space-y-2">
