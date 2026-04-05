@@ -57,7 +57,7 @@ function StockCard({ stock }: { stock: HalalStock }) {
         <View style={styles.priceBox}>
           {stock.price != null ? (
             <>
-              <Text style={[styles.price, { color: colors.text }]}>
+              <Text style={[styles.price, { color: colors.foreground }]}>
                 ${stock.price.toFixed(2)}
               </Text>
               <View
@@ -87,7 +87,7 @@ function StockCard({ stock }: { stock: HalalStock }) {
           )}
         </View>
       </View>
-      <Text style={[styles.name, { color: colors.text }]}>{stock.name}</Text>
+      <Text style={[styles.name, { color: colors.foreground }]}>{stock.name}</Text>
       <View style={styles.halalRow}>
         <Feather name="check-circle" size={13} color="#16a34a" />
         <Text style={[styles.reason, { color: colors.mutedForeground }]}>
@@ -160,7 +160,7 @@ export default function StocksScreen() {
       <View style={[styles.searchWrap, { backgroundColor: colors.card }]}>
         <Feather name="search" size={16} color={colors.mutedForeground} />
         <TextInput
-          style={[styles.searchInput, { color: colors.text }]}
+          style={[styles.searchInput, { color: colors.foreground }]}
           placeholder="Search stocks..."
           placeholderTextColor={colors.mutedForeground}
           value={search}
@@ -200,7 +200,7 @@ export default function StocksScreen() {
                   styles.sectorBtnText,
                   {
                     color:
-                      selectedSector === sector ? "#fff" : colors.text,
+                      selectedSector === sector ? "#fff" : colors.foreground,
                   },
                 ]}
               >

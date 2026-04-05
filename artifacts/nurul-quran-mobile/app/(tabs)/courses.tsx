@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -22,9 +23,11 @@ export default function CoursesScreen() {
   const insets = useSafeAreaInsets();
   const [category, setCategory] = useState<string | null>(null);
 
-  const { data: courses = [], isLoading, refetch } = useGetCourses({
+  const { data: allCourses = [], isLoading, refetch } = useGetCourses({
     category: category || undefined,
   });
+
+  const courses = allCourses.filter((c) => (c.lectureCount ?? 0) > 0);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -86,13 +89,11 @@ export default function CoursesScreen() {
                 id: item.id,
                 title: item.title,
                 description: item.description ?? undefined,
-                instructor: item.instructor ?? undefined,
-                totalLectures: item.totalLectures ?? undefined,
+                totalLectures: item.lectureCount ?? undefined,
                 isPremium: item.isPremium ?? false,
                 category: item.category ?? undefined,
-                difficulty: item.difficulty ?? undefined,
               }}
-              onPress={() => {}}
+              onPress={() => router.push(`/course/${item.id}` as any)}
             />
           )}
         />

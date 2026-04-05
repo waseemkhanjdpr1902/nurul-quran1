@@ -50,7 +50,7 @@ function MenuItem({
       <Text
         style={[
           styles.menuLabel,
-          { color: danger ? "#dc2626" : colors.text, flex: 1 },
+          { color: danger ? "#dc2626" : colors.foreground, flex: 1 },
         ]}
       >
         {label}
