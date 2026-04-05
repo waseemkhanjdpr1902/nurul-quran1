@@ -12,12 +12,15 @@ type SignalCardProps = {
 
 const SEGMENT_LABELS: Record<string, string> = {
   intraday: "⚡ Intraday",
-  nifty: "Nifty",
-  banknifty: "Bank Nifty",
-  options: "Options",
-  equity: "Equity",
-  commodity: "Commodity",
-  currency: "Currency",
+  nifty: "📈 Nifty 50",
+  banknifty: "🏦 BankNifty",
+  options: "🔄 Options",
+  futures: "📊 Futures",
+  fno: "🔄 F&O",
+  equity: "🏢 Stocks",
+  stocks: "🏢 Stocks",
+  commodity: "🥇 Commodity",
+  currency: "💱 Currency",
 };
 
 function formatTelegramMessage(signal: Signal): string {

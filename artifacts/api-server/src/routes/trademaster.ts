@@ -2,12 +2,12 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { createHmac } from "crypto";
 import { db } from "@workspace/db";
 import { tradeMasterSignals, tradeMasterSubscriptions, tradeMasterInvestmentReports, tradeMasterJournal } from "@workspace/db/schema";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, or, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-const VALID_SEGMENTS = ["nifty", "banknifty", "options", "equity", "intraday", "commodity", "currency"] as const;
+const VALID_SEGMENTS = ["nifty", "banknifty", "options", "equity", "intraday", "commodity", "currency", "futures", "fno", "stocks"] as const;
 type ValidSegment = typeof VALID_SEGMENTS[number];
 const VALID_SIGNAL_TYPES = ["buy", "sell"] as const;
 type ValidSignalType = typeof VALID_SIGNAL_TYPES[number];
@@ -16,6 +16,12 @@ type ValidStatus = typeof VALID_STATUSES[number];
 
 function isValidSegment(s: unknown): s is ValidSegment {
   return typeof s === "string" && (VALID_SEGMENTS as readonly string[]).includes(s);
+}
+
+function buildSegmentWhere(segment: string) {
+  if (segment === "fno") return or(eq(tradeMasterSignals.segment, "options"), eq(tradeMasterSignals.segment, "futures"));
+  if (segment === "stocks") return eq(tradeMasterSignals.segment, "equity");
+  return eq(tradeMasterSignals.segment, segment);
 }
 function isValidSignalType(s: unknown): s is ValidSignalType {
   return typeof s === "string" && (VALID_SIGNAL_TYPES as readonly string[]).includes(s);
@@ -94,8 +100,9 @@ router.get("/trademaster/signals", async (req: Request, res: Response): Promise<
     const accessLevel = resolveAccessLevel(req);
     const isPremium = accessLevel === "admin" || await isSessionPremium(accessLevel ?? undefined);
 
-    const rows = segment && isValidSegment(segment)
-      ? await db.select().from(tradeMasterSignals).where(eq(tradeMasterSignals.segment, segment)).orderBy(desc(tradeMasterSignals.createdAt))
+    const where = segment && isValidSegment(segment) ? buildSegmentWhere(segment) : undefined;
+    const rows = where
+      ? await db.select().from(tradeMasterSignals).where(where).orderBy(desc(tradeMasterSignals.createdAt))
       : await db.select().from(tradeMasterSignals).orderBy(desc(tradeMasterSignals.createdAt));
 
     const signals = rows.map((s) => (s.isPremium && !isPremium ? redactPremiumSignal(s) : s));

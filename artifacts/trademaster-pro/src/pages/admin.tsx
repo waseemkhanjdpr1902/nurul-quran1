@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchSignals, createSignal, updateSignal, deleteSignal, fetchSubscriptions, updateSubscription, type Signal, type Subscription } from "@/lib/api";
 import { useAdmin } from "@/hooks/use-admin";
 
-const SEGMENTS = ["nifty", "banknifty", "options", "equity", "intraday", "commodity", "currency"] as const;
+const SEGMENTS = ["nifty", "banknifty", "options", "futures", "equity", "intraday", "commodity", "currency"] as const;
 const SIGNAL_TYPES = ["buy", "sell"] as const;
 
 type AdminProps = { onBack: () => void };

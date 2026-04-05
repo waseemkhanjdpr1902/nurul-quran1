@@ -19,7 +19,7 @@ type Page = "journal" | "analytics" | "watchlist" | "calculators" | "reports" | 
 const NAV: { key: Page; label: string; icon: string }[] = [
   { key: "journal", label: "My Trades", icon: "📓" },
   { key: "analytics", label: "Analytics", icon: "📊" },
-  { key: "watchlist", label: "Watchlist", icon: "👁️" },
+  { key: "watchlist", label: "Signals", icon: "📡" },
   { key: "calculators", label: "Calculators", icon: "🔢" },
   { key: "reports", label: "Reports", icon: "📋" },
 ];
