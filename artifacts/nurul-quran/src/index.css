@@ -154,9 +154,37 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: contain;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Mobile: audio player sits above bottom nav bar */
+@media (max-width: 767px) {
+  .audio-player-bar {
+    bottom: calc(60px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Safe area padding utilities */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Smooth scrolling in iOS WebKit */
+.scroll-smooth-ios {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
 }

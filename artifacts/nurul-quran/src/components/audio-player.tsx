@@ -33,7 +33,7 @@ export function AudioPlayer() {
   if (!currentLecture) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-primary text-primary-foreground border-t border-primary/20 p-2 md:p-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+    <div className="audio-player-bar fixed bottom-0 left-0 right-0 bg-primary text-primary-foreground border-t border-primary/20 p-2 md:p-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
       <div className="container mx-auto max-w-6xl flex flex-col md:flex-row items-center gap-2 md:gap-6">
         
         {/* Track Info */}

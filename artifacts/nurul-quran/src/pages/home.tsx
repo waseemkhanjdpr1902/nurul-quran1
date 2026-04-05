@@ -27,13 +27,13 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero / Daily Ayah */}
-      <section className="bg-primary text-primary-foreground py-16 md:py-24 relative overflow-hidden">
+      <section className="bg-primary text-primary-foreground py-10 md:py-24 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5">
           <div className="absolute top-4 right-8 text-[200px] font-arabic leading-none select-none">﷽</div>
         </div>
         <div className="container mx-auto max-w-4xl px-4 text-center relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <p className="text-primary-foreground/60 text-sm font-medium uppercase tracking-widest mb-6">Ayah of the Day</p>
+            <p className="text-primary-foreground/60 text-xs md:text-sm font-medium uppercase tracking-widest mb-4">Ayah of the Day</p>
             {ayahLoading ? (
               <div className="space-y-3 max-w-2xl mx-auto">
                 <Skeleton className="h-12 w-3/4 mx-auto bg-primary-foreground/10" />
@@ -42,7 +42,7 @@ export default function Home() {
             ) : ayah ? (
               <>
                 <p
-                  className="text-4xl md:text-6xl mb-6 leading-[1.6] text-primary-foreground/95"
+                  className="text-3xl md:text-6xl mb-4 leading-[1.8] text-primary-foreground/95"
                   dir="rtl"
                   lang="ar"
                   style={{ fontFamily: "'Amiri Quran', 'Scheherazade New', serif" }}
@@ -50,7 +50,7 @@ export default function Home() {
                 >
                   {ayah.arabicText}
                 </p>
-                <p className="text-lg md:text-xl text-primary-foreground/80 mb-3 italic max-w-2xl mx-auto" data-testid="text-ayah-translation">
+                <p className="text-base md:text-xl text-primary-foreground/80 mb-2 italic max-w-2xl mx-auto" data-testid="text-ayah-translation">
                   "{ayah.translation}"
                 </p>
                 <p className="text-primary-foreground/50 text-sm" data-testid="text-ayah-reference">
