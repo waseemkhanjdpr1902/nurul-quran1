@@ -43,6 +43,56 @@ export type TickerQuote = {
 
 export type TickerData = Record<string, TickerQuote>;
 
+export type LiveQuote = {
+  symbol: string;
+  name: string;
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  high: number | null;
+  low: number | null;
+  open: number | null;
+  prevClose: number | null;
+};
+
+export function resolveYahooSymbol(assetName: string, segment: string): string {
+  const upper = assetName.toUpperCase().trim();
+  const INDEX_MAP: Record<string, string> = {
+    "NIFTY 50": "^NSEI", "NIFTY50": "^NSEI", "NIFTY": "^NSEI",
+    "BANKNIFTY": "^NSEBANK", "BANK NIFTY": "^NSEBANK", "BANK NIFTY 50": "^NSEBANK",
+    "FINNIFTY": "^NSEMDCP50", "FIN NIFTY": "^NSEMDCP50",
+    "MIDCAPNIFTY": "^NSEMDCP50", "MIDCAP NIFTY": "^NSEMDCP50",
+    "SENSEX": "^BSESN",
+    "USDINR": "USDINR=X", "USD/INR": "USDINR=X", "USD INR": "USDINR=X",
+    "EURINR": "EURINR=X", "EUR/INR": "EURINR=X",
+    "GBPINR": "GBPINR=X", "GBP/INR": "GBPINR=X",
+    "GOLD": "GC=F", "MCX GOLD": "GC=F", "GOLD MINI": "GC=F",
+    "SILVER": "SI=F", "MCX SILVER": "SI=F",
+    "CRUDEOIL": "CL=F", "CRUDE OIL": "CL=F", "MCX CRUDE": "CL=F", "CRUDE": "CL=F",
+    "NATURAL GAS": "NG=F", "NATURALGAS": "NG=F",
+    "COPPER": "HG=F",
+  };
+  if (INDEX_MAP[upper]) return INDEX_MAP[upper];
+  if (segment === "commodity") {
+    if (upper.includes("GOLD")) return "GC=F";
+    if (upper.includes("SILVER")) return "SI=F";
+    if (upper.includes("CRUDE") || upper.includes("OIL")) return "CL=F";
+  }
+  if (segment === "currency") {
+    if (upper.includes("USD")) return "USDINR=X";
+    if (upper.includes("EUR")) return "EURINR=X";
+  }
+  const stripped = upper
+    .replace(/\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*\d{2,4}.*$/i, "")
+    .replace(/\s+(FUT|CE|PE)$/, "")
+    .trim();
+  return `${stripped.replace(/\s+/g, "")}.NS`;
+}
+
+export async function fetchQuote(yahooSymbol: string): Promise<{ quotes: Record<string, LiveQuote | null> }> {
+  return apiFetch(`${API_BASE}/quote?symbol=${encodeURIComponent(yahooSymbol)}`);
+}
+
 export type RazorpayOrder = {
   orderId: string;
   amount: number;

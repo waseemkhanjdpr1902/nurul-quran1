@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { postToTelegram, type Signal } from "@/lib/api";
+import { useSignalQuote, getActionableTip } from "@/hooks/useSignalQuote";
 
 export type { Signal };
 
@@ -67,6 +68,22 @@ const STATUS_CONFIG: Record<Signal["status"], { label: string; color: string }> 
   sl_hit: { label: "❌ SL HIT", color: "bg-red-500/20 text-red-300 border-red-400/50" },
 };
 
+const URGENCY_STYLES = {
+  high: "bg-emerald-950/70 border-emerald-400/50 text-emerald-300",
+  medium: "bg-blue-950/60 border-blue-400/40 text-blue-300",
+  low: "bg-amber-950/50 border-amber-500/30 text-amber-300",
+  info: "bg-[hsl(220,13%,15%)] border-[hsl(220,13%,22%)] text-gray-400",
+};
+
+function fmtPrice(n: number) {
+  return n.toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+}
+
+function pctTo(from: number, to: number) {
+  if (!from || !to) return null;
+  return (((to - from) / from) * 100).toFixed(1);
+}
+
 export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }: SignalCardProps) {
   const [telegramLoading, setTelegramLoading] = useState(false);
   const [telegramMsg, setTelegramMsg] = useState("");
@@ -74,15 +91,29 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
   const isBuy = signal.signalType === "buy";
   const status = STATUS_CONFIG[signal.status];
 
+  const { quote, loading: quoteLoading, lastUpdated } = useSignalQuote(signal.assetName, signal.segment);
+  const livePrice = quote?.price ?? null;
+
+  const tip = livePrice != null && signal.status === "active"
+    ? getActionableTip(signal.signalType, signal.entryPrice, signal.stopLoss, signal.target1, livePrice)
+    : null;
+
+  const pctToEntry = livePrice != null && !isNaN(parseFloat(signal.entryPrice))
+    ? pctTo(livePrice, parseFloat(signal.entryPrice))
+    : null;
+  const pctToT1 = livePrice != null && !isNaN(parseFloat(signal.target1))
+    ? pctTo(livePrice, parseFloat(signal.target1))
+    : null;
+
+  const changePos = (quote?.changePercent ?? 0) >= 0;
+
   const handleWhatsApp = () => {
     window.open(`https://wa.me/?text=${encodeURIComponent(formatShareMessage(signal))}`, "_blank");
   };
-
   const handleTelegramShare = () => {
     const appUrl = `${window.location.origin}${window.location.pathname}`;
     window.open(`https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(formatShareMessage(signal))}`, "_blank");
   };
-
   const handlePostToChannel = async () => {
     if (!adminToken) return;
     setTelegramLoading(true);
@@ -110,6 +141,7 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
         </div>
       )}
 
+      {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -135,32 +167,131 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
         </div>
       </div>
 
+      {/* Live Price Band */}
+      <div className={`rounded-lg px-3 py-2.5 mb-3 border ${
+        quoteLoading && !livePrice
+          ? "bg-[hsl(220,13%,16%)] border-[hsl(220,13%,22%)]"
+          : livePrice
+            ? changePos
+              ? "bg-green-950/30 border-green-900/40"
+              : "bg-red-950/30 border-red-900/40"
+            : "bg-[hsl(220,13%,16%)] border-[hsl(220,13%,22%)] opacity-60"
+      }`}>
+        {quoteLoading && !livePrice ? (
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-xs text-gray-500">Fetching live price…</span>
+          </div>
+        ) : livePrice ? (
+          <div className="flex items-center justify-between flex-wrap gap-1">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full animate-pulse ${changePos ? "bg-green-400" : "bg-red-400"}`} />
+              <span className="text-xs text-gray-400 font-medium">LIVE RATE</span>
+              <span className={`font-black font-mono text-sm ${changePos ? "text-green-300" : "text-red-300"}`}>
+                ₹{fmtPrice(livePrice)}
+              </span>
+              {quote?.changePercent != null && (
+                <span className={`text-xs font-mono ${changePos ? "text-green-400" : "text-red-400"}`}>
+                  {changePos ? "▲" : "▼"} {Math.abs(quote.changePercent).toFixed(2)}%
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              {pctToEntry !== null && signal.entryPrice !== "—" && (
+                <span className="text-gray-500">
+                  Entry: <span className={parseFloat(pctToEntry) < 0 ? "text-red-400" : "text-amber-400"}>
+                    {parseFloat(pctToEntry) >= 0 ? "+" : ""}{pctToEntry}%
+                  </span>
+                </span>
+              )}
+              {pctToT1 !== null && signal.target1 !== "—" && (
+                <span className="text-gray-500">
+                  T1: <span className="text-emerald-400">
+                    {parseFloat(pctToT1) >= 0 ? "+" : ""}{pctToT1}%
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600">Live data unavailable — market may be closed</span>
+          </div>
+        )}
+        {lastUpdated && livePrice && (
+          <div className="text-xs text-gray-600 mt-1 font-mono">
+            Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </div>
+        )}
+      </div>
+
+      {/* Support / Resistance / Target Grid */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="bg-[hsl(220,13%,16%)] rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">Support Level</div>
-          <div className="text-white font-black font-mono text-sm">₹{signal.entryPrice}</div>
+          <div className="text-xs text-gray-500 mb-0.5">Entry / Support</div>
+          <div className="text-white font-black font-mono text-sm">
+            {signal.entryPrice === "—" ? <span className="text-gray-600">—</span> : `₹${signal.entryPrice}`}
+          </div>
         </div>
         <div className="bg-red-950/40 border border-red-900/30 rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">Resistance Level</div>
-          <div className="text-red-400 font-black font-mono text-sm">₹{signal.stopLoss}</div>
+          <div className="text-xs text-gray-500 mb-0.5">Stop Loss</div>
+          <div className="text-red-400 font-black font-mono text-sm">
+            {signal.stopLoss === "—" ? <span className="text-gray-600">—</span> : `₹${signal.stopLoss}`}
+          </div>
         </div>
         <div className="bg-green-950/40 border border-green-900/30 rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">Price Objective 1</div>
-          <div className="text-green-400 font-black font-mono text-sm">₹{signal.target1}</div>
+          <div className="text-xs text-gray-500 mb-0.5">
+            Target 1
+            {livePrice && signal.target1 !== "—" && pctToT1 && (
+              <span className="ml-1 text-emerald-500">({parseFloat(pctToT1) >= 0 ? "+" : ""}{pctToT1}%)</span>
+            )}
+          </div>
+          <div className="text-green-400 font-black font-mono text-sm">
+            {signal.target1 === "—" ? <span className="text-gray-600">—</span> : `₹${signal.target1}`}
+          </div>
         </div>
         {signal.target2 ? (
           <div className="bg-emerald-950/40 border border-emerald-900/30 rounded-lg p-2.5">
-            <div className="text-xs text-gray-500 mb-0.5">Price Objective 2</div>
-            <div className="text-emerald-400 font-black font-mono text-sm">₹{signal.target2}</div>
+            <div className="text-xs text-gray-500 mb-0.5">
+              Target 2
+              {livePrice && signal.target2 !== "—" && (
+                <span className="ml-1 text-emerald-500">
+                  ({(() => {
+                    const p = pctTo(livePrice, parseFloat(signal.target2 ?? "0"));
+                    return p ? `${parseFloat(p) >= 0 ? "+" : ""}${p}%` : "";
+                  })()})
+                </span>
+              )}
+            </div>
+            <div className="text-emerald-400 font-black font-mono text-sm">{`₹${signal.target2}`}</div>
           </div>
         ) : (
           <div className="bg-[hsl(220,13%,16%)] rounded-lg p-2.5 opacity-40">
-            <div className="text-xs text-gray-500 mb-0.5">Price Objective 2</div>
+            <div className="text-xs text-gray-500 mb-0.5">Target 2</div>
             <div className="text-gray-600 font-mono text-sm">—</div>
           </div>
         )}
       </div>
 
+      {/* Day High / Low from live data */}
+      {livePrice && (quote?.high || quote?.low) && (
+        <div className="flex gap-2 mb-3">
+          {quote?.high && (
+            <div className="bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,22%)] rounded-lg px-3 py-1.5 flex-1">
+              <span className="text-xs text-gray-500 mr-1">Day H</span>
+              <span className="text-xs font-mono font-bold text-gray-300">₹{fmtPrice(quote.high)}</span>
+            </div>
+          )}
+          {quote?.low && (
+            <div className="bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,22%)] rounded-lg px-3 py-1.5 flex-1">
+              <span className="text-xs text-gray-500 mr-1">Day L</span>
+              <span className="text-xs font-mono font-bold text-gray-300">₹{fmtPrice(quote.low)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* IV / PCR */}
       {(signal.iv || signal.pcr) && (
         <div className="flex gap-2 mb-3">
           {signal.iv && (
@@ -178,6 +309,17 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
         </div>
       )}
 
+      {/* Actionable Trading Tip */}
+      {tip && (
+        <div className={`rounded-lg px-3 py-2 mb-3 border ${URGENCY_STYLES[tip.urgency]}`}>
+          <div className="text-xs leading-relaxed">
+            <span className="font-semibold mr-1.5">{tip.emoji} Trading Tip:</span>
+            {tip.text}
+          </div>
+        </div>
+      )}
+
+      {/* Analyst Notes */}
       {signal.notes && (
         <div className="bg-[hsl(220,13%,15%)] border border-[hsl(220,13%,22%)] rounded-lg px-3 py-2 mb-3">
           <div className="text-xs text-gray-400 leading-relaxed">
@@ -187,6 +329,7 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
         </div>
       )}
 
+      {/* Share Buttons */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <button
           onClick={handleWhatsApp}

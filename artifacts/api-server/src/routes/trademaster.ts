@@ -205,6 +205,109 @@ router.delete("/trademaster/signals/:id", async (req: Request, res: Response): P
   }
 });
 
+type YahooMeta = {
+  regularMarketPrice?: number;
+  regularMarketChangePercent?: number;
+  regularMarketDayHigh?: number;
+  regularMarketDayLow?: number;
+  regularMarketOpen?: number;
+  previousClose?: number;
+  chartPreviousClose?: number;
+  regularMarketChange?: number;
+  longName?: string;
+  shortName?: string;
+};
+type YahooChartResponse = { chart?: { result?: { meta?: YahooMeta }[] } };
+
+const quoteCache = new Map<string, { data: unknown; expiry: number }>();
+
+function toYahooSymbol(assetName: string, segment: string): string {
+  const upper = assetName.toUpperCase().trim();
+  const INDEX_MAP: Record<string, string> = {
+    "NIFTY 50": "^NSEI", "NIFTY50": "^NSEI", "NIFTY": "^NSEI",
+    "BANKNIFTY": "^NSEBANK", "BANK NIFTY": "^NSEBANK", "BANK NIFTY 50": "^NSEBANK",
+    "FINNIFTY": "^NSEMDCP50", "FIN NIFTY": "^NSEMDCP50", "NIFTY FIN SERVICE": "^NSEMDCP50",
+    "MIDCAPNIFTY": "^NSEMDCP50", "MIDCAP NIFTY": "^NSEMDCP50",
+    "SENSEX": "^BSESN",
+    "USDINR": "USDINR=X", "USD/INR": "USDINR=X", "USD INR": "USDINR=X",
+    "EURINR": "EURINR=X", "EUR/INR": "EURINR=X",
+    "GBPINR": "GBPINR=X", "GBP/INR": "GBPINR=X",
+    "GOLD": "GC=F", "MCX GOLD": "GC=F", "GOLD MINI": "GC=F",
+    "SILVER": "SI=F", "MCX SILVER": "SI=F",
+    "CRUDEOIL": "CL=F", "CRUDE OIL": "CL=F", "MCX CRUDE": "CL=F", "CRUDE": "CL=F",
+    "NATURAL GAS": "NG=F", "NATURALGAS": "NG=F", "NG": "NG=F",
+    "COPPER": "HG=F",
+  };
+  if (INDEX_MAP[upper]) return INDEX_MAP[upper];
+  if (segment === "commodity") {
+    if (upper.includes("GOLD")) return "GC=F";
+    if (upper.includes("SILVER")) return "SI=F";
+    if (upper.includes("CRUDE") || upper.includes("OIL")) return "CL=F";
+    if (upper.includes("NATURAL") || upper.includes("GAS")) return "NG=F";
+    if (upper.includes("COPPER")) return "HG=F";
+  }
+  if (segment === "currency") {
+    if (upper.includes("USD")) return "USDINR=X";
+    if (upper.includes("EUR")) return "EURINR=X";
+    if (upper.includes("GBP")) return "GBPINR=X";
+  }
+  const stripped = upper
+    .replace(/\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*\d{2,4}.*$/i, "")
+    .replace(/\s+FUT$|\s+CE$|\s+PE$/, "")
+    .trim();
+  return `${stripped.replace(/\s+/g, "")}.NS`;
+}
+
+router.get("/trademaster/quote", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { symbol, assetName, segment } = req.query as { symbol?: string; assetName?: string; segment?: string };
+    const sym = symbol
+      ? symbol.trim()
+      : assetName
+        ? toYahooSymbol(assetName, segment ?? "equity")
+        : null;
+    if (!sym) { res.status(400).json({ error: "symbol or assetName required" }); return; }
+    const symbols = sym.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 10);
+    const now = Date.now();
+    const results: Record<string, unknown> = {};
+    await Promise.all(
+      symbols.map(async (s) => {
+        const cached = quoteCache.get(s);
+        if (cached && cached.expiry > now) { results[s] = cached.data; return; }
+        try {
+          const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1d&range=1d&includePrePost=false`;
+          const resp = await fetch(url, {
+            signal: AbortSignal.timeout(6000),
+            headers: { "User-Agent": "Mozilla/5.0 (compatible; TradeMaster/1.0)" },
+          });
+          if (!resp.ok) { results[s] = null; return; }
+          const json = await resp.json() as YahooChartResponse;
+          const meta = json?.chart?.result?.[0]?.meta;
+          if (!meta || !meta.regularMarketPrice) { results[s] = null; return; }
+          const price = meta.regularMarketPrice;
+          const prev = meta.previousClose ?? meta.chartPreviousClose ?? null;
+          const change = meta.regularMarketChange ?? (prev != null ? price - prev : null);
+          const changePercent = meta.regularMarketChangePercent ?? (prev != null && prev > 0 ? ((price - prev) / prev) * 100 : null);
+          const q = {
+            symbol: s, name: meta.longName ?? meta.shortName ?? s,
+            price, change, changePercent,
+            high: meta.regularMarketDayHigh ?? null,
+            low: meta.regularMarketDayLow ?? null,
+            open: meta.regularMarketOpen ?? null,
+            prevClose: prev,
+          };
+          quoteCache.set(s, { data: q, expiry: now + 30_000 });
+          results[s] = q;
+        } catch { results[s] = null; }
+      }),
+    );
+    res.json({ quotes: results });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch quote");
+    res.status(500).json({ error: "Failed to fetch quote" });
+  }
+});
+
 router.get("/trademaster/ticker", async (req: Request, res: Response): Promise<void> => {
   try {
     const finnhubToken = process.env.FINNHUB_API_KEY;
