@@ -358,9 +358,22 @@ export async function customFetch<T = unknown>(
     }
   }
 
+  // Prevent Android/iOS HTTP clients from sending If-None-Match / If-Modified-Since
+  // which causes servers to return 304 — a status that customFetch cannot handle
+  // gracefully (response.ok is false for 304).
+  if (!headers.has("cache-control")) {
+    headers.set("cache-control", "no-cache");
+  }
+
   const requestInfo = { method, url: resolveUrl(input) };
 
   const response = await fetch(input, { ...init, method, headers });
+
+  // 304 Not Modified — treat as a transparent "no data changed" signal.
+  // Return undefined so callers (React Query etc.) keep their previous data.
+  if (response.status === 304) {
+    return undefined as T;
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
