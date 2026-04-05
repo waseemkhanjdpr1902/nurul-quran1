@@ -12,6 +12,7 @@ import razorpayRouter from "./razorpay";
 import tradeMasterRouter from "./trademaster";
 import inventoryRouter from "./inventory";
 import stockswapRouter from "./stockswap";
+import engageRouter from "./engage";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(razorpayRouter);
 router.use(tradeMasterRouter);
 router.use(inventoryRouter);
 router.use(stockswapRouter);
+router.use(engageRouter);
 
 export default router;
