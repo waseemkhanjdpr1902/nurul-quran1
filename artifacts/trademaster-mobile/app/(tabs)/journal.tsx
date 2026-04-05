@@ -371,9 +371,49 @@ export default function JournalScreen() {
               <TextInput style={s.input} placeholder="0.00" placeholderTextColor={colors.mutedForeground}
                 keyboardType="decimal-pad" value={form.entryPrice} onChangeText={v => setForm(f => ({ ...f, entryPrice: v }))} />
 
+              <Text style={s.inputLabel}>Asset Type</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                <View style={{ flexDirection: "row", gap: 6 }}>
+                  {ASSET_TYPES.map(at => {
+                    const active = form.assetType === at;
+                    return (
+                      <TouchableOpacity key={at} style={[s.optionBtn, {
+                        flex: 0, paddingHorizontal: 12, paddingVertical: 8,
+                        backgroundColor: active ? colors.greenLight : colors.muted,
+                        borderColor: active ? colors.primary : colors.border,
+                      }]} onPress={() => setForm(f => ({ ...f, assetType: at }))}>
+                        <Text style={[s.optionBtnText, { color: active ? colors.green : colors.mutedForeground }]}>
+                          {at.charAt(0).toUpperCase() + at.slice(1)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+
               <Text style={s.inputLabel}>Quantity *</Text>
               <TextInput style={s.input} placeholder="Shares / lots" placeholderTextColor={colors.mutedForeground}
                 keyboardType="number-pad" value={form.quantity} onChangeText={v => setForm(f => ({ ...f, quantity: v }))} />
+
+              <Text style={s.inputLabel}>Strategy Used</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                <View style={{ flexDirection: "row", gap: 6 }}>
+                  {STRATEGIES.map(str => {
+                    const active = form.strategyUsed === str;
+                    return (
+                      <TouchableOpacity key={str} style={[s.optionBtn, {
+                        flex: 0, paddingHorizontal: 10, paddingVertical: 7,
+                        backgroundColor: active ? "#1A2F1A" : colors.muted,
+                        borderColor: active ? colors.primary : colors.border,
+                      }]} onPress={() => setForm(f => ({ ...f, strategyUsed: active ? "" : str }))}>
+                        <Text style={[s.optionBtnText, { fontSize: 12, color: active ? colors.primary : colors.mutedForeground }]}>
+                          {str}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
 
               <Text style={s.inputLabel}>Notes</Text>
               <TextInput style={[s.input, { height: 80, textAlignVertical: "top" }]}

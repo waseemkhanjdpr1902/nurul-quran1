@@ -65,7 +65,7 @@ export default function DashboardScreen() {
     queryFn: async () => {
       if (!sessionId) return null;
       const res = await fetch(
-        `${BASE()}/api/trademaster/journal/analytics?sessionId=${encodeURIComponent(sessionId)}`,
+        `${BASE()}/api/trademaster/journal/analytics?session_id=${encodeURIComponent(sessionId)}`,
         { headers: { "cache-control": "no-cache" } }
       );
       if (!res.ok) throw new Error("Failed to fetch analytics");
