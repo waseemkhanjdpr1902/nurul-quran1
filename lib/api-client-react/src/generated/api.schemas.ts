@@ -33,7 +33,10 @@ export interface Lecture {
   title: string;
   /** @nullable */
   description?: string | null;
-  audioUrl: string;
+  /** @nullable */
+  audioUrl?: string | null;
+  /** @nullable */
+  youtubeUrl?: string | null;
   /** @nullable */
   duration?: number | null;
   language: string;

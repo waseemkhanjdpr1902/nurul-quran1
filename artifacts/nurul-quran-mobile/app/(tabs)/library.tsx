@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
+import * as WebBrowser from "expo-web-browser";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -14,9 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { LectureCard } from "@/components/LectureCard";
 import { useColors } from "@/hooks/useColors";
-import { useAudio } from "@/context/AudioContext";
 import { useGetLectures } from "@workspace/api-client-react";
 
 type Category = {
@@ -28,19 +27,24 @@ type Category = {
 };
 
 const CATEGORIES: Category[] = [
-  { label: "All",     value: null,       color: "#0D4A3E", bg: "#E0F2EE", icon: "grid"       },
-  { label: "Fiqh",    value: "Fiqh",     color: "#166534", bg: "#DCFCE7", icon: "book"        },
-  { label: "Aqeedah", value: "Aqeedah",  color: "#1E40AF", bg: "#DBEAFE", icon: "star"        },
-  { label: "Tafseer", value: "Tafseer",  color: "#6B21A8", bg: "#F3E8FF", icon: "feather"     },
-  { label: "Seerah",  value: "Seerah",   color: "#9A3412", bg: "#FFEDD5", icon: "user"        },
-  { label: "Hadith",  value: "Hadith",   color: "#92400E", bg: "#FEF3C7", icon: "message-square" },
-  { label: "Arabic",  value: "Arabic",   color: "#9F1239", bg: "#FFE4E6", icon: "type"        },
+  { label: "All",            value: null,             color: "#0D4A3E", bg: "#E0F2EE", icon: "grid"    },
+  { label: "Arabic",         value: "Arabic",         color: "#9F1239", bg: "#FFE4E6", icon: "type"    },
+  { label: "Quranic Arabic", value: "Quranic Arabic", color: "#1E40AF", bg: "#DBEAFE", icon: "book"    },
+  { label: "Arabic Grammar", value: "Arabic Grammar", color: "#6B21A8", bg: "#F3E8FF", icon: "feather" },
 ];
+
+function formatDuration(secs?: number | null): string {
+  if (!secs) return "";
+  const m = Math.floor(secs / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r > 0 ? `${h}h ${r}m` : `${h}h`;
+}
 
 export default function LibraryScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { play, currentTrack, isPlaying, pause, resume } = useAudio();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const catScrollRef = useRef<ScrollView>(null);
@@ -48,34 +52,18 @@ export default function LibraryScreen() {
   const { data, isLoading, refetch } = useGetLectures({
     search: search || undefined,
     category: category || undefined,
-    limit: 79,
+    limit: 50,
     offset: 0,
   });
 
   const lectures = data?.lectures ?? [];
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const handlePlay = (item: any) => {
-    const isActive = currentTrack?.id === String(item.id);
-    if (isActive && isPlaying) {
-      pause();
-    } else if (isActive && !isPlaying) {
-      resume();
-    } else {
-      const audioUrl = (item as any).audioUrl;
-      if (!audioUrl) {
-        Alert.alert(
-          "No Audio Available",
-          "Audio for this lecture is not yet available. Check back soon!",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-      play({
-        id: String(item.id),
-        title: item.title,
-        scholar: item.speakerName ?? "Unknown Scholar",
-        audioUrl,
+  const handleOpen = async (item: any) => {
+    const youtubeUrl = (item as any).youtubeUrl;
+    if (youtubeUrl) {
+      await WebBrowser.openBrowserAsync(youtubeUrl, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
       });
     }
   };
@@ -90,8 +78,8 @@ export default function LibraryScreen() {
         {/* Title row */}
         <View style={styles.titleRow}>
           <View>
-            <Text style={styles.screenTitle}>Lecture Library</Text>
-            <Text style={styles.screenSub}>{data?.total ?? 0} lectures</Text>
+            <Text style={styles.screenTitle}>Arabic Learning</Text>
+            <Text style={styles.screenSub}>{data?.total ?? 0} free video lessons</Text>
           </View>
           <View style={[styles.activeBadge, { backgroundColor: activeCat.bg }]}>
             <Text style={[styles.activeBadgeText, { color: activeCat.color }]}>
@@ -105,7 +93,7 @@ export default function LibraryScreen() {
           <Feather name="search" size={18} color="rgba(255,255,255,0.7)" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search lectures..."
+            placeholder="Search lessons..."
             placeholderTextColor="rgba(255,255,255,0.5)"
             value={search}
             onChangeText={setSearch}
@@ -124,7 +112,7 @@ export default function LibraryScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.catScroll}
         >
-          {CATEGORIES.map((cat, idx) => {
+          {CATEGORIES.map((cat) => {
             const active = cat.value === category;
             return (
               <Pressable
@@ -159,7 +147,6 @@ export default function LibraryScreen() {
           })}
         </ScrollView>
 
-        {/* Bottom accent line */}
         <View style={styles.headerAccent} />
       </View>
 
@@ -167,14 +154,14 @@ export default function LibraryScreen() {
       {isLoading ? (
         <View style={styles.loading}>
           <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading lectures...</Text>
+          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading lessons...</Text>
         </View>
       ) : lectures.length === 0 ? (
         <View style={styles.empty}>
           <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
-            <Feather name="inbox" size={36} color={colors.mutedForeground} />
+            <Feather name="youtube" size={36} color={colors.mutedForeground} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No lectures found</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No lessons found</Text>
           <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
             {search ? `No results for "${search}"` : "Try a different category"}
           </Text>
@@ -186,39 +173,79 @@ export default function LibraryScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingBottom: Platform.OS === "web" ? 34 + 84 + 60 : 84 + 60 + 16,
-            paddingTop: 8,
+            paddingTop: 12,
+            paddingHorizontal: 16,
+            gap: 12,
           }}
           onRefresh={refetch}
           refreshing={false}
-          renderItem={({ item }) => {
-            const isActive = currentTrack?.id === String(item.id);
-            return (
-              <LectureCard
-                lecture={{
-                  id: item.id,
-                  title: item.title,
-                  speaker: item.speakerName ?? undefined,
-                  duration: item.duration ?? undefined,
-                  category: item.category ?? undefined,
-                  isPremium: item.isPremium ?? false,
-                  language: item.language ?? undefined,
-                }}
-                isPlaying={isActive && isPlaying}
-                onPress={() => handlePlay(item)}
-                horizontal
-              />
-            );
-          }}
+          renderItem={({ item }) => (
+            <VideoCard item={item as any} colors={colors} onPress={() => handleOpen(item)} />
+          )}
         />
       )}
     </View>
   );
 }
 
+function VideoCard({ item, colors, onPress }: { item: any; colors: any; onPress: () => void }) {
+  const thumb = item.thumbnailUrl;
+  const catColor = CATEGORIES.find(c => c.value === item.category)?.color ?? "#0D4A3E";
+  const catBg   = CATEGORIES.find(c => c.value === item.category)?.bg   ?? "#E0F2EE";
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border ?? "#E5E7EB",
+          opacity: pressed ? 0.92 : 1,
+        },
+      ]}
+    >
+      {/* Thumbnail */}
+      {thumb ? (
+        <Image source={{ uri: thumb }} style={styles.thumb} resizeMode="cover" />
+      ) : (
+        <View style={[styles.thumb, styles.thumbPlaceholder, { backgroundColor: colors.tealLight ?? "#E0F2EE" }]}>
+          <Feather name="youtube" size={28} color={colors.teal ?? "#0D9488"} />
+        </View>
+      )}
+
+      {/* Content */}
+      <View style={styles.cardContent}>
+        <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
+          {item.title}
+        </Text>
+        <Text style={[styles.cardSpeaker, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {item.speakerName ?? "Unknown"}
+        </Text>
+
+        <View style={styles.cardMeta}>
+          <View style={[styles.catBadge, { backgroundColor: catBg }]}>
+            <Text style={[styles.catBadgeText, { color: catColor }]}>{item.category}</Text>
+          </View>
+          {item.duration ? (
+            <Text style={[styles.duration, { color: colors.mutedForeground }]}>
+              {formatDuration(item.duration)}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+
+      {/* YouTube play arrow */}
+      <View style={styles.playBtn}>
+        <Feather name="youtube" size={20} color="#FF0000" />
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
-  /* ── Sticky header ── */
   stickyHeader: {
     paddingBottom: 0,
     shadowColor: "#000",
@@ -257,7 +284,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
 
-  /* ── Search ── */
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -276,7 +302,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  /* ── Category tabs ── */
   catScroll: {
     paddingHorizontal: 16,
     paddingBottom: 14,
@@ -310,7 +335,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
   },
 
-  /* ── States ── */
   loading: {
     flex: 1,
     alignItems: "center",
@@ -344,5 +368,60 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
+  },
+
+  /* ── Video Card ── */
+  card: {
+    flexDirection: "row",
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+    alignItems: "center",
+  },
+  thumb: {
+    width: 96,
+    height: 72,
+  },
+  thumbPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardContent: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 18,
+  },
+  cardSpeaker: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  cardMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  catBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  catBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+  },
+  duration: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+  },
+  playBtn: {
+    paddingRight: 14,
+    paddingLeft: 6,
   },
 });
