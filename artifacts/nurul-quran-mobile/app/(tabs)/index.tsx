@@ -137,6 +137,30 @@ export default function HomeScreen() {
         ))}
       </View>
 
+      {/* Da'wah Banner */}
+      <Pressable
+        onPress={() => router.push("/discover" as any)}
+        style={({ pressed }) => [styles.dawahBanner, { opacity: pressed ? 0.92 : 1 }]}
+      >
+        <LinearGradient
+          colors={["#1A6B5A", "#0D4A3E"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.dawahGradient}
+        >
+          <View style={styles.dawahLeft}>
+            <Text style={styles.dawahEmoji}>☪</Text>
+          </View>
+          <View style={styles.dawahText}>
+            <Text style={styles.dawahTitle}>New to Islam?</Text>
+            <Text style={styles.dawahSub}>
+              Discover what Islam is all about — questions answered, step-by-step guide, and more.
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />
+        </LinearGradient>
+      </Pressable>
+
       {(featuredLoading || featured.length > 0) && (
         <View style={styles.section}>
           <SectionHeader title="Featured Lectures" seeAllHref="/(tabs)/library" />
@@ -333,4 +357,40 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
   },
   section: { marginBottom: 24 },
+
+  // Da'wah banner
+  dawahBanner: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 18,
+    overflow: "hidden",
+  },
+  dawahGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
+  },
+  dawahLeft: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dawahEmoji: { fontSize: 22, color: "#fff" },
+  dawahText: { flex: 1 },
+  dawahTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    marginBottom: 2,
+  },
+  dawahSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.8)",
+    lineHeight: 17,
+  },
 });

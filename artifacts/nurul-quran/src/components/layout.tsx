@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   BookOpen,
+  Compass,
   Library,
   GraduationCap,
   HeartHandshake,
@@ -94,6 +95,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {item.label === "Stocks" ? "Halal Stocks" : item.label}
               </Link>
             ))}
+            <Link
+              href="/discover"
+              className={`flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary ${
+                location === "/discover" ? "text-primary border-b-2 border-primary py-5" : "text-emerald-600 dark:text-emerald-400"
+              }`}
+            >
+              <Compass className="h-4 w-4" />
+              Discover Islam
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2">

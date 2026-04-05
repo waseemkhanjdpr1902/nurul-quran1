@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Play, Lock, BookOpen, Users, MicVocal, LayoutGrid } from "lucide-react";
+import { Play, Lock, BookOpen, Users, MicVocal, LayoutGrid, Compass, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 function formatDuration(seconds?: number | null) {
@@ -96,6 +96,22 @@ export default function Home() {
       )}
 
       <div className="container mx-auto max-w-6xl px-4 py-10 space-y-14">
+        {/* Da'wah Banner */}
+        <Link href="/discover">
+          <div className="group flex items-center gap-5 rounded-2xl bg-gradient-to-r from-[#0D4A3E] to-[#1A6B5A] p-5 md:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.01]">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 text-3xl shadow-inner">
+              ☪
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-white text-lg">New to Islam? Welcome!</p>
+              <p className="text-white/75 text-sm mt-0.5 leading-relaxed">
+                Discover what Islam is, the 5 Pillars, common questions answered, and how to take the Shahada.
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-white/60 flex-shrink-0 transition-transform group-hover:translate-x-1" />
+          </div>
+        </Link>
+
         {/* Recent Lectures */}
         <section>
           <div className="flex items-center justify-between mb-6">
