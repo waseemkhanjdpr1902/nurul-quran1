@@ -9,7 +9,7 @@ import { PremiumGate } from "@/components/premium-gate";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronDown, BookOpen, Lock, Play, Pause, Clock,
-  GraduationCap, Globe, SkipForward, Crown, User
+  GraduationCap, Globe, SkipForward, Crown, User, Youtube, ExternalLink
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Lecture } from "@workspace/api-client-react";
@@ -108,6 +108,11 @@ export default function CourseDetail() {
     }
     if (lecture.isPremium && !isAuthenticated) {
       setPremiumGate({ title: lecture.title });
+      return;
+    }
+    // YouTube lecture → open in new tab
+    if (!lecture.audioUrl && lecture.youtubeUrl) {
+      window.open(lecture.youtubeUrl, "_blank", "noopener,noreferrer");
       return;
     }
     playLecture(lecture);
@@ -247,12 +252,17 @@ export default function CourseDetail() {
                       >
                         {/* Track number / play icon */}
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-                          isCurrentlyPlaying ? "bg-primary text-primary-foreground" : "bg-muted group-hover:bg-primary/10"
+                          isCurrentlyPlaying ? "bg-primary text-primary-foreground" : "bg-muted group-hover:bg-red-50"
                         }`}>
                           {isCurrentlyPlaying ? (
                             <Pause className="w-4 h-4" />
                           ) : lecture.isPremium ? (
                             <Lock className="w-3.5 h-3.5 text-amber-500" />
+                          ) : (!lecture.audioUrl && lecture.youtubeUrl) ? (
+                            <>
+                              <span className="text-xs font-mono text-muted-foreground group-hover:hidden">{i + 1}</span>
+                              <Youtube className="w-4 h-4 text-red-500 hidden group-hover:block" />
+                            </>
                           ) : (
                             <>
                               <span className="text-xs font-mono text-muted-foreground group-hover:hidden">{i + 1}</span>
@@ -306,10 +316,18 @@ export default function CourseDetail() {
                               <p className="text-sm text-muted-foreground leading-relaxed mt-3">{lecture.description}</p>
                               <button
                                 onClick={() => handlePlay(lecture)}
-                                className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                                className={`mt-3 inline-flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                                  !lecture.audioUrl && lecture.youtubeUrl
+                                    ? "text-red-600 hover:text-red-700"
+                                    : "text-primary hover:text-primary/80"
+                                }`}
                               >
-                                <Play className="w-3 h-3 fill-current" />
-                                {isCurrentlyPlaying ? "Pause lecture" : "Play this lecture"}
+                                {!lecture.audioUrl && lecture.youtubeUrl
+                                  ? <><Youtube className="w-3.5 h-3.5" /> Watch on YouTube <ExternalLink className="w-3 h-3" /></>
+                                  : isCurrentlyPlaying
+                                  ? <><Pause className="w-3 h-3" /> Pause lecture</>
+                                  : <><Play className="w-3 h-3 fill-current" /> Play this lecture</>
+                                }
                               </button>
                             </div>
                           </motion.div>
@@ -355,12 +373,19 @@ export default function CourseDetail() {
                 <h3 className="font-semibold text-foreground mb-1">Free Course</h3>
                 <p className="text-sm text-muted-foreground mb-4">This course is freely available to all learners</p>
                 <Button
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+                  className={`w-full font-semibold ${
+                    lectures?.[0] && !lectures[0].audioUrl && lectures[0].youtubeUrl
+                      ? "bg-red-600 hover:bg-red-700 text-white"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  }`}
                   onClick={() => lectures?.[0] && handlePlay(lectures[0])}
                   disabled={!lectures?.length}
                 >
-                  <Play className="w-4 h-4 mr-1.5" />
-                  Start Learning
+                  {lectures?.[0] && !lectures[0].audioUrl && lectures[0].youtubeUrl ? (
+                    <><Youtube className="w-4 h-4 mr-1.5" /> Watch on YouTube</>
+                  ) : (
+                    <><Play className="w-4 h-4 mr-1.5" /> Start Learning</>
+                  )}
                 </Button>
               </div>
             )}
