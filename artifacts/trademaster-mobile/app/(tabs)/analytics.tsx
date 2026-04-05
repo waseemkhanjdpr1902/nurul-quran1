@@ -143,7 +143,13 @@ export default function AnalyticsScreen() {
 
   const pnlCurveData = data.pnlCurve.slice(-20);
   const dayChartData = DAYS_ORDER.filter(d => d in data.dayPnl).map(d => ({ day: d.slice(0, 3), pnl: data.dayPnl[d] }));
-  const strategies = Object.entries(data.strategyBreakdown).sort((a, b) => b[1].count - a[1].count).slice(0, 6);
+  const strategies = Object.entries(data.strategyBreakdown)
+    .sort((a, b) => {
+      const wrA = a[1].count > 0 ? a[1].wins / a[1].count : 0;
+      const wrB = b[1].count > 0 ? b[1].wins / b[1].count : 0;
+      return wrB - wrA;
+    })
+    .slice(0, 6);
 
   const chartWidth = SCREEN_WIDTH - 32 - 32;
 
