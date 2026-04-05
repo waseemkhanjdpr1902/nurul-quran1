@@ -98,7 +98,7 @@ export default function DiscoverScreen() {
 
         <View style={styles.heroCenter}>
           <View style={styles.heroIcon}>
-            <Text style={styles.heroEmoji}>☪</Text>
+            <Feather name="sun" size={36} color="#fff" />
           </View>
           <Text style={styles.heroTitle}>Discover Islam</Text>
           <Text style={styles.heroSub}>
@@ -362,7 +362,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  heroEmoji: { fontSize: 36, color: "#fff" },
   heroTitle: {
     fontSize: 28,
     fontFamily: "Inter_700Bold",

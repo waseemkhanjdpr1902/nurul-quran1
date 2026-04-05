@@ -45,6 +45,7 @@ function RootLayoutNav() {
       <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="stocks" options={{ headerShown: false }} />
       <Stack.Screen name="surah/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="discover" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );

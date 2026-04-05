@@ -99,8 +99,8 @@ export default function Home() {
         {/* Da'wah Banner */}
         <Link href="/discover">
           <div className="group flex items-center gap-5 rounded-2xl bg-gradient-to-r from-[#0D4A3E] to-[#1A6B5A] p-5 md:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.01]">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 text-3xl shadow-inner">
-              ☪
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
+              <Compass className="h-7 w-7 text-white" />
             </div>
             <div className="flex-1">
               <p className="font-bold text-white text-lg">New to Islam? Welcome!</p>

@@ -13,7 +13,7 @@ import {
   Mail,
   PlayCircle,
   Share2,
-  Star,
+  Sun,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -94,8 +94,8 @@ export default function DiscoverPage() {
       {/* Hero */}
       <div className="bg-gradient-to-br from-[#0D4A3E] to-[#1A6B5A] text-white">
         <div className="container mx-auto max-w-4xl px-4 py-20 text-center">
-          <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 text-4xl shadow-lg">
-            ☪
+          <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 shadow-lg">
+            <Sun className="h-10 w-10 text-white" />
           </div>
           <h1 className="mb-4 font-serif text-4xl font-bold md:text-5xl">Discover Islam</h1>
           <p className="mx-auto mb-10 max-w-xl text-lg text-white/80 leading-relaxed">

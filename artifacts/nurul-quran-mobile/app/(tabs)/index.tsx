@@ -149,7 +149,7 @@ export default function HomeScreen() {
           style={styles.dawahGradient}
         >
           <View style={styles.dawahLeft}>
-            <Text style={styles.dawahEmoji}>☪</Text>
+            <Feather name="globe" size={22} color="#fff" />
           </View>
           <View style={styles.dawahText}>
             <Text style={styles.dawahTitle}>New to Islam?</Text>
@@ -379,7 +379,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dawahEmoji: { fontSize: 22, color: "#fff" },
   dawahText: { flex: 1 },
   dawahTitle: {
     fontSize: 15,
