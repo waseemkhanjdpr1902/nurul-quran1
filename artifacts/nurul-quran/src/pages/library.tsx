@@ -8,10 +8,23 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Play, Lock, Heart, ChevronRight, ChevronLeft } from "lucide-react";
+import { Search, Play, Lock, Heart, ChevronRight, ChevronLeft, BookOpen, Star, Feather, User, MessageSquare, Type, AlignJustify } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-const CATEGORIES = ["All", "Quran Recitation", "Tafseer", "Fiqh", "Aqeedah", "Hadith", "Spirituality", "Islamic History"];
+type CategoryDef = { label: string; value: string; color: string; bg: string; border: string };
+
+const CATEGORIES: CategoryDef[] = [
+  { label: "All",              value: "All",              color: "#0D4A3E", bg: "#E0F2EE", border: "#9CCCC4" },
+  { label: "Fiqh",             value: "Fiqh",             color: "#166534", bg: "#DCFCE7", border: "#86EFAC" },
+  { label: "Aqeedah",          value: "Aqeedah",          color: "#1E40AF", bg: "#DBEAFE", border: "#93C5FD" },
+  { label: "Tafseer",          value: "Tafseer",          color: "#6B21A8", bg: "#F3E8FF", border: "#C4B5FD" },
+  { label: "Seerah",           value: "Seerah",           color: "#9A3412", bg: "#FFEDD5", border: "#FDBA74" },
+  { label: "Hadith",           value: "Hadith",           color: "#92400E", bg: "#FEF3C7", border: "#FCD34D" },
+  { label: "Spirituality",     value: "Spirituality",     color: "#047857", bg: "#ECFDF5", border: "#6EE7B7" },
+  { label: "Islamic History",  value: "Islamic History",  color: "#7C3AED", bg: "#EDE9FE", border: "#A78BFA" },
+  { label: "Quran Recitation", value: "Quran Recitation", color: "#0E7490", bg: "#CFFAFE", border: "#67E8F9" },
+];
+
 const LANGUAGES = ["All", "English", "Arabic", "Urdu"];
 const PAGE_SIZE = 9;
 
@@ -114,8 +127,8 @@ export default function Library() {
         <p className="text-muted-foreground mb-8">Browse our collection of authentic Islamic lectures</p>
       </motion.div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-8">
+      {/* Filters row */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -126,14 +139,6 @@ export default function Library() {
             data-testid="input-search"
           />
         </div>
-        <Select value={category} onValueChange={v => { setCategory(v); setOffset(0); }}>
-          <SelectTrigger className="w-full sm:w-44" data-testid="select-category">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={language} onValueChange={v => { setLanguage(v); setOffset(0); }}>
           <SelectTrigger className="w-full sm:w-36" data-testid="select-language">
             <SelectValue placeholder="Language" />
@@ -142,6 +147,29 @@ export default function Library() {
             {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Category tab chips */}
+      <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-none" style={{ scrollbarWidth: "none" }}>
+        {CATEGORIES.map((cat) => {
+          const active = cat.value === category;
+          return (
+            <button
+              key={cat.value}
+              onClick={() => { setCategory(cat.value); setOffset(0); }}
+              data-testid={`filter-${cat.value.toLowerCase().replace(/\s+/g, "-")}`}
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all border-2"
+              style={{
+                backgroundColor: active ? cat.bg : "transparent",
+                borderColor: active ? cat.border : "#E5E7EB",
+                color: active ? cat.color : "#6B7280",
+                boxShadow: active ? `0 2px 8px ${cat.border}66` : "none",
+              }}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Results count */}
