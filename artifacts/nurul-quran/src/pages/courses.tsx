@@ -11,9 +11,12 @@ const CATEGORIES = ["All", "Quran Recitation", "Tafseer", "Fiqh", "Aqeedah", "Ha
 export default function Courses() {
   const [category, setCategory] = useState("All");
 
-  const { data: courses, isLoading } = useGetCourses({
+  const { data: allCourses, isLoading } = useGetCourses({
     category: category !== "All" ? category : undefined,
   });
+
+  // Only show courses that have actual content
+  const courses = allCourses?.filter(c => (c.lectureCount ?? 0) > 0);
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -42,11 +45,10 @@ export default function Courses() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading
-          ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)
+          ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-52 rounded-xl" />)
           : courses?.map((course, i) => {
-              const hasContent = (course.lectureCount ?? 0) > 0;
+              const hasContent = true;
 
-              // Courses with content are clickable; others show a "Coming Soon" state
               const Card = (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}

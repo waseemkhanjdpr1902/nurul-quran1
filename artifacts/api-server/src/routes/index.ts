@@ -13,6 +13,7 @@ import tradeMasterRouter from "./trademaster";
 import inventoryRouter from "./inventory";
 import stockswapRouter from "./stockswap";
 import engageRouter from "./engage";
+import soulSearchRouter from "./soul-search";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(tradeMasterRouter);
 router.use(inventoryRouter);
 router.use(stockswapRouter);
 router.use(engageRouter);
+router.use(soulSearchRouter);
 
 export default router;

@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout";
 import { AuthProvider } from "@/hooks/use-auth";
 import { AudioPlayerProvider } from "@/hooks/use-audio-player";
+import { ThemeProvider } from "@/contexts/theme-context";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -47,6 +48,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
       <AuthProvider>
         <AudioPlayerProvider>
           <TooltipProvider>
@@ -57,6 +59,7 @@ function App() {
           </TooltipProvider>
         </AudioPlayerProvider>
       </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

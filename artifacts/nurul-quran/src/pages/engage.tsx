@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sparkles, Timer, Users, Play, Pause, RotateCcw, Heart, Wind } from "lucide-react";
+import { Sparkles, Timer, Users, Play, Pause, RotateCcw, Heart, Wind, Search, Share2, Download, Loader2 } from "lucide-react";
+import { toPng } from "html-to-image";
+import { useAppTheme, THEMES } from "@/contexts/theme-context";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
@@ -11,6 +14,14 @@ interface MoodVerse {
   translation: string;
   reference: string;
   mood: string;
+}
+
+interface SoulVerse {
+  id: number;
+  arabic: string;
+  translation: string;
+  reference: string;
+  modern_insight: string;
 }
 
 interface UmmahStats {
@@ -30,12 +41,303 @@ const MOODS = [
 
 const TIMER_OPTIONS = [10, 20, 30];
 
-// A reflection verse shown inside the timer while it runs
 const REFLECTION_VERSES = [
   { arabic: "أَلَا بِذِكۡرِ ٱللَّهِ تَطۡمَئِنُّ ٱلۡقُلُوبُ", translation: "Verily, in the remembrance of Allah do hearts find rest.", ref: "Ar-Rad 13:28" },
   { arabic: "وَنَحۡنُ أَقۡرَبُ إِلَيۡهِ مِنۡ حَبۡلِ ٱلۡوَرِيدِ", translation: "And We are closer to him than his jugular vein.", ref: "Qaf 50:16" },
   { arabic: "إِنَّ مَعَ ٱلۡعُسۡرِ يُسۡرًا", translation: "Indeed, with hardship comes ease.", ref: "Al-Inshirah 94:6" },
 ];
+
+const SUGGESTED_SEARCHES = [
+  "I'm stressed about exams", "feeling lonely", "worried about money", "heartbreak",
+  "I sinned and feel guilty", "dealing with anger", "lost my purpose", "facing injustice",
+  "tired and burnt out", "scared about the future",
+];
+
+// ─── Feature 0: Soul-Search ───────────────────────────────────────────────────
+
+function SoulSearch() {
+  const { def } = useAppTheme();
+  const [query, setQuery] = useState("");
+  const [verse, setVerse] = useState<SoulVerse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const search = useCallback(async (q: string) => {
+    if (!q.trim() || q.trim().length < 2) return;
+    setLoading(true);
+    setError(null);
+    setVerse(null);
+    try {
+      const res = await fetch(`${API}/api/soul-search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setVerse(data.verse);
+    } catch {
+      setError("Could not find a verse. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    search(query);
+  };
+
+  const handleSuggestion = (s: string) => {
+    setQuery(s);
+    search(s);
+  };
+
+  const handleShare = async () => {
+    if (!cardRef.current || !verse) return;
+    setSharing(true);
+    try {
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, cacheBust: true });
+
+      // Try Web Share API first (works on mobile)
+      if (navigator.share) {
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], "nurul-quran-verse.png", { type: "image/png" });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: verse.reference, text: `${verse.translation}\n— ${verse.reference}\n\nNurul Quran App` });
+          return;
+        }
+        await navigator.share({
+          title: verse.reference,
+          text: `${verse.translation}\n— ${verse.reference}\n\nNurul Quran App`,
+        });
+        return;
+      }
+
+      // Fallback: download the image
+      const link = document.createElement("a");
+      link.download = `nurul-quran-${verse.reference.replace(/[^a-z0-9]/gi, "-")}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch {
+      // Silent fail
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleWhatsApp = () => {
+    if (!verse) return;
+    const text = encodeURIComponent(
+      `*${verse.reference}*\n\n${verse.translation}\n\n_${verse.modern_insight}_\n\n📖 Nurul Quran App`
+    );
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  const isMidnight = def.key === "midnight-madinah";
+
+  return (
+    <div
+      className="rounded-2xl shadow-sm border p-6 space-y-5 transition-all duration-500"
+      style={{
+        background: def.key === "default"
+          ? "white"
+          : def.key === "midnight-madinah"
+          ? "rgba(10,25,47,0.95)"
+          : def.key === "desert-sunset"
+          ? "#FFF5E6"
+          : "#F0F2EF",
+        borderColor: def.key === "default" ? undefined : def.accent + "40",
+        color: def.key === "default" ? undefined : def.text,
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: def.accent + "22" }}
+          >
+            <Search className="w-5 h-5" style={{ color: def.accent }} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold" style={{ color: def.key === "default" ? undefined : def.text }}>
+              Soul-Search ✨
+            </h2>
+            <p className="text-sm" style={{ color: def.key === "default" ? undefined : def.text + "aa" }}>
+              Type your problem. The Quran will answer.
+            </p>
+          </div>
+        </div>
+        <ThemeSwitcher />
+      </div>
+
+      {/* Search Bar */}
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="e.g. I'm anxious about my job interview…"
+          className="flex-1 px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all"
+          style={{
+            background: def.key === "default" ? undefined : def.bg,
+            color: def.key === "default" ? undefined : def.text,
+            borderColor: def.key === "default" ? undefined : def.accent + "60",
+            boxShadow: def.key === "default" ? undefined : `0 0 0 0px ${def.accent}`,
+          }}
+        />
+        <button
+          type="submit"
+          disabled={loading || query.trim().length < 2}
+          className="px-4 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 flex items-center gap-2"
+          style={{ background: def.accent, color: def.key === "midnight-madinah" ? "#0A192F" : "white" }}
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          <span className="hidden sm:inline">Search</span>
+        </button>
+      </form>
+
+      {/* Suggested searches */}
+      {!verse && !loading && (
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTED_SEARCHES.slice(0, 6).map((s) => (
+            <button
+              key={s}
+              onClick={() => handleSuggestion(s)}
+              className="text-xs px-3 py-1.5 rounded-full border font-medium transition-all hover:opacity-80"
+              style={{
+                borderColor: def.accent + "60",
+                color: def.key === "default" ? "#1a6b4a" : def.accent,
+                background: def.accent + "11",
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="text-center py-6 text-sm animate-pulse" style={{ color: def.accent }}>
+          Searching the Quran for you…
+        </div>
+      )}
+
+      {/* Error */}
+      {error && <p className="text-center text-sm text-rose-500">{error}</p>}
+
+      {/* Result Card */}
+      {verse && !loading && (
+        <div
+          ref={cardRef}
+          className="rounded-2xl p-6 space-y-4 relative overflow-hidden"
+          style={{
+            background: def.key === "midnight-madinah"
+              ? "linear-gradient(135deg, rgba(10,25,47,0.97) 0%, rgba(15,40,65,0.97) 100%)"
+              : def.key === "desert-sunset"
+              ? "linear-gradient(135deg, rgba(255,245,230,0.98) 0%, rgba(255,235,200,0.98) 100%)"
+              : def.key === "minimalist-zen"
+              ? "linear-gradient(135deg, rgba(240,242,239,0.98) 0%, rgba(225,230,224,0.98) 100%)"
+              : "linear-gradient(135deg, rgba(26,107,74,0.06) 0%, rgba(26,107,74,0.02) 100%)",
+            border: `1px solid ${def.accent}40`,
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            boxShadow: `0 8px 32px ${def.accent}22`,
+          }}
+        >
+          {/* Decorative accent bar */}
+          <div
+            className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl"
+            style={{ background: `linear-gradient(90deg, ${def.accent}, ${def.accent}66)` }}
+          />
+
+          {/* Reference badge */}
+          <div className="flex items-center gap-2">
+            <span
+              className="text-xs font-bold px-3 py-1 rounded-full"
+              style={{ background: def.accent + "22", color: def.accent }}
+            >
+              {verse.reference}
+            </span>
+          </div>
+
+          {/* Arabic */}
+          <p
+            className="text-right text-2xl sm:text-3xl font-arabic leading-loose"
+            dir="rtl"
+            style={{ color: def.key === "default" ? "#1a1a1a" : def.text }}
+          >
+            {verse.arabic}
+          </p>
+
+          {/* Translation */}
+          <p
+            className="text-sm sm:text-base italic leading-relaxed"
+            style={{ color: def.key === "default" ? "#374151" : def.text + "cc" }}
+          >
+            {verse.translation}
+          </p>
+
+          {/* Divider */}
+          <div className="border-t" style={{ borderColor: def.accent + "30" }} />
+
+          {/* Modern Insight */}
+          <div>
+            <p
+              className="text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: def.accent }}
+            >
+              Modern Insight 💡
+            </p>
+            <p
+              className="text-sm leading-relaxed"
+              style={{ color: def.key === "default" ? "#4b5563" : def.text + "bb" }}
+            >
+              {verse.modern_insight}
+            </p>
+          </div>
+
+          {/* Nurul Quran watermark (for screenshots) */}
+          <p className="text-xs font-semibold" style={{ color: def.accent + "88" }}>
+            📖 Nurul Quran
+          </p>
+        </div>
+      )}
+
+      {/* Share buttons */}
+      {verse && !loading && (
+        <div className="flex gap-3 flex-wrap">
+          <button
+            onClick={handleWhatsApp}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+            style={{ background: "#25D366" }}
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+            </svg>
+            Share on WhatsApp
+          </button>
+          <button
+            onClick={handleShare}
+            disabled={sharing}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all hover:opacity-80 disabled:opacity-50"
+            style={{ borderColor: def.accent + "60", color: def.accent }}
+          >
+            {sharing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Save as Image
+          </button>
+          <button
+            onClick={() => search(query)}
+            className="text-xs underline transition-all hover:no-underline ml-auto self-center"
+            style={{ color: def.key === "default" ? "#1a6b4a" : def.accent }}
+          >
+            Show another
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Feature 1: Mood-Based Quran Discovery ───────────────────────────────────
 
@@ -70,7 +372,6 @@ function MoodDiscovery() {
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border p-6 space-y-5">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
           <Sparkles className="w-5 h-5 text-primary" />
@@ -81,7 +382,6 @@ function MoodDiscovery() {
         </div>
       </div>
 
-      {/* Mood Buttons */}
       <div className="grid grid-cols-2 gap-3">
         {MOODS.map((mood) => {
           const isActive = selectedMood === mood.key;
@@ -100,16 +400,13 @@ function MoodDiscovery() {
         })}
       </div>
 
-      {/* Verse Display */}
       {loading && (
         <div className="text-center py-6 text-muted-foreground text-sm animate-pulse">
           Finding the perfect verse for you…
         </div>
       )}
 
-      {error && (
-        <p className="text-center text-sm text-rose-500">{error}</p>
-      )}
+      {error && <p className="text-center text-sm text-rose-500">{error}</p>}
 
       {verse && !loading && (
         <div className={`rounded-xl p-5 border-l-4 space-y-3 ${
@@ -147,7 +444,6 @@ function DeenTimer() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Pick a random reflection verse on component mount
   const reflectionVerse = REFLECTION_VERSES[Math.floor(Math.random() * REFLECTION_VERSES.length)];
 
   const totalSeconds = minutes * 60;
@@ -155,7 +451,6 @@ function DeenTimer() {
   const displayMins = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const displaySecs = String(secondsLeft % 60).padStart(2, "0");
 
-  // Start / stop the interval
   useEffect(() => {
     if (running) {
       intervalRef.current = setInterval(() => {
@@ -178,37 +473,18 @@ function DeenTimer() {
     return () => clearInterval(intervalRef.current!);
   }, [running]);
 
-  const handleStart = () => {
-    setFinished(false);
-    setRunning(true);
-  };
-
+  const handleStart = () => { setFinished(false); setRunning(true); };
   const handlePause = () => setRunning(false);
-
-  const handleReset = () => {
-    setRunning(false);
-    setFinished(false);
-    setSecondsLeft(minutes * 60);
-  };
-
+  const handleReset = () => { setRunning(false); setFinished(false); setSecondsLeft(minutes * 60); };
   const handleMinutesChange = (m: number) => {
     if (running) return;
-    setMinutes(m);
-    setSecondsLeft(m * 60);
-    setFinished(false);
+    setMinutes(m); setSecondsLeft(m * 60); setFinished(false);
   };
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border p-6 space-y-5">
-      {/* Hidden ambient audio — loops a soft nature sound */}
-      <audio
-        ref={audioRef}
-        loop
-        preload="none"
-        src="https://assets.mixkit.co/music/preview/mixkit-river-nature-ambience-13.mp3"
-      />
+      <audio ref={audioRef} loop preload="none" src="https://assets.mixkit.co/music/preview/mixkit-river-nature-ambience-13.mp3" />
 
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
           <Timer className="w-5 h-5 text-teal-600" />
@@ -219,7 +495,6 @@ function DeenTimer() {
         </div>
       </div>
 
-      {/* Duration selector — disabled while running */}
       <div className="flex gap-2">
         {TIMER_OPTIONS.map((m) => (
           <button
@@ -237,17 +512,14 @@ function DeenTimer() {
         ))}
       </div>
 
-      {/* Circular progress + countdown */}
       <div className="flex flex-col items-center gap-4">
         <div className="relative w-36 h-36">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="44" fill="none" stroke="#e5e7eb" strokeWidth="8" />
             <circle
-              cx="50" cy="50" r="44"
-              fill="none"
+              cx="50" cy="50" r="44" fill="none"
               stroke={finished ? "#10b981" : "#0d9488"}
-              strokeWidth="8"
-              strokeLinecap="round"
+              strokeWidth="8" strokeLinecap="round"
               strokeDasharray={`${2 * Math.PI * 44}`}
               strokeDashoffset={`${2 * Math.PI * 44 * (1 - progress / 100)}`}
               className="transition-all duration-1000"
@@ -271,7 +543,6 @@ function DeenTimer() {
           </div>
         </div>
 
-        {/* Do Not Disturb banner */}
         {running && (
           <div className="w-full bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 text-center">
             <p className="text-teal-700 font-semibold text-sm">🔕 Do Not Disturb — Deen Time Active</p>
@@ -279,7 +550,6 @@ function DeenTimer() {
           </div>
         )}
 
-        {/* Finished banner */}
         {finished && (
           <div className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
             <p className="text-emerald-700 font-semibold text-sm">✅ Masha'Allah! Session Complete</p>
@@ -287,7 +557,6 @@ function DeenTimer() {
           </div>
         )}
 
-        {/* Reflection verse — shown while timer is running */}
         {running && (
           <div className="w-full bg-gray-50 dark:bg-gray-800 rounded-xl p-4 space-y-1">
             <p className="text-right text-lg font-arabic leading-loose text-gray-700 dark:text-gray-300" dir="rtl">
@@ -298,7 +567,6 @@ function DeenTimer() {
           </div>
         )}
 
-        {/* Controls */}
         <div className="flex gap-3">
           {!running && !finished && (
             <button
@@ -345,7 +613,6 @@ function UmmahGoal() {
       const data = await res.json();
       setStats(data.stats);
     } catch {
-      // silently fail — the UI still renders with null check
     } finally {
       setLoading(false);
     }
@@ -364,7 +631,6 @@ function UmmahGoal() {
       setJustContributed(true);
       setTimeout(() => setJustContributed(false), 3000);
     } catch {
-      // silently fail
     } finally {
       setContributing(false);
     }
@@ -376,7 +642,6 @@ function UmmahGoal() {
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border p-6 space-y-5">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center">
           <Users className="w-5 h-5 text-violet-600" />
@@ -393,10 +658,8 @@ function UmmahGoal() {
 
       {stats && (
         <div className="space-y-4">
-          {/* Label */}
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{stats.label}</p>
 
-          {/* Progress bar */}
           <div className="space-y-1.5">
             <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
               <div
@@ -410,7 +673,6 @@ function UmmahGoal() {
             </div>
           </div>
 
-          {/* Contribute Button */}
           <button
             onClick={handleContribute}
             disabled={contributing}
@@ -442,14 +704,14 @@ function UmmahGoal() {
 export default function Engage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-      {/* Page Header */}
       <div className="text-center space-y-1">
         <h1 className="text-3xl font-serif font-bold text-primary">Reflect & Engage</h1>
         <p className="text-muted-foreground text-sm">
-          Quranic guidance for your mood · Focus sessions · Community goals
+          Soul-Search · Mood verses · Focus sessions · Community goals
         </p>
       </div>
 
+      <SoulSearch />
       <MoodDiscovery />
       <DeenTimer />
       <UmmahGoal />
