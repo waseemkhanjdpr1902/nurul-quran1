@@ -87,7 +87,8 @@ function pctTo(from: number, to: number) {
 export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }: SignalCardProps) {
   const [telegramLoading, setTelegramLoading] = useState(false);
   const [telegramMsg, setTelegramMsg] = useState("");
-  const isLocked = signal.isPremium && !isPremiumUser;
+  // TESTING MODE: lock disabled — re-enable after accuracy testing
+  const isLocked = false;
   const isBuy = signal.signalType === "buy";
   const status = STATUS_CONFIG[signal.status];
 

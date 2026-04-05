@@ -105,7 +105,8 @@ router.get("/trademaster/signals", async (req: Request, res: Response): Promise<
       ? await db.select().from(tradeMasterSignals).where(where).orderBy(desc(tradeMasterSignals.createdAt))
       : await db.select().from(tradeMasterSignals).orderBy(desc(tradeMasterSignals.createdAt));
 
-    const signals = rows.map((s) => (s.isPremium && !isPremium ? redactPremiumSignal(s) : s));
+    // TESTING MODE: all signals open — re-enable premium gating after accuracy testing
+    const signals = rows.map((s) => s);
     res.json({ signals });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch signals");
