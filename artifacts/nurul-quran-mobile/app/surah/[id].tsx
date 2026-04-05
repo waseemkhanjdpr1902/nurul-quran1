@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import { useLocalSearchParams, router } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,6 +14,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
 const BISMILLAH = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ";
+
+// Reciter IDs from cdn.islamic.network
+const RECITERS = [
+  { id: "ar.alafasy", name: "Mishary Alafasy" },
+  { id: "ar.abdurrahmaansudais", name: "Sudais" },
+  { id: "ar.husary", name: "Husary" },
+];
 
 interface Ayah {
   number: number;
@@ -65,7 +73,106 @@ export default function SurahDetailScreen() {
   const insets = useSafeAreaInsets();
   const { arabic, english, loading, error } = useQuranData(id || "1");
   const [showTranslation, setShowTranslation] = useState(true);
+  const [reciterIdx, setReciterIdx] = useState(0);
+
+  // Audio recitation state
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [isReciting, setIsReciting] = useState(false);
+  const [recitationLoading, setRecitationLoading] = useState(false);
+  const [recitationPosition, setRecitationPosition] = useState(0);
+  const [recitationDuration, setRecitationDuration] = useState(0);
+
   const showBismillah = Number(id) !== 9 && Number(id) !== 1;
+
+  // Cleanup on unmount
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+    });
+    return () => {
+      soundRef.current?.unloadAsync();
+    };
+  }, []);
+
+  // Stop when changing surah
+  useEffect(() => {
+    return () => {
+      soundRef.current?.unloadAsync();
+      soundRef.current = null;
+      setIsReciting(false);
+      setRecitationPosition(0);
+      setRecitationDuration(0);
+    };
+  }, [id]);
+
+  const toggleRecitation = useCallback(async () => {
+    if (recitationLoading) return;
+
+    if (isReciting) {
+      await soundRef.current?.pauseAsync();
+      setIsReciting(false);
+      return;
+    }
+
+    // If paused and sound exists, resume
+    if (soundRef.current) {
+      await soundRef.current.playAsync();
+      setIsReciting(true);
+      return;
+    }
+
+    // Fresh load
+    setRecitationLoading(true);
+    try {
+      const reciter = RECITERS[reciterIdx].id;
+      const audioUrl = `https://cdn.islamic.network/quran/audio-surah/128/${reciter}/${id}.mp3`;
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded) {
+            setRecitationPosition(status.positionMillis ?? 0);
+            setRecitationDuration(status.durationMillis ?? 0);
+            setIsReciting(status.isPlaying ?? false);
+            if (status.didJustFinish) {
+              setIsReciting(false);
+              setRecitationPosition(0);
+            }
+          }
+        }
+      );
+      soundRef.current = sound;
+      setIsReciting(true);
+    } catch {
+      // silently fail
+    } finally {
+      setRecitationLoading(false);
+    }
+  }, [isReciting, recitationLoading, id, reciterIdx]);
+
+  const stopRecitation = useCallback(async () => {
+    await soundRef.current?.stopAsync();
+    await soundRef.current?.unloadAsync();
+    soundRef.current = null;
+    setIsReciting(false);
+    setRecitationPosition(0);
+    setRecitationDuration(0);
+  }, []);
+
+  const cycleReciter = useCallback(async () => {
+    await stopRecitation();
+    setReciterIdx((i) => (i + 1) % RECITERS.length);
+  }, [stopRecitation]);
+
+  const fmt = (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    return `${m}:${String(s % 60).padStart(2, "0")}`;
+  };
+
+  const pct = recitationDuration > 0 ? (recitationPosition / recitationDuration) * 100 : 0;
 
   const ayahs: Ayah[] = (arabic?.ayahs || []).map((a, i) => ({
     ...a,
@@ -75,16 +182,11 @@ export default function SurahDetailScreen() {
   const renderAyah = ({ item }: { item: Ayah }) => (
     <View style={[styles.ayahCard, { backgroundColor: colors.card }]}>
       <View style={styles.ayahHeader}>
-        <View
-          style={[
-            styles.ayahNum,
-            { backgroundColor: colors.teal || "#1a7c6e" },
-          ]}
-        >
+        <View style={[styles.ayahNum, { backgroundColor: colors.teal }]}>
           <Text style={styles.ayahNumText}>{item.numberInSurah}</Text>
         </View>
       </View>
-      <Text style={[styles.arabic, { color: colors.text }]}>{item.text}</Text>
+      <Text style={[styles.arabic, { color: colors.foreground }]}>{item.text}</Text>
       {showTranslation && item.translation ? (
         <Text style={[styles.translation, { color: colors.mutedForeground }]}>
           {item.translation}
@@ -95,16 +197,14 @@ export default function SurahDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* ── Header ── */}
       <View
         style={[
           styles.header,
-          {
-            backgroundColor: colors.teal || "#1a7c6e",
-            paddingTop: insets.top + 12,
-          },
+          { backgroundColor: colors.tealDark, paddingTop: insets.top + 12 },
         ]}
       >
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={() => { stopRecitation(); router.back(); }} style={styles.backBtn}>
           <Feather name="arrow-left" size={22} color="#fff" />
         </Pressable>
         <View style={{ flex: 1 }}>
@@ -123,23 +223,61 @@ export default function SurahDetailScreen() {
         <Pressable
           onPress={() => setShowTranslation((v) => !v)}
           style={[
-            styles.translationToggle,
-            {
-              backgroundColor: showTranslation
-                ? "rgba(255,255,255,0.25)"
-                : "transparent",
-              borderColor: "rgba(255,255,255,0.5)",
-              borderWidth: 1,
-            },
+            styles.toggleBtn,
+            { backgroundColor: showTranslation ? "rgba(255,255,255,0.25)" : "transparent" },
           ]}
         >
           <Text style={styles.toggleText}>EN</Text>
         </Pressable>
       </View>
 
+      {/* ── Recitation Player ── */}
+      <View style={[styles.playerBar, { backgroundColor: colors.teal }]}>
+        {/* Progress */}
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
+        </View>
+
+        <View style={styles.playerRow}>
+          {/* Reciter selector */}
+          <Pressable onPress={cycleReciter} style={styles.reciterBtn}>
+            <Feather name="mic" size={13} color="rgba(255,255,255,0.85)" />
+            <Text style={styles.reciterText} numberOfLines={1}>
+              {RECITERS[reciterIdx].name}
+            </Text>
+            <Feather name="chevron-right" size={12} color="rgba(255,255,255,0.6)" />
+          </Pressable>
+
+          {/* Time */}
+          {recitationDuration > 0 && (
+            <Text style={styles.timeText}>
+              {fmt(recitationPosition)} / {fmt(recitationDuration)}
+            </Text>
+          )}
+
+          {/* Play/Pause */}
+          <Pressable
+            onPress={toggleRecitation}
+            disabled={recitationLoading || loading}
+            style={styles.playPauseBtn}
+          >
+            {recitationLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Feather
+                name={isReciting ? "pause" : "play"}
+                size={22}
+                color="#fff"
+              />
+            )}
+          </Pressable>
+        </View>
+      </View>
+
+      {/* ── Content ── */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.teal || "#1a7c6e"} />
+          <ActivityIndicator size="large" color={colors.teal} />
           <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
             Loading surah...
           </Text>
@@ -147,12 +285,10 @@ export default function SurahDetailScreen() {
       ) : error ? (
         <View style={styles.center}>
           <Feather name="wifi-off" size={40} color={colors.mutedForeground} />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-            {error}
-          </Text>
+          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>{error}</Text>
           <Pressable
             onPress={() => router.back()}
-            style={[styles.retryBtn, { backgroundColor: colors.teal || "#1a7c6e" }]}
+            style={[styles.retryBtn, { backgroundColor: colors.teal }]}
           >
             <Text style={{ color: "#fff", fontWeight: "600" }}>Go Back</Text>
           </Pressable>
@@ -165,19 +301,12 @@ export default function SurahDetailScreen() {
           contentContainerStyle={{
             padding: 16,
             gap: 12,
-            paddingBottom: insets.bottom + 20,
+            paddingBottom: insets.bottom + 24,
           }}
           ListHeaderComponent={
             showBismillah ? (
-              <View
-                style={[
-                  styles.bismillahWrap,
-                  { backgroundColor: colors.card },
-                ]}
-              >
-                <Text style={[styles.bismillah, { color: colors.teal || "#1a7c6e" }]}>
-                  {BISMILLAH}
-                </Text>
+              <View style={[styles.bismillahWrap, { backgroundColor: colors.card }]}>
+                <Text style={[styles.bismillah, { color: colors.teal }]}>{BISMILLAH}</Text>
               </View>
             ) : null
           }
@@ -201,41 +330,74 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  headerSub: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 12,
-    marginTop: 1,
-  },
-  translationToggle: {
+  headerTitle: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 1 },
+  toggleBtn: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
   },
-  toggleText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
+  toggleText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+
+  // Recitation player
+  playerBar: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    paddingTop: 6,
   },
-  center: {
+  progressTrack: {
+    height: 2,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderRadius: 1,
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: 2,
+    backgroundColor: "#fff",
+    borderRadius: 1,
+  },
+  playerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  reciterBtn: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  reciterText: {
+    flex: 1,
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  timeText: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 11,
+    minWidth: 70,
+    textAlign: "center",
+  },
+  playPauseBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
   },
-  loadingText: {
-    fontSize: 14,
-  },
-  retryBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginTop: 4,
-  },
+
+  // Content
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  loadingText: { fontSize: 14 },
+  retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
   bismillahWrap: {
     borderRadius: 14,
     padding: 18,
@@ -248,15 +410,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 40,
   },
-  ayahCard: {
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-  },
-  ayahHeader: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
+  ayahCard: { borderRadius: 14, padding: 16, gap: 10 },
+  ayahHeader: { flexDirection: "row", justifyContent: "flex-end" },
   ayahNum: {
     width: 30,
     height: 30,
@@ -264,19 +419,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  ayahNumText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  ayahNumText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   arabic: {
     fontSize: 22,
     textAlign: "right",
-    lineHeight: 40,
+    lineHeight: 42,
     fontWeight: "400",
+    writingDirection: "rtl",
   },
-  translation: {
-    fontSize: 13,
-    lineHeight: 19,
-  },
+  translation: { fontSize: 13, lineHeight: 20 },
 });

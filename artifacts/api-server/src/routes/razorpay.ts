@@ -176,6 +176,135 @@ router.get("/payments/razorpay/subscription-status", async (req, res): Promise<v
   });
 });
 
+// Mobile-friendly checkout page (opened in expo-web-browser)
+router.get("/payments/razorpay/checkout", (req, res): void => {
+  const { key, order_id, amount, currency = "INR", name = "Nurul Quran", description = "Premium Subscription", prefill_email = "", callback_url, cancel_url } = req.query as Record<string, string>;
+
+  if (!key || !order_id || !amount) {
+    res.status(400).send("<h1>Missing required parameters</h1>");
+    return;
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nurul Quran — Premium</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0D4A3E; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #fff; border-radius: 20px; padding: 32px 28px; max-width: 360px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .logo { font-size: 32px; margin-bottom: 8px; }
+    h1 { color: #0D4A3E; font-size: 20px; margin-bottom: 6px; }
+    p { color: #666; font-size: 14px; margin-bottom: 24px; }
+    .amount { font-size: 32px; font-weight: 700; color: #0D4A3E; margin-bottom: 4px; }
+    .plan { color: #888; font-size: 13px; margin-bottom: 28px; }
+    .btn { background: #0D4A3E; color: #fff; border: none; border-radius: 14px; padding: 16px 32px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; }
+    .btn:active { opacity: 0.85; }
+    .secure { color: #aaa; font-size: 11px; margin-top: 16px; }
+    .spinner { display: none; }
+    .loading .btn { display: none; }
+    .loading .spinner { display: block; color: #0D4A3E; margin: 16px auto; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">☪️</div>
+  <h1>${name}</h1>
+  <p>${description}</p>
+  <div class="amount">₹${Math.round(Number(amount) / 100).toLocaleString("en-IN")}</div>
+  <div class="plan">Secure payment via Razorpay</div>
+  <button class="btn" id="payBtn" onclick="startPayment()">Pay Now →</button>
+  <div class="spinner">Processing...</div>
+  <p class="secure">🔒 Your payment is secured by Razorpay</p>
+</div>
+<script>
+function startPayment() {
+  document.body.classList.add('loading');
+  var options = {
+    key: "${key}",
+    amount: "${amount}",
+    currency: "${currency}",
+    order_id: "${order_id}",
+    name: "${name}",
+    description: "${description}",
+    prefill: { email: "${prefill_email}" },
+    theme: { color: "#0D4A3E" },
+    handler: function(response) {
+      var params = new URLSearchParams({
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_signature: response.razorpay_signature,
+      });
+      window.location.href = "${callback_url}?" + params.toString();
+    },
+    modal: {
+      ondismiss: function() {
+        document.body.classList.remove('loading');
+        window.location.href = "${cancel_url || "/"}";
+      }
+    }
+  };
+  var rzp = new Razorpay(options);
+  rzp.open();
+}
+window.onload = function() { setTimeout(startPayment, 800); };
+</script>
+</body>
+</html>`;
+
+  res.setHeader("Content-Type", "text/html");
+  res.send(html);
+});
+
+// Callback endpoints for mobile payment redirect
+router.get("/payments/razorpay/mobile-callback", async (req, res): Promise<void> => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.query as Record<string, string>;
+
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keySecret || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:40px;background:#fff;">
+      <div style="font-size:48px">❌</div>
+      <h2 style="color:#333">Payment Failed</h2>
+      <p style="color:#666">Missing payment details</p>
+    </body></html>`);
+    return;
+  }
+
+  const crypto = require("crypto");
+  const body = `${razorpay_order_id}|${razorpay_payment_id}`;
+  const expectedSignature = crypto.createHmac("sha256", keySecret).update(body).digest("hex");
+
+  if (expectedSignature !== razorpay_signature) {
+    res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:40px;">
+      <div style="font-size:48px">❌</div><h2>Verification Failed</h2><p>Please contact support.</p>
+    </body></html>`);
+    return;
+  }
+
+  res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:40px;background:#E8F5E9;">
+    <div style="font-size:60px">✅</div>
+    <h2 style="color:#1B5E20;margin:16px 0">Payment Successful!</h2>
+    <p style="color:#388E3C;font-size:16px">JazakAllah Khair! Your premium access is now active.</p>
+    <p style="color:#888;margin-top:24px;font-size:13px">You can close this window and return to the app.</p>
+    <script>
+      // Signal the app via URL change
+      setTimeout(() => { window.location.href = window.location.href + "&status=success"; }, 1500);
+    </script>
+  </body></html>`);
+});
+
+router.get("/payments/razorpay/mobile-cancel", (_req, res): void => {
+  res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:40px;background:#FFF3E0;">
+    <div style="font-size:60px">ℹ️</div>
+    <h2 style="color:#E65100;margin:16px 0">Payment Cancelled</h2>
+    <p style="color:#BF360C">No charge was made. You can return to the app.</p>
+    <p style="color:#888;margin-top:24px;font-size:13px">Close this window to go back.</p>
+  </body></html>`);
+});
+
 router.post("/payments/razorpay/subscription", async (req, res): Promise<void> => {
   const razorpay = getRazorpay();
   if (!razorpay) {

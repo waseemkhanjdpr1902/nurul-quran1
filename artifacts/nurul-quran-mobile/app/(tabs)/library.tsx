@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -13,7 +14,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LectureCard } from "@/components/LectureCard";
-import { AudioPlayerBar } from "@/components/AudioPlayerBar";
 import { useColors } from "@/hooks/useColors";
 import { useAudio } from "@/context/AudioContext";
 import { useGetLectures } from "@workspace/api-client-react";
@@ -30,20 +30,47 @@ export default function LibraryScreen() {
   const { data, isLoading, refetch } = useGetLectures({
     search: search || undefined,
     category: category || undefined,
-    limit: 50,
+    limit: 79,
     offset: 0,
   });
 
   const lectures = data?.lectures ?? [];
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
+  const handlePlay = (item: any) => {
+    const isActive = currentTrack?.id === String(item.id);
+    if (isActive && isPlaying) {
+      pause();
+    } else if (isActive && !isPlaying) {
+      resume();
+    } else {
+      const audioUrl = (item as any).audioUrl;
+      if (!audioUrl) {
+        Alert.alert(
+          "No Audio Available",
+          "Audio for this lecture is not yet available. Check back soon!",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+      play({
+        id: String(item.id),
+        title: item.title,
+        scholar: item.speakerName ?? "Unknown Scholar",
+        audioUrl,
+      });
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={[styles.topBar, { paddingTop: topPad + 12, backgroundColor: colors.tealDark }]}>
         <Text style={styles.screenTitle}>Lecture Library</Text>
         <Text style={styles.screenSub}>{data?.total ?? 0} lectures available</Text>
       </View>
 
+      {/* Search */}
       <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Feather name="search" size={18} color={colors.mutedForeground} />
         <TextInput
@@ -60,6 +87,7 @@ export default function LibraryScreen() {
         )}
       </View>
 
+      {/* Category filter */}
       <FlatList
         data={CATEGORIES}
         horizontal
@@ -87,6 +115,7 @@ export default function LibraryScreen() {
         }}
       />
 
+      {/* Lecture list */}
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       ) : lectures.length === 0 ? (
@@ -100,7 +129,7 @@ export default function LibraryScreen() {
           keyExtractor={(item) => String(item.id)}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            paddingBottom: Platform.OS === "web" ? 34 + 84 : 84 + 16,
+            paddingBottom: Platform.OS === "web" ? 34 + 84 + 60 : 84 + 60 + 16,
             paddingTop: 4,
           }}
           onRefresh={refetch}
@@ -118,27 +147,14 @@ export default function LibraryScreen() {
                   isPremium: item.isPremium ?? false,
                   language: item.language ?? undefined,
                 }}
-                onPress={() => {
-                  if (isActive && isPlaying) {
-                    pause();
-                  } else if (isActive && !isPlaying) {
-                    resume();
-                  } else {
-                    play({
-                      id: String(item.id),
-                      title: item.title,
-                      scholar: item.speakerName ?? "Unknown Scholar",
-                      audioUrl: (item as any).audioUrl,
-                    });
-                  }
-                }}
+                isPlaying={isActive && isPlaying}
+                onPress={() => handlePlay(item)}
                 horizontal
               />
             );
           }}
         />
       )}
-      <AudioPlayerBar />
     </View>
   );
 }
