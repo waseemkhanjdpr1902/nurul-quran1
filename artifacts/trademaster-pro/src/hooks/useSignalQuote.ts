@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { fetchQuote, resolveYahooSymbol, type LiveQuote } from "@/lib/api";
+import { fetchQuote, resolveUnderlyingInfo, type LiveQuote, type UnderlyingInfo } from "@/lib/api";
 
 export function useSignalQuote(assetName: string, segment: string) {
-  const symbol = resolveYahooSymbol(assetName, segment);
+  const info: UnderlyingInfo = resolveUnderlyingInfo(assetName, segment);
   const [quote, setQuote] = useState<LiveQuote | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -14,9 +14,9 @@ export function useSignalQuote(assetName: string, segment: string) {
 
     async function load() {
       try {
-        const { quotes } = await fetchQuote(symbol);
+        const { quotes } = await fetchQuote(info.yahooSymbol);
         if (mountedRef.current) {
-          setQuote(quotes[symbol] ?? null);
+          setQuote(quotes[info.yahooSymbol] ?? null);
           setLastUpdated(new Date());
           setLoading(false);
         }
@@ -33,9 +33,9 @@ export function useSignalQuote(assetName: string, segment: string) {
       mountedRef.current = false;
       clearTimeout(timeoutId);
     };
-  }, [symbol]);
+  }, [info.yahooSymbol]);
 
-  return { quote, loading, symbol, lastUpdated };
+  return { quote, loading, info, lastUpdated };
 }
 
 export type TradingTip = {
@@ -62,6 +62,7 @@ export function getActionableTip(
   const pctFromEntry = ((livePrice - entry) / entry) * 100;
   const pctToT1 = ((t1 - livePrice) / livePrice) * 100;
   const fmt = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+  void pctToT1;
 
   if (signalType === "buy") {
     if (Math.abs(pctFromEntry) < 0.4) {
@@ -82,7 +83,7 @@ export function getActionableTip(
     if (pctFromEntry >= 1.5 && pctFromEntry < 3) {
       return { text: `Price ₹${fmt(livePrice - entry)} above entry — avoid chasing; wait for retest`, urgency: "low", emoji: "⚠️" };
     }
-    return { text: `Price ran ${pctFromEntry.toFixed(1)}% above entry — target ${Math.abs(pctToT1).toFixed(1)}% away`, urgency: "info", emoji: "🎯" };
+    return { text: `Price ran ${pctFromEntry.toFixed(1)}% above entry — monitor for next opportunity`, urgency: "info", emoji: "🎯" };
   } else {
     if (Math.abs(pctFromEntry) < 0.4) {
       return { text: `Price at resistance ₹${fmt(entry)} — ideal short/sell zone`, urgency: "high", emoji: "⚡" };

@@ -55,38 +55,100 @@ export type LiveQuote = {
   prevClose: number | null;
 };
 
-export function resolveYahooSymbol(assetName: string, segment: string): string {
+const INDEX_MAP: Record<string, string> = {
+  "NIFTY 50": "^NSEI", "NIFTY50": "^NSEI", "NIFTY": "^NSEI",
+  "BANKNIFTY": "^NSEBANK", "BANK NIFTY": "^NSEBANK", "BANK NIFTY 50": "^NSEBANK",
+  "FINNIFTY": "^NSEMDCP50", "FIN NIFTY": "^NSEMDCP50", "NIFTY FIN SERVICE": "^NSEMDCP50",
+  "MIDCAPNIFTY": "^NSEMDCP50", "MIDCAP NIFTY": "^NSEMDCP50",
+  "SENSEX": "^BSESN",
+  "USDINR": "USDINR=X", "USD/INR": "USDINR=X", "USD INR": "USDINR=X",
+  "EURINR": "EURINR=X", "EUR/INR": "EURINR=X",
+  "GBPINR": "GBPINR=X", "GBP/INR": "GBPINR=X",
+  "GOLD": "GC=F", "MCX GOLD": "GC=F", "GOLD MINI": "GC=F",
+  "SILVER": "SI=F", "MCX SILVER": "SI=F",
+  "CRUDEOIL": "CL=F", "CRUDE OIL": "CL=F", "MCX CRUDE": "CL=F", "CRUDE": "CL=F",
+  "NATURAL GAS": "NG=F", "NATURALGAS": "NG=F",
+  "COPPER": "HG=F",
+};
+
+const COMMODITY_LABELS: Record<string, string> = {
+  "GC=F": "Gold (MCX)",
+  "SI=F": "Silver (MCX)",
+  "CL=F": "Crude Oil (MCX)",
+  "NG=F": "Natural Gas (MCX)",
+  "HG=F": "Copper (MCX)",
+};
+
+const INDEX_LABELS: Record<string, string> = {
+  "^NSEI": "Nifty 50 Spot",
+  "^NSEBANK": "Bank Nifty Spot",
+  "^NSEMDCP50": "Fin Nifty Spot",
+  "^BSESN": "Sensex Spot",
+};
+
+function extractFnOUnderlying(upper: string): { symbol: string; label: string } {
+  if (/^(BANKNIFTY|BANK\s*NIFTY)/.test(upper)) return { symbol: "^NSEBANK", label: "Bank Nifty Spot" };
+  if (/^(FINNIFTY|FIN\s*NIFTY|NIFTY\s*FIN)/.test(upper)) return { symbol: "^NSEMDCP50", label: "Fin Nifty Spot" };
+  if (/^(MIDCAPNIFTY|MIDCAP\s*NIFTY)/.test(upper)) return { symbol: "^NSEMDCP50", label: "Midcap Nifty Spot" };
+  if (/^NIFTY/.test(upper)) return { symbol: "^NSEI", label: "Nifty 50 Spot" };
+  if (/^SENSEX/.test(upper)) return { symbol: "^BSESN", label: "Sensex Spot" };
+  const match = upper.match(/^([A-Z&]+)/);
+  const ticker = match ? match[1] : "NIFTY";
+  if (ticker === "NIFTY") return { symbol: "^NSEI", label: "Nifty 50 Spot" };
+  return { symbol: `${ticker}.NS`, label: `${ticker} Spot (NSE)` };
+}
+
+export type UnderlyingInfo = {
+  yahooSymbol: string;
+  spotLabel: string;
+  isFnO: boolean;
+  isCommodity: boolean;
+};
+
+export function resolveUnderlyingInfo(assetName: string, segment: string): UnderlyingInfo {
   const upper = assetName.toUpperCase().trim();
-  const INDEX_MAP: Record<string, string> = {
-    "NIFTY 50": "^NSEI", "NIFTY50": "^NSEI", "NIFTY": "^NSEI",
-    "BANKNIFTY": "^NSEBANK", "BANK NIFTY": "^NSEBANK", "BANK NIFTY 50": "^NSEBANK",
-    "FINNIFTY": "^NSEMDCP50", "FIN NIFTY": "^NSEMDCP50",
-    "MIDCAPNIFTY": "^NSEMDCP50", "MIDCAP NIFTY": "^NSEMDCP50",
-    "SENSEX": "^BSESN",
-    "USDINR": "USDINR=X", "USD/INR": "USDINR=X", "USD INR": "USDINR=X",
-    "EURINR": "EURINR=X", "EUR/INR": "EURINR=X",
-    "GBPINR": "GBPINR=X", "GBP/INR": "GBPINR=X",
-    "GOLD": "GC=F", "MCX GOLD": "GC=F", "GOLD MINI": "GC=F",
-    "SILVER": "SI=F", "MCX SILVER": "SI=F",
-    "CRUDEOIL": "CL=F", "CRUDE OIL": "CL=F", "MCX CRUDE": "CL=F", "CRUDE": "CL=F",
-    "NATURAL GAS": "NG=F", "NATURALGAS": "NG=F",
-    "COPPER": "HG=F",
-  };
-  if (INDEX_MAP[upper]) return INDEX_MAP[upper];
-  if (segment === "commodity") {
-    if (upper.includes("GOLD")) return "GC=F";
-    if (upper.includes("SILVER")) return "SI=F";
-    if (upper.includes("CRUDE") || upper.includes("OIL")) return "CL=F";
+  const isFnO = ["options", "futures", "fno"].includes(segment);
+  const isCommodity = segment === "commodity";
+
+  if (INDEX_MAP[upper]) {
+    return { yahooSymbol: INDEX_MAP[upper], spotLabel: INDEX_LABELS[INDEX_MAP[upper]] ?? assetName, isFnO, isCommodity };
   }
+
+  if (isFnO) {
+    const { symbol, label } = extractFnOUnderlying(upper);
+    return { yahooSymbol: symbol, spotLabel: label, isFnO: true, isCommodity: false };
+  }
+
+  if (isCommodity) {
+    let sym = "GC=F";
+    if (upper.includes("SILVER")) sym = "SI=F";
+    else if (upper.includes("CRUDE") || upper.includes("OIL")) sym = "CL=F";
+    else if (upper.includes("GAS") || upper.includes("NATURAL")) sym = "NG=F";
+    else if (upper.includes("COPPER")) sym = "HG=F";
+    else if (upper.includes("GOLD")) sym = "GC=F";
+    return { yahooSymbol: sym, spotLabel: COMMODITY_LABELS[sym] ?? assetName, isFnO: false, isCommodity: true };
+  }
+
   if (segment === "currency") {
-    if (upper.includes("USD")) return "USDINR=X";
-    if (upper.includes("EUR")) return "EURINR=X";
+    let sym = "USDINR=X";
+    if (upper.includes("EUR")) sym = "EURINR=X";
+    else if (upper.includes("GBP")) sym = "GBPINR=X";
+    return { yahooSymbol: sym, spotLabel: `${assetName} (Forex)`, isFnO: false, isCommodity: false };
   }
+
+  // Equity
   const stripped = upper
     .replace(/\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*\d{2,4}.*$/i, "")
     .replace(/\s+(FUT|CE|PE)$/, "")
+    .replace(/\s+\d+$/, "")
     .trim();
-  return `${stripped.replace(/\s+/g, "")}.NS`;
+  const sym = `${stripped.replace(/\s+/g, "")}.NS`;
+  const ticker = stripped.replace(/\s+/g, "");
+  return { yahooSymbol: sym, spotLabel: `${ticker} (NSE)`, isFnO: false, isCommodity: false };
+}
+
+export function resolveYahooSymbol(assetName: string, segment: string): string {
+  return resolveUnderlyingInfo(assetName, segment).yahooSymbol;
 }
 
 export async function fetchQuote(yahooSymbol: string): Promise<{ quotes: Record<string, LiveQuote | null> }> {

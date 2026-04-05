@@ -222,6 +222,16 @@ type YahooChartResponse = { chart?: { result?: { meta?: YahooMeta }[] } };
 
 const quoteCache = new Map<string, { data: unknown; expiry: number }>();
 
+function extractFnOUnderlying(upper: string): string {
+  if (/^(BANKNIFTY|BANK\s*NIFTY)/.test(upper)) return "^NSEBANK";
+  if (/^(FINNIFTY|FIN\s*NIFTY|NIFTY\s*FIN)/.test(upper)) return "^NSEMDCP50";
+  if (/^(MIDCAPNIFTY|MIDCAP\s*NIFTY)/.test(upper)) return "^NSEMDCP50";
+  if (/^NIFTY/.test(upper)) return "^NSEI";
+  if (/^SENSEX/.test(upper)) return "^BSESN";
+  const match = upper.match(/^([A-Z&]+)/);
+  return match ? `${match[1]}.NS` : "^NSEI";
+}
+
 function toYahooSymbol(assetName: string, segment: string): string {
   const upper = assetName.toUpperCase().trim();
   const INDEX_MAP: Record<string, string> = {
@@ -240,6 +250,10 @@ function toYahooSymbol(assetName: string, segment: string): string {
     "COPPER": "HG=F",
   };
   if (INDEX_MAP[upper]) return INDEX_MAP[upper];
+  // F&O: resolve to underlying index / stock — don't try to look up the contract
+  if (segment === "options" || segment === "futures" || segment === "fno") {
+    return extractFnOUnderlying(upper);
+  }
   if (segment === "commodity") {
     if (upper.includes("GOLD")) return "GC=F";
     if (upper.includes("SILVER")) return "SI=F";
@@ -252,9 +266,11 @@ function toYahooSymbol(assetName: string, segment: string): string {
     if (upper.includes("EUR")) return "EURINR=X";
     if (upper.includes("GBP")) return "GBPINR=X";
   }
+  // Equity: strip expiry/option suffixes cleanly
   const stripped = upper
     .replace(/\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*\d{2,4}.*$/i, "")
-    .replace(/\s+FUT$|\s+CE$|\s+PE$/, "")
+    .replace(/\s+(FUT|CE|PE)$/, "")
+    .replace(/\s+\d+$/, "")
     .trim();
   return `${stripped.replace(/\s+/g, "")}.NS`;
 }

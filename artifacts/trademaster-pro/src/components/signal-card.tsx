@@ -92,7 +92,7 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
   const isBuy = signal.signalType === "buy";
   const status = STATUS_CONFIG[signal.status];
 
-  const { quote, loading: quoteLoading, lastUpdated } = useSignalQuote(signal.assetName, signal.segment);
+  const { quote, loading: quoteLoading, lastUpdated, info } = useSignalQuote(signal.assetName, signal.segment);
   const livePrice = quote?.price ?? null;
 
   const tip = livePrice != null && signal.status === "active"
@@ -178,6 +178,16 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
               : "bg-red-950/30 border-red-900/40"
             : "bg-[hsl(220,13%,16%)] border-[hsl(220,13%,22%)] opacity-60"
       }`}>
+        {/* F&O Contract badge */}
+        {info.isFnO && (
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            <span className="text-xs text-gray-500">Contract:</span>
+            <span className="text-xs font-mono font-bold text-amber-300 bg-amber-900/25 border border-amber-700/30 px-2 py-0.5 rounded">
+              {signal.assetName}
+            </span>
+          </div>
+        )}
+
         {quoteLoading && !livePrice ? (
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
@@ -187,7 +197,7 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
           <div className="flex items-center justify-between flex-wrap gap-1">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full animate-pulse ${changePos ? "bg-green-400" : "bg-red-400"}`} />
-              <span className="text-xs text-gray-400 font-medium">LIVE RATE</span>
+              <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">{info.spotLabel}</span>
               <span className={`font-black font-mono text-sm ${changePos ? "text-green-300" : "text-red-300"}`}>
                 ₹{fmtPrice(livePrice)}
               </span>
