@@ -309,7 +309,7 @@ export default function Reports({ onNavigatePricing }: ReportsProps) {
 
             {!isFullAccess && (
               <div className="mt-6 bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl p-5">
-                <h3 className="text-white font-semibold mb-2 text-sm">What's included in Professional?</h3>
+                <h3 className="text-white font-semibold mb-2 text-sm">What's included in Pro Educator Plan?</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs text-gray-500">
                   {["Full analyst rationale for all picks", "Suggested allocation % per instrument", "Portfolio Allocator (3 risk profiles)", "Top 2 instruments per asset class", "Donut chart breakdown", "7 asset class coverage"].map((f) => (
                     <div key={f} className="flex items-start gap-1.5">

@@ -137,8 +137,8 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
       {isLocked && (
         <div className="absolute inset-0 bg-black/75 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10 gap-2">
           <div className="text-4xl">🔒</div>
-          <div className="text-sm font-bold text-white">Elite Technical Data</div>
-          <div className="text-xs text-gray-400 text-center px-4">Upgrade to Elite to unlock full S&amp;R levels and price objectives</div>
+          <div className="text-sm font-bold text-white">Pro Educator Content</div>
+          <div className="text-xs text-gray-400 text-center px-4">Subscribe to unlock full S&amp;R levels and price objectives</div>
         </div>
       )}
 

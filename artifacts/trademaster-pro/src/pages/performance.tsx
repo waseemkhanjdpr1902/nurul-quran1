@@ -194,7 +194,7 @@ export default function Performance({ onNavigatePricing }: PerformanceProps) {
               <PremiumLock
                 onNavigatePricing={onNavigatePricing}
                 title="Full History is Premium-only"
-                description="You are viewing the most recent 10 signals. Upgrade to Professional to unlock the complete performance history — all historical calls, outcomes, and detailed breakdowns."
+                description="You are viewing the most recent 10 signals. Subscribe to the Pro Educator Plan to unlock the complete performance history — all historical calls, outcomes, and detailed breakdowns."
               />
             )}
           </>

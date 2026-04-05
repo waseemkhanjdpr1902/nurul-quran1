@@ -91,3 +91,11 @@ export const tradeMasterJournal = pgTable("trademaster_journal", {
 export const insertJournalTradeSchema = createInsertSchema(tradeMasterJournal).omit({ id: true, createdAt: true });
 export type InsertJournalTrade = z.infer<typeof insertJournalTradeSchema>;
 export type JournalTrade = typeof tradeMasterJournal.$inferSelect;
+
+export const tradeMasterConsent = pgTable("trademaster_consent", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id").notNull().unique(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type TradeMasterConsent = typeof tradeMasterConsent.$inferSelect;

@@ -355,6 +355,18 @@ export async function fetchJournalAnalytics(sessionId: string): Promise<JournalA
   return apiFetch(`${API_BASE}/journal/analytics?session_id=${encodeURIComponent(sessionId)}`);
 }
 
+export async function persistConsent(sessionId: string): Promise<{ success: boolean }> {
+  return apiFetch(`${API_BASE}/consent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId }),
+  });
+}
+
+export async function checkConsent(sessionId: string): Promise<{ hasConsented: boolean; acceptedAt: string | null }> {
+  return apiFetch(`${API_BASE}/consent/check?sessionId=${encodeURIComponent(sessionId)}`);
+}
+
 export async function fetchPerformance(params: { segment?: string; from?: string; to?: string; sessionId?: string | null }): Promise<{ stats: PerformanceStats; signals: PerformanceSignal[]; isPremium: boolean }> {
   const p = new URLSearchParams();
   if (params.segment) p.set("segment", params.segment);

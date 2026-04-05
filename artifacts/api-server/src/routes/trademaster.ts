@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { createHmac } from "crypto";
 import { db } from "@workspace/db";
-import { tradeMasterSignals, tradeMasterSubscriptions, tradeMasterInvestmentReports, tradeMasterJournal } from "@workspace/db/schema";
+import { tradeMasterSignals, tradeMasterSubscriptions, tradeMasterInvestmentReports, tradeMasterJournal, tradeMasterConsent } from "@workspace/db/schema";
 import { eq, desc, and, sql, or, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
@@ -387,10 +387,10 @@ router.post("/trademaster/payment/order", async (req: Request, res: Response): P
     const Razorpay = require("razorpay");
     const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
     const order = await rzp.orders.create({
-      amount: 499900,
+      amount: 250000,
       currency: "INR",
-      receipt: `tm_elite_${Date.now()}`,
-      notes: { product: "TradeMaster Pro — Elite Monthly Plan" },
+      receipt: `tm_edu_${Date.now()}`,
+      notes: { product: "TradeMaster Pro — Pro Educator Plan (90 days)" },
     });
     res.json({ orderId: order.id as string, amount: order.amount as number, currency: order.currency as string, keyId });
   } catch (err) {
@@ -440,10 +440,49 @@ router.get("/trademaster/subscription/check", async (req: Request, res: Response
     if (!sessionId || typeof sessionId !== "string") { res.json({ isPremium: false }); return; }
     const [sub] = await db.select().from(tradeMasterSubscriptions)
       .where(and(eq(tradeMasterSubscriptions.sessionId, sessionId), eq(tradeMasterSubscriptions.status, "active")));
-    res.json({ isPremium: !!sub, subscription: sub ?? null });
+    if (!sub) { res.json({ isPremium: false, subscription: null }); return; }
+    const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+    const isExpired = Date.now() - new Date(sub.createdAt).getTime() > NINETY_DAYS_MS;
+    if (isExpired) {
+      await db.update(tradeMasterSubscriptions).set({ status: "expired" }).where(eq(tradeMasterSubscriptions.id, sub.id));
+      res.json({ isPremium: false, subscription: null }); return;
+    }
+    res.json({ isPremium: true, subscription: sub });
   } catch (err) {
     req.log.error({ err }, "Failed to check subscription");
     res.json({ isPremium: false, subscription: null });
+  }
+});
+
+router.post("/trademaster/consent", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sessionId } = req.body as { sessionId?: unknown };
+    if (typeof sessionId !== "string" || !sessionId.trim()) {
+      res.status(400).json({ error: "sessionId required" }); return;
+    }
+    const sid = sessionId.trim();
+    await db.insert(tradeMasterConsent)
+      .values({ sessionId: sid })
+      .onConflictDoNothing();
+    res.json({ success: true, sessionId: sid });
+  } catch (err) {
+    req.log.error({ err }, "Failed to persist consent");
+    res.status(500).json({ error: "Failed to persist consent" });
+  }
+});
+
+router.get("/trademaster/consent/check", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sessionId } = req.query as { sessionId?: string };
+    if (!sessionId || typeof sessionId !== "string") {
+      res.json({ hasConsented: false }); return;
+    }
+    const [record] = await db.select().from(tradeMasterConsent)
+      .where(eq(tradeMasterConsent.sessionId, sessionId));
+    res.json({ hasConsented: !!record, acceptedAt: record?.acceptedAt ?? null });
+  } catch (err) {
+    req.log.error({ err }, "Failed to check consent");
+    res.json({ hasConsented: false });
   }
 });
 

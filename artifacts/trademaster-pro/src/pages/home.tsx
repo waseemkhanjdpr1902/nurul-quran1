@@ -145,7 +145,7 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
               </span>
               {isPremium && (
                 <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full tracking-widest uppercase">
-                  ♛ Elite
+                  ♛ Pro Educator
                 </span>
               )}
             </div>
@@ -153,6 +153,10 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
               Technical analysis levels across Nifty · BankNifty · Stocks · F&O · Currency · Commodity
               <span className="text-gray-600"> · Educational reference only</span>
             </p>
+            <div className="mt-2 inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/25 text-amber-400/90 text-[10px] font-semibold px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 bg-amber-400 rounded-full opacity-80" />
+              Data delayed by 15–30 min for educational purposes
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
@@ -166,7 +170,7 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
                 onClick={onNavigatePricing}
                 className="bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white text-sm font-black px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-green-900/30"
               >
-                ♛ Go Elite
+                ♛ Subscribe
               </button>
             )}
             {isPremium && (
@@ -174,7 +178,7 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
                 onClick={onNavigatePricing}
                 className="bg-amber-500/10 text-amber-400 border border-amber-500/40 text-xs px-3 py-1.5 rounded-lg font-black hover:bg-amber-500/20 transition-colors tracking-wide"
               >
-                ♛ ELITE MEMBER
+                ♛ PRO EDUCATOR
               </button>
             )}
             {isAdmin && (
@@ -304,14 +308,14 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-amber-400 text-xs font-black tracking-widest uppercase bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                      Elite Only
+                      Pro Educator Only
                     </span>
                   </div>
                   <div className="text-white font-bold text-lg">
                     🔒 {lockedCount} premium signal{lockedCount !== 1 ? "s" : ""} locked
                   </div>
                   <div className="text-gray-400 text-sm mt-1">
-                    Elite members unlock full entry, SL &amp; target levels across Nifty, BankNifty, F&amp;O, Stocks, Currency &amp; Commodities — with IV/PCR data, S&amp;R zones &amp; Fibonacci levels.
+                    Pro Educator members unlock full entry, SL &amp; target levels across Nifty, BankNifty, F&amp;O, Stocks, Currency &amp; Commodities — with IV/PCR data, S&amp;R zones &amp; Fibonacci levels.
                   </div>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {["Nifty 50", "BankNifty", "500+ Stocks", "F&O", "Currency", "Commodity"].map((m) => (
@@ -325,7 +329,7 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
                   onClick={onNavigatePricing}
                   className="shrink-0 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white font-black px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/30 text-sm whitespace-nowrap"
                 >
-                  ♛ Unlock Elite Access →
+                  ♛ Subscribe Now →
                 </button>
               </div>
             )}

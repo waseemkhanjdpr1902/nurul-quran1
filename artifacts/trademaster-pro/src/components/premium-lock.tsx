@@ -6,8 +6,8 @@ type PremiumLockProps = {
 
 export function PremiumLock({
   onNavigatePricing,
-  title = "Premium Feature",
-  description = "This content is available exclusively to Professional subscribers.",
+  title = "Pro Educator Feature",
+  description = "This content is available exclusively to Pro Educator Plan subscribers.",
 }: PremiumLockProps) {
   return (
     <div className="bg-gradient-to-r from-green-900/20 to-emerald-900/10 border border-green-500/30 rounded-2xl p-8 text-center">
@@ -18,9 +18,9 @@ export function PremiumLock({
         onClick={onNavigatePricing}
         className="bg-green-600 hover:bg-green-500 text-white font-black px-8 py-3 rounded-xl transition-colors text-sm"
       >
-        Upgrade to Professional →
+        Subscribe to Pro Educator Plan →
       </button>
-      <p className="text-gray-600 text-xs mt-3">₹2,499/month · Cancel anytime · Instant access</p>
+      <p className="text-gray-600 text-xs mt-3">₹2,500 / 3 months · No auto-renewal · Instant access</p>
     </div>
   );
 }
