@@ -9,6 +9,7 @@ Full-stack Islamic education web app built as a pnpm monorepo (React+Vite fronte
 ## Artifacts
 
 - **`artifacts/nurul-quran`** — React+Vite PWA frontend (port from `PORT` env)
+- **`artifacts/nurul-quran-mobile`** — Expo React Native mobile app (port 21581, preview `/mobile/`)
 - **`artifacts/api-server`** — Express 5 REST API (port 8080)
 - **`artifacts/mockup-sandbox`** — Vite component preview server
 - **`artifacts/trademaster-pro`** — TradeMaster Pro trading app frontend

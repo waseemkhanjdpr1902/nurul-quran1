@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Nurul Quran",
+    "slug": "nurul-quran-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "nurul-quran-mobile",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#004D40"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nurulquran.mobile"
+    },
+    "android": {
+      "package": "com.nurulquran.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#004D40"
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

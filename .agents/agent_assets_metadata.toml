@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "qBrMl8uD6AHbL5CZDFKxP"
+uri = "file://artifacts/nurul-quran-mobile/assets/images/icon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Y9AqqY2gdyoDQ4vqbLkXo"
+uri = "file://artifacts/nurul-quran-mobile/assets/images/splash.png"
+type = "image"
+title = "generated_image"
