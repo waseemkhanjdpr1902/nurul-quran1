@@ -1,6 +1,8 @@
-import { useEffect } from "react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useAdmin } from "@/hooks/use-admin";
+
+// TESTING MODE — set to false to re-enable subscription gate
+const TESTING_MODE = true;
 
 type SubscriptionGuardProps = {
   onNavigatePricing: (message?: string) => void;
@@ -11,15 +13,10 @@ type SubscriptionGuardProps = {
 export function SubscriptionGuard({ onNavigatePricing, children, redirectMessage }: SubscriptionGuardProps) {
   const { isPremium, loading } = useSubscription();
   const { isAdmin } = useAdmin();
+  void onNavigatePricing; void redirectMessage;
 
-  useEffect(() => {
-    if (!loading && !isPremium && !isAdmin) {
-      onNavigatePricing(
-        redirectMessage ??
-          "This section requires an active Pro Educator subscription. Subscribe below to unlock all educational tools, signal charts, calculators, and analytics for 90 days."
-      );
-    }
-  }, [loading, isPremium, isAdmin, onNavigatePricing, redirectMessage]);
+  // TESTING MODE: bypass all subscription checks
+  if (TESTING_MODE) return <>{children}</>;
 
   if (loading) {
     return (
