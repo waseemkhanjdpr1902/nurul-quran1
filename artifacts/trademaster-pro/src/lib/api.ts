@@ -179,7 +179,7 @@ export async function fetchSignals(segment?: string, sessionId?: string | null):
   return apiFetch(`${API_BASE}/signals${qs ? `?${qs}` : ""}`);
 }
 
-export async function fetchTicker(): Promise<{ ticker: TickerData }> {
+export async function fetchTicker(): Promise<{ ticker: TickerData; sessionDate?: string }> {
   return apiFetch(`${API_BASE}/ticker`);
 }
 

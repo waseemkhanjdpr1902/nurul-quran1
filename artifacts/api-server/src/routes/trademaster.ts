@@ -419,9 +419,14 @@ async function fetchYahooTicker(yahooSymbol: string, name: string): Promise<Tick
 
 router.get("/trademaster/ticker", async (req: Request, res: Response): Promise<void> => {
   try {
+    // Compute today's session date in IST (DD/MM/YYYY — Indian convention)
+    const sessionDateISO = todayIST(); // e.g. "2026-04-06"
+    const [dd, mm, yyyy] = [sessionDateISO.slice(8, 10), sessionDateISO.slice(5, 7), sessionDateISO.slice(0, 4)];
+    const sessionDate = `${dd}/${mm}/${yyyy}`; // "06/04/2026"
+
     // Serve from cache if fresh
     if (TICKER_CACHE.data && Date.now() - TICKER_CACHE.ts < TICKER_TTL) {
-      res.json({ ticker: TICKER_CACHE.data, fmpFeed: { price: FMP_FEED.price, name: FMP_FEED.name, ts: FMP_FEED.ts } });
+      res.json({ ticker: TICKER_CACHE.data, sessionDate, fmpFeed: { price: FMP_FEED.price, name: FMP_FEED.name, ts: FMP_FEED.ts } });
       return;
     }
     // Fetch Yahoo ticker data + FMP feed check in parallel
@@ -440,7 +445,7 @@ router.get("/trademaster/ticker", async (req: Request, res: Response): Promise<v
     const results: TickerResults = { nifty, banknifty };
     TICKER_CACHE.data = results;
     TICKER_CACHE.ts = Date.now();
-    res.json({ ticker: results, fmpFeed: { price: fmpFeed.price, name: fmpFeed.name, ts: FMP_FEED.ts } });
+    res.json({ ticker: results, sessionDate, fmpFeed: { price: fmpFeed.price, name: fmpFeed.name, ts: FMP_FEED.ts } });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch ticker");
     res.status(500).json({ error: "Failed to fetch ticker" });

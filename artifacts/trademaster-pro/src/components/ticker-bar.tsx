@@ -10,6 +10,13 @@ export function TickerBar() {
   });
 
   const ticker = data?.ticker || {};
+  // sessionDate is computed server-side in IST (DD/MM/YYYY). Fallback: compute on client.
+  const sessionDate: string = data?.sessionDate ?? (() => {
+    const now = new Date(Date.now() + 5.5 * 3600 * 1000);
+    const d = now.toISOString().slice(0, 10);
+    return `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+  })();
+
   const items = [
     { key: "nifty", label: "NIFTY 50" },
     { key: "banknifty", label: "BANK NIFTY" },
@@ -20,7 +27,7 @@ export function TickerBar() {
 
   // Use Yahoo Finance's actual marketState as the heartbeat — "REGULAR" = live session
   const anyMarketState = ticker.nifty?.marketState ?? ticker.banknifty?.marketState ?? null;
-  const marketLive = anyMarketState === "REGULAR";
+  const marketLive = anyMarketState === "REGULAR" || anyMarketState === "OPEN";
   const marketLabel = marketLive ? "Market Open" : anyMarketState ? `Market ${anyMarketState}` : "Market Closed";
   const tickerLabel = marketLive ? "LIVE" : "PREV";
 
@@ -28,6 +35,9 @@ export function TickerBar() {
     <div className="bg-[hsl(220,13%,10%)] border-b border-[hsl(220,13%,18%)] px-4 py-2">
       <div className="flex items-center gap-6 overflow-x-auto scrollbar-none">
         <span className="text-xs font-mono shrink-0 text-gray-500">{tickerLabel}</span>
+        <span className={`text-xs font-mono shrink-0 font-semibold ${marketLive ? "text-green-500" : "text-gray-600"}`}>
+          {sessionDate}
+        </span>
         {isLoading ? (
           <span className="text-xs text-gray-600 font-mono animate-pulse">Loading market data…</span>
         ) : showUnavailable ? (
