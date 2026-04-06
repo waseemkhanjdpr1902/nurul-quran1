@@ -383,7 +383,12 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
 
       <div className="mt-3 pt-2.5 border-t border-[hsl(220,13%,18%)]">
         <span className="text-xs text-gray-600 font-mono">
-          {new Date(signal.createdAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+          {new Date(signal.createdAt).toLocaleString("en-IN", {
+            day: "2-digit", month: "2-digit", year: "numeric",
+            hour: "2-digit", minute: "2-digit",
+            hour12: true,
+            timeZone: "Asia/Kolkata",
+          })}
         </span>
       </div>
     </div>
