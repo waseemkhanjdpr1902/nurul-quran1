@@ -56,19 +56,98 @@ export type LiveQuote = {
 };
 
 const INDEX_MAP: Record<string, string> = {
-  "NIFTY 50": "^NSEI", "NIFTY50": "^NSEI", "NIFTY": "^NSEI",
+  // Nifty 50 — all common naming variants including futures
+  "NIFTY": "^NSEI", "NIFTY 50": "^NSEI", "NIFTY50": "^NSEI",
+  "NIFTY FUTURES": "^NSEI", "NIFTY 50 FUTURES": "^NSEI",
+  "NIFTY FUT": "^NSEI", "NIFTY 50 FUT": "^NSEI",
+  "NIFTY SPOT": "^NSEI", "NIFTY 50 SPOT": "^NSEI",
+  // Bank Nifty — all common naming variants
   "BANKNIFTY": "^NSEBANK", "BANK NIFTY": "^NSEBANK", "BANK NIFTY 50": "^NSEBANK",
+  "BANKNIFTY FUTURES": "^NSEBANK", "BANK NIFTY FUTURES": "^NSEBANK",
+  "BANKNIFTY FUT": "^NSEBANK", "BANK NIFTY FUT": "^NSEBANK",
+  "BANKNIFTY SPOT": "^NSEBANK", "BANK NIFTY SPOT": "^NSEBANK",
+  // Fin Nifty / Midcap Nifty
   "FINNIFTY": "^NSEMDCP50", "FIN NIFTY": "^NSEMDCP50", "NIFTY FIN SERVICE": "^NSEMDCP50",
   "MIDCAPNIFTY": "^NSEMDCP50", "MIDCAP NIFTY": "^NSEMDCP50",
+  // Sensex
   "SENSEX": "^BSESN",
+  // Currency
   "USDINR": "USDINR=X", "USD/INR": "USDINR=X", "USD INR": "USDINR=X",
   "EURINR": "EURINR=X", "EUR/INR": "EURINR=X",
   "GBPINR": "GBPINR=X", "GBP/INR": "GBPINR=X",
-  "GOLD": "GC=F", "MCX GOLD": "GC=F", "GOLD MINI": "GC=F",
+  // Commodities (direct name lookup)
+  "GOLD": "GC=F", "MCX GOLD": "GC=F", "GOLD MCX": "GC=F", "GOLD MINI": "GC=F",
   "SILVER": "SI=F", "MCX SILVER": "SI=F",
   "CRUDEOIL": "CL=F", "CRUDE OIL": "CL=F", "MCX CRUDE": "CL=F", "CRUDE": "CL=F",
   "NATURAL GAS": "NG=F", "NATURALGAS": "NG=F",
   "COPPER": "HG=F",
+};
+
+// Maps common full company names to their NSE ticker symbols.
+// These are typically how signal admins enter asset names.
+const COMPANY_TICKER_MAP: Record<string, string> = {
+  "RELIANCE INDUSTRIES": "RELIANCE",
+  "TATA CONSULTANCY SERVICES": "TCS",
+  "TATA CONSULTANCY": "TCS",
+  "INFOSYS": "INFY",
+  "HDFC BANK": "HDFCBANK",
+  "HDFC": "HDFC",
+  "ICICI BANK": "ICICIBANK",
+  "STATE BANK OF INDIA": "SBIN",
+  "SBI": "SBIN",
+  "AXIS BANK": "AXISBANK",
+  "KOTAK MAHINDRA BANK": "KOTAKBANK",
+  "KOTAK BANK": "KOTAKBANK",
+  "LARSEN AND TOUBRO": "LT",
+  "LARSEN & TOUBRO": "LT",
+  "L&T": "LT",
+  "ITC": "ITC",
+  "HINDUSTAN UNILEVER": "HINDUNILVR",
+  "HUL": "HINDUNILVR",
+  "BHARTI AIRTEL": "BHARTIARTL",
+  "AIRTEL": "BHARTIARTL",
+  "WIPRO": "WIPRO",
+  "HCL TECHNOLOGIES": "HCLTECH",
+  "HCL TECH": "HCLTECH",
+  "SUN PHARMA": "SUNPHARMA",
+  "SUN PHARMACEUTICAL": "SUNPHARMA",
+  "MARUTI SUZUKI": "MARUTI",
+  "MARUTI": "MARUTI",
+  "TATA MOTORS": "TATAMOTORS",
+  "BAJAJ FINANCE": "BAJFINANCE",
+  "BAJAJ FINSERV": "BAJAJFINSV",
+  "ASIAN PAINTS": "ASIANPAINT",
+  "TITAN COMPANY": "TITAN",
+  "TITAN": "TITAN",
+  "ULTRA TECH CEMENT": "ULTRACEMCO",
+  "ULTRATECH CEMENT": "ULTRACEMCO",
+  "ADANI ENTERPRISES": "ADANIENT",
+  "ADANI PORTS": "ADANIPORTS",
+  "NTPC": "NTPC",
+  "POWER GRID": "POWERGRID",
+  "ONGC": "ONGC",
+  "OIL AND NATURAL GAS": "ONGC",
+  "CIPLA": "CIPLA",
+  "DR REDDYS": "DRREDDY",
+  "DR REDDY": "DRREDDY",
+  "DIVIS LABS": "DIVISLAB",
+  "DIVIS LABORATORIES": "DIVISLAB",
+  "NESTLE INDIA": "NESTLEIND",
+  "NESTLE": "NESTLEIND",
+  "GRASIM INDUSTRIES": "GRASIM",
+  "GRASIM": "GRASIM",
+  "HINDALCO INDUSTRIES": "HINDALCO",
+  "HINDALCO": "HINDALCO",
+  "TATA STEEL": "TATASTEEL",
+  "JSW STEEL": "JSWSTEEL",
+  "HERO MOTOCORP": "HEROMOTOCO",
+  "BAJAJ AUTO": "BAJAJ-AUTO",
+  "EICHER MOTORS": "EICHERMOT",
+  "INDUSIND BANK": "INDUSINDBK",
+  "TECH MAHINDRA": "TECHM",
+  "SHREE CEMENT": "SHREECEM",
+  "BRITANNIA INDUSTRIES": "BRITANNIA",
+  "BRITANNIA": "BRITANNIA",
 };
 
 const COMMODITY_LABELS: Record<string, string> = {
@@ -110,25 +189,38 @@ export function resolveUnderlyingInfo(assetName: string, segment: string): Under
   const isFnO = ["options", "futures", "fno"].includes(segment);
   const isCommodity = segment === "commodity";
 
+  // 1. Direct index/commodity/currency lookup (catches futures variants too)
   if (INDEX_MAP[upper]) {
-    return { yahooSymbol: INDEX_MAP[upper], spotLabel: INDEX_LABELS[INDEX_MAP[upper]] ?? assetName, isFnO, isCommodity };
+    const sym = INDEX_MAP[upper];
+    return { yahooSymbol: sym, spotLabel: INDEX_LABELS[sym] ?? COMMODITY_LABELS[sym] ?? assetName, isFnO, isCommodity };
   }
 
+  // 2. Segment-level routing — "nifty" / "banknifty" always resolve to their index
+  if (segment === "nifty") {
+    const { symbol, label } = extractFnOUnderlying(upper);
+    return { yahooSymbol: symbol, spotLabel: label, isFnO: false, isCommodity: false };
+  }
+  if (segment === "banknifty") {
+    return { yahooSymbol: "^NSEBANK", spotLabel: "Bank Nifty Spot", isFnO: false, isCommodity: false };
+  }
+
+  // 3. F&O — extract underlying index / equity
   if (isFnO) {
     const { symbol, label } = extractFnOUnderlying(upper);
     return { yahooSymbol: symbol, spotLabel: label, isFnO: true, isCommodity: false };
   }
 
+  // 4. Commodity segment
   if (isCommodity) {
     let sym = "GC=F";
     if (upper.includes("SILVER")) sym = "SI=F";
     else if (upper.includes("CRUDE") || upper.includes("OIL")) sym = "CL=F";
     else if (upper.includes("GAS") || upper.includes("NATURAL")) sym = "NG=F";
     else if (upper.includes("COPPER")) sym = "HG=F";
-    else if (upper.includes("GOLD")) sym = "GC=F";
     return { yahooSymbol: sym, spotLabel: COMMODITY_LABELS[sym] ?? assetName, isFnO: false, isCommodity: true };
   }
 
+  // 5. Currency segment
   if (segment === "currency") {
     let sym = "USDINR=X";
     if (upper.includes("EUR")) sym = "EURINR=X";
@@ -136,15 +228,29 @@ export function resolveUnderlyingInfo(assetName: string, segment: string): Under
     return { yahooSymbol: sym, spotLabel: `${assetName} (Forex)`, isFnO: false, isCommodity: false };
   }
 
-  // Equity
+  // 6. Intraday — try F&O extraction first (handles "NIFTY 50 FUTURES", "BANKNIFTY FUTURES", etc.)
+  if (segment === "intraday") {
+    if (/^(NIFTY|BANKNIFTY|BANK\s*NIFTY|FINNIFTY|SENSEX|MIDCAP\s*NIFTY)/.test(upper)) {
+      const { symbol, label } = extractFnOUnderlying(upper);
+      return { yahooSymbol: symbol, spotLabel: label, isFnO: false, isCommodity: false };
+    }
+  }
+
+  // 7. Equity (and intraday equity) — company name to NSE ticker mapping
+  if (COMPANY_TICKER_MAP[upper]) {
+    const ticker = COMPANY_TICKER_MAP[upper];
+    return { yahooSymbol: `${ticker}.NS`, spotLabel: `${ticker} (NSE)`, isFnO: false, isCommodity: false };
+  }
+
+  // 8. Equity fallback — strip expiry suffixes, then strip generic suffixes that aren't part of NSE ticker
   const stripped = upper
     .replace(/\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*\d{2,4}.*$/i, "")
-    .replace(/\s+(FUT|CE|PE)$/, "")
-    .replace(/\s+\d+$/, "")
+    .replace(/\s+(FUTURES|FUTURE|FUT|OPTIONS|OPTION|CE|PE|CALL|PUT)$/i, "")
+    .replace(/\s+\d+\s*(CE|PE|CALL|PUT)?$/i, "")
+    .replace(/\s+(INDUSTRIES|INDUSTRY|LIMITED|LTD|ENTERPRISES|ENTERPRISE|CORPORATION|CORP)$/i, "")
     .trim();
-  const sym = `${stripped.replace(/\s+/g, "")}.NS`;
   const ticker = stripped.replace(/\s+/g, "");
-  return { yahooSymbol: sym, spotLabel: `${ticker} (NSE)`, isFnO: false, isCommodity: false };
+  return { yahooSymbol: `${ticker}.NS`, spotLabel: `${ticker} (NSE)`, isFnO: false, isCommodity: false };
 }
 
 export function resolveYahooSymbol(assetName: string, segment: string): string {
