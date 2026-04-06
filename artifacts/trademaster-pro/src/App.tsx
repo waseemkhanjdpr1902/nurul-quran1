@@ -13,17 +13,19 @@ import Journal from "@/pages/journal";
 import Analytics from "@/pages/analytics";
 import Calculators from "@/pages/calculators";
 import Performance from "@/pages/performance";
+import Scanner from "@/pages/scanner";
 
 const queryClient = new QueryClient();
 
-type Page = "journal" | "analytics" | "watchlist" | "calculators" | "reports" | "pricing" | "admin" | "performance";
+type Page = "journal" | "analytics" | "watchlist" | "calculators" | "reports" | "pricing" | "admin" | "performance" | "scanner";
 
 const NAV: { key: Page; label: string; icon: string }[] = [
   { key: "watchlist", label: "Signals", icon: "📡" },
-  { key: "journal", label: "My Trades", icon: "📓" },
+  { key: "scanner",   label: "Scanner", icon: "🔭" },
+  { key: "journal",   label: "My Trades", icon: "📓" },
   { key: "analytics", label: "Analytics", icon: "📊" },
   { key: "calculators", label: "Calculators", icon: "🔢" },
-  { key: "reports", label: "Reports", icon: "📋" },
+  { key: "reports",   label: "Reports", icon: "📋" },
   { key: "performance", label: "Performance", icon: "🏆" },
 ];
 
@@ -148,6 +150,14 @@ function App() {
                 redirectMessage="Access to full performance history requires an active Pro Educator subscription. Subscribe to view all historical signals and outcomes."
               >
                 <Performance onNavigatePricing={() => navigateToPricing()} />
+              </SubscriptionGuard>
+            )}
+            {page === "scanner" && (
+              <SubscriptionGuard
+                onNavigatePricing={navigateToPricing}
+                redirectMessage="The Market Sweep Scanner requires an active Pro Educator subscription. Subscribe to scan 25+ NSE stocks using RSI, VWAP, and breakout logic."
+              >
+                <Scanner onNavigatePricing={() => navigateToPricing()} />
               </SubscriptionGuard>
             )}
             {page === "pricing" && (

@@ -376,3 +376,24 @@ export async function fetchPerformance(params: { segment?: string; from?: string
   const qs = p.toString();
   return apiFetch(`${API_BASE}/performance${qs ? `?${qs}` : ""}`);
 }
+
+export type ScanResult = {
+  symbol: string; name: string; cmp: number; signal: "buy" | "sell";
+  entry: number; sl: number; pt1: number; pt2: number;
+  rsi: number; vwap: number; volumeRatio: number; isBreakout: boolean;
+  strength: number; reason: string; segment: string; changePercent: number | null;
+};
+export type ScannerResponse = {
+  buy: ScanResult[]; sell: ScanResult[];
+  scannedAt: string; totalScanned: number;
+};
+
+export async function runScanner(sessionId: string, segment: string, interval: string): Promise<ScannerResponse> {
+  const p = new URLSearchParams({ session_id: sessionId, segment, interval });
+  const r = await fetch(`${API_BASE}/scanner?${p}`);
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ error: "Scanner failed" })) as { error?: string; code?: string };
+    throw Object.assign(new Error(err.error ?? "Scanner failed"), { code: err.code });
+  }
+  return r.json();
+}

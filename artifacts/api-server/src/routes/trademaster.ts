@@ -772,4 +772,195 @@ router.get("/trademaster/journal/analytics", async (req: Request, res: Response)
   }
 });
 
+// ─── Market Sweep Scanner ───────────────────────────────────────────────────
+
+const SCANNER_CACHE = new Map<string, { data: ScannerResponse; ts: number }>();
+const SCANNER_TTL = 2 * 60 * 1000;
+
+type ScanResult = {
+  symbol: string; name: string; cmp: number; signal: "buy" | "sell";
+  entry: number; sl: number; pt1: number; pt2: number;
+  rsi: number; vwap: number; volumeRatio: number; isBreakout: boolean;
+  strength: number; reason: string; segment: string; changePercent: number | null;
+};
+type ScannerResponse = { buy: ScanResult[]; sell: ScanResult[]; scannedAt: string; totalScanned: number };
+
+const EQUITY_UNIVERSE = [
+  { symbol: "RELIANCE.NS",  name: "Reliance Industries",      seg: "equity" },
+  { symbol: "TCS.NS",       name: "Tata Consultancy Services", seg: "equity" },
+  { symbol: "HDFCBANK.NS",  name: "HDFC Bank",                 seg: "equity" },
+  { symbol: "BHARTIARTL.NS",name: "Bharti Airtel",             seg: "equity" },
+  { symbol: "ICICIBANK.NS", name: "ICICI Bank",                seg: "equity" },
+  { symbol: "INFY.NS",      name: "Infosys",                   seg: "equity" },
+  { symbol: "SBIN.NS",      name: "State Bank of India",       seg: "equity" },
+  { symbol: "ITC.NS",       name: "ITC Ltd",                   seg: "equity" },
+  { symbol: "KOTAKBANK.NS", name: "Kotak Mahindra Bank",       seg: "equity" },
+  { symbol: "LT.NS",        name: "Larsen & Toubro",           seg: "equity" },
+  { symbol: "AXISBANK.NS",  name: "Axis Bank",                 seg: "equity" },
+  { symbol: "BAJFINANCE.NS",name: "Bajaj Finance",             seg: "equity" },
+  { symbol: "MARUTI.NS",    name: "Maruti Suzuki",             seg: "equity" },
+  { symbol: "TITAN.NS",     name: "Titan Company",             seg: "equity" },
+  { symbol: "SUNPHARMA.NS", name: "Sun Pharmaceutical",        seg: "equity" },
+  { symbol: "WIPRO.NS",     name: "Wipro",                     seg: "equity" },
+  { symbol: "HCLTECH.NS",   name: "HCL Technologies",          seg: "equity" },
+  { symbol: "TATAMOTORS.NS",name: "Tata Motors",               seg: "equity" },
+  { symbol: "HINDUNILVR.NS",name: "Hindustan Unilever",        seg: "equity" },
+  { symbol: "ONGC.NS",      name: "ONGC",                      seg: "equity" },
+  { symbol: "NTPC.NS",      name: "NTPC",                      seg: "equity" },
+  { symbol: "TATASTEEL.NS", name: "Tata Steel",                seg: "equity" },
+  { symbol: "ADANIENT.NS",  name: "Adani Enterprises",         seg: "equity" },
+  { symbol: "HINDALCO.NS",  name: "Hindalco Industries",       seg: "equity" },
+  { symbol: "DRREDDY.NS",   name: "Dr. Reddy's Labs",          seg: "equity" },
+];
+const INDEX_UNIVERSE = [
+  { symbol: "^NSEI",    name: "Nifty 50 Spot",      seg: "fno" },
+  { symbol: "^NSEBANK", name: "BankNifty Spot",     seg: "fno" },
+  { symbol: "^CNXFIN",  name: "Nifty FinServ Spot", seg: "fno" },
+];
+
+function scannerRSI(closes: number[], period = 14): number {
+  if (closes.length < period + 1) return 50;
+  let gains = 0, losses = 0;
+  const si = closes.length - period - 1;
+  for (let i = si + 1; i <= si + period; i++) {
+    const d = closes[i] - closes[i - 1];
+    if (d > 0) gains += d; else losses += Math.abs(d);
+  }
+  const ag = gains / period, al = losses / period;
+  if (al === 0) return 100;
+  return parseFloat((100 - 100 / (1 + ag / al)).toFixed(2));
+}
+function scannerVWAP(h: number[], l: number[], c: number[], v: number[]): number {
+  let tpv = 0, tv = 0;
+  for (let i = 0; i < c.length; i++) { const tp = (h[i] + l[i] + c[i]) / 3; tpv += tp * v[i]; tv += v[i]; }
+  return tv > 0 ? tpv / tv : c[c.length - 1];
+}
+function scannerVolRatio(v: number[]): number {
+  if (v.length < 3) return 1;
+  const cur = v[v.length - 1];
+  const lk = v.slice(-21, -1);
+  const avg = lk.reduce((s, x) => s + x, 0) / lk.length;
+  return avg > 0 ? parseFloat((cur / avg).toFixed(2)) : 1;
+}
+
+async function fetchScannerOHLCV(symbol: string, interval: string) {
+  const range = interval === "1h" ? "5d" : "2d";
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`;
+  try {
+    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(9000) });
+    if (!r.ok) return null;
+    const json = await r.json() as Record<string, unknown>;
+    const result = (json as Record<string, unknown>)?.chart as Record<string, unknown>;
+    const res0 = (result?.result as unknown[])?.[0] as Record<string, unknown> | undefined;
+    if (!res0) return null;
+    const q = (res0.indicators as Record<string, unknown[]>)?.quote?.[0] as Record<string, (number | null)[]>;
+    const timestamps = res0.timestamp as number[];
+    const opens: number[] = [], highs: number[] = [], lows: number[] = [], closes: number[] = [], vols: number[] = [];
+    for (let i = 0; i < (timestamps || []).length; i++) {
+      const o = q?.open?.[i], h = q?.high?.[i], l = q?.low?.[i], c = q?.close?.[i], v = q?.volume?.[i];
+      if (o != null && h != null && l != null && c != null && v != null) {
+        opens.push(o); highs.push(h); lows.push(l); closes.push(c); vols.push(v);
+      }
+    }
+    if (closes.length < 16) return null;
+    const meta = res0.meta as Record<string, number>;
+    const cmp = meta.regularMarketPrice ?? closes[closes.length - 1];
+    const prev = meta.chartPreviousClose ?? meta.previousClose ?? null;
+    const changePct = prev ? ((cmp - prev) / prev) * 100 : null;
+    return { opens, highs, lows, closes, vols, cmp, changePct };
+  } catch { return null; }
+}
+
+router.get("/trademaster/scanner", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { session_id, segment = "equity", interval = "5m" } = req.query;
+    const isPremium = true; // TESTING MODE — revert to: await isSessionPremium(session_id as string | undefined)
+    if (!isPremium) { res.status(403).json({ error: "Pro Educator subscription required", code: "SUBSCRIPTION_REQUIRED" }); return; }
+    void session_id;
+
+    const seg = typeof segment === "string" ? segment : "equity";
+    const ivl = typeof interval === "string" && ["5m","15m","1h"].includes(interval) ? interval : "5m";
+    const cacheKey = `${seg}_${ivl}`;
+
+    const hit = SCANNER_CACHE.get(cacheKey);
+    if (hit && Date.now() - hit.ts < SCANNER_TTL) { res.json(hit.data); return; }
+
+    let universe = [...EQUITY_UNIVERSE, ...INDEX_UNIVERSE];
+    if (seg === "equity") universe = EQUITY_UNIVERSE;
+    else if (seg === "fno") universe = [...INDEX_UNIVERSE, ...EQUITY_UNIVERSE.slice(0, 12)];
+
+    const settled = await Promise.allSettled(universe.map(async (stock) => {
+      const data = await fetchScannerOHLCV(stock.symbol, ivl);
+      if (!data) return null;
+      const { highs, lows, closes, vols, cmp, changePct } = data;
+      const rsi = scannerRSI(closes);
+      const vwap = scannerVWAP(highs, lows, closes, vols);
+      const volRatio = scannerVolRatio(vols);
+      const recent20c = closes.slice(-21, -1);
+      const recent5h = highs.slice(-6, -1);
+      const recent5l = lows.slice(-6, -1);
+      const isBreakout = cmp > Math.max(...recent20c);
+      const isBreakdown = cmp < Math.min(...recent20c);
+      const buySL = Math.min(...recent5l) * 0.999;
+      const sellSL = Math.max(...recent5h) * 1.001;
+      const isBuy = rsi > 58 && cmp > vwap && volRatio > 1.3;
+      const isSell = rsi < 42 && cmp < vwap && volRatio > 1.3;
+      if (!isBuy && !isSell) return null;
+      const signal: "buy" | "sell" = isBuy ? "buy" : "sell";
+      const entry = cmp;
+      const slVal = signal === "buy" ? buySL : sellSL;
+      const risk = Math.abs(entry - slVal);
+      const pt1 = signal === "buy" ? entry + 1.5 * risk : entry - 1.5 * risk;
+      const pt2 = signal === "buy" ? entry + 2.5 * risk : entry - 2.5 * risk;
+      let strength = 1;
+      if (signal === "buy") {
+        if (rsi > 65) strength += 2; else if (rsi > 60) strength += 1;
+        if (cmp > vwap * 1.005) strength++; if (volRatio > 2) strength++; if (isBreakout) strength++;
+      } else {
+        if (rsi < 35) strength += 2; else if (rsi < 40) strength += 1;
+        if (cmp < vwap * 0.995) strength++; if (volRatio > 2) strength++; if (isBreakdown) strength++;
+      }
+      strength = Math.min(5, strength);
+      const conds: string[] = [];
+      if (signal === "buy") {
+        conds.push(`RSI ${rsi.toFixed(0)} bullish`);
+        if (cmp > vwap) conds.push("above VWAP");
+        if (volRatio > 1.5) conds.push(`${volRatio.toFixed(1)}x vol surge`);
+        if (isBreakout) conds.push("20-bar breakout");
+      } else {
+        conds.push(`RSI ${rsi.toFixed(0)} bearish`);
+        if (cmp < vwap) conds.push("below VWAP");
+        if (volRatio > 1.5) conds.push(`${volRatio.toFixed(1)}x vol surge`);
+        if (isBreakdown) conds.push("20-bar breakdown");
+      }
+      return {
+        symbol: stock.symbol, name: stock.name,
+        cmp: parseFloat(cmp.toFixed(2)), signal, entry: parseFloat(entry.toFixed(2)),
+        sl: parseFloat(slVal.toFixed(2)), pt1: parseFloat(pt1.toFixed(2)), pt2: parseFloat(pt2.toFixed(2)),
+        rsi: parseFloat(rsi.toFixed(1)), vwap: parseFloat(vwap.toFixed(2)), volumeRatio: volRatio,
+        isBreakout: signal === "buy" ? isBreakout : isBreakdown, strength,
+        reason: conds.join(" · "), segment: stock.seg,
+        changePercent: changePct != null ? parseFloat(changePct.toFixed(2)) : null,
+      } satisfies ScanResult;
+    }));
+
+    const valid = settled
+      .filter((r): r is PromiseFulfilledResult<ScanResult | null> => r.status === "fulfilled" && r.value !== null)
+      .map(r => r.value!);
+
+    const response: ScannerResponse = {
+      buy:  valid.filter(r => r.signal === "buy").sort((a,b) => b.strength - a.strength).slice(0, 5),
+      sell: valid.filter(r => r.signal === "sell").sort((a,b) => b.strength - a.strength).slice(0, 5),
+      scannedAt: new Date().toISOString(),
+      totalScanned: universe.length,
+    };
+
+    SCANNER_CACHE.set(cacheKey, { data: response, ts: Date.now() });
+    res.json(response);
+  } catch (err) {
+    req.log.error({ err }, "Scanner failed");
+    res.status(500).json({ error: "Scanner failed" });
+  }
+});
+
 export default router;
