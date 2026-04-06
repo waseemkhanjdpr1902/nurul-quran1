@@ -325,31 +325,54 @@ router.get("/trademaster/quote", async (req: Request, res: Response): Promise<vo
   }
 });
 
+const TICKER_CACHE: { data: TickerResults | null; ts: number } = { data: null, ts: 0 };
+const TICKER_TTL = 60 * 1000; // 1 minute
+
+async function fetchYahooTicker(yahooSymbol: string, name: string): Promise<TickerQuote> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=2d`;
+  try {
+    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(7000) });
+    if (!r.ok) return { name, price: null, change: null, changePercent: null, high: null, low: null };
+    const json = await r.json() as Record<string, unknown>;
+    const res0 = ((json as Record<string, Record<string, unknown[]>>)?.chart?.result)?.[0] as Record<string, unknown> | undefined;
+    if (!res0) return { name, price: null, change: null, changePercent: null, high: null, low: null };
+    const meta = res0.meta as Record<string, number>;
+    // regularMarketPrice works during and after hours; chartPreviousClose gives yesterday's close for change calc
+    const price = meta.regularMarketPrice ?? null;
+    const prevClose = meta.chartPreviousClose ?? meta.previousClose ?? null;
+    const change = price != null && prevClose != null ? price - prevClose : (meta.regularMarketChange ?? null);
+    const changePercent = price != null && prevClose != null && prevClose > 0
+      ? ((price - prevClose) / prevClose) * 100
+      : (meta.regularMarketChangePercent ?? null);
+    const high = meta.regularMarketDayHigh ?? null;
+    const low = meta.regularMarketDayLow ?? null;
+    return {
+      name,
+      price: price != null ? parseFloat(price.toFixed(2)) : null,
+      change: change != null ? parseFloat(change.toFixed(2)) : null,
+      changePercent: changePercent != null ? parseFloat(changePercent.toFixed(3)) : null,
+      high: high != null ? parseFloat(high.toFixed(2)) : null,
+      low: low != null ? parseFloat(low.toFixed(2)) : null,
+    };
+  } catch {
+    return { name, price: null, change: null, changePercent: null, high: null, low: null };
+  }
+}
+
 router.get("/trademaster/ticker", async (req: Request, res: Response): Promise<void> => {
   try {
-    const finnhubToken = process.env.FINNHUB_API_KEY;
-    const symbols = [
-      { symbol: "NSE:NIFTY50", name: "Nifty 50", key: "nifty" },
-      { symbol: "NSE:BANKNIFTY", name: "Bank Nifty", key: "banknifty" },
-    ];
-    const results: TickerResults = {};
-    if (finnhubToken) {
-      for (const { symbol, name, key } of symbols) {
-        try {
-          const resp = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${finnhubToken}`, { signal: AbortSignal.timeout(5000) });
-          if (resp.ok) {
-            const data = await resp.json() as FinnhubQuote;
-            results[key] = { name, price: data.c ?? null, change: data.d ?? null, changePercent: data.dp ?? null, high: data.h ?? null, low: data.l ?? null };
-          } else {
-            results[key] = { name, price: null, change: null, changePercent: null, high: null, low: null };
-          }
-        } catch {
-          results[key] = { name, price: null, change: null, changePercent: null, high: null, low: null };
-        }
-      }
-    } else {
-      for (const { name, key } of symbols) results[key] = { name, price: null, change: null, changePercent: null, high: null, low: null };
+    // Serve from cache if fresh
+    if (TICKER_CACHE.data && Date.now() - TICKER_CACHE.ts < TICKER_TTL) {
+      res.json({ ticker: TICKER_CACHE.data });
+      return;
     }
+    const [nifty, banknifty] = await Promise.all([
+      fetchYahooTicker("^NSEI", "Nifty 50"),
+      fetchYahooTicker("^NSEBANK", "Bank Nifty"),
+    ]);
+    const results: TickerResults = { nifty, banknifty };
+    TICKER_CACHE.data = results;
+    TICKER_CACHE.ts = Date.now();
     res.json({ ticker: results });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch ticker");
