@@ -297,11 +297,19 @@ export default function Scanner({ onNavigatePricing }: ScannerProps) {
                 {totalFound} signal{totalFound !== 1 ? "s" : ""} found
               </span>
             </div>
-            {scannedAt && (
-              <span className="text-xs font-mono text-gray-600">
-                Sweep at {scannedAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </span>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {result.fmpFeed?.active && result.fmpFeed.price != null && (
+                <span className="flex items-center gap-1.5 text-xs font-mono bg-emerald-950/50 border border-emerald-700/40 text-emerald-400 px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  FMP Live Feed · {result.fmpFeed.name ?? "AAPL"} ${result.fmpFeed.price.toFixed(2)}
+                </span>
+              )}
+              {scannedAt && (
+                <span className="text-xs font-mono text-gray-600">
+                  Sweep at {scannedAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </span>
+              )}
+            </div>
           </div>
 
           {totalFound === 0 && (

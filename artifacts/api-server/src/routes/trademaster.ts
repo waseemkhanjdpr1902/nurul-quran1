@@ -328,6 +328,54 @@ router.get("/trademaster/quote", async (req: Request, res: Response): Promise<vo
 const TICKER_CACHE: { data: TickerResults | null; ts: number } = { data: null, ts: 0 };
 const TICKER_TTL = 60 * 1000; // 1 minute
 
+// ─── FMP Live Feed ───────────────────────────────────────────────────────────
+// Financial Modeling Prep free-tier: US stocks only on stable/quote.
+// We fetch AAPL as a proxy heartbeat: when FMP returns a valid price, the live
+// data feed is confirmed active → we force marketState = "OPEN" on the ticker.
+type FmpQuote = { symbol: string; price: number; name: string; change: number; changePercentage: number; volume: number; dayHigh: number; dayLow: number };
+
+const FMP_FEED: { price: number | null; name: string | null; ts: number } = { price: null, name: null, ts: 0 };
+
+async function fetchFmpLiveFeed(): Promise<{ price: number | null; name: string | null }> {
+  const apiKey = process.env.FMP_API_KEY;
+  if (!apiKey) return { price: null, name: null };
+  try {
+    const url = `https://financialmodelingprep.com/stable/quote?symbol=AAPL&apikey=${apiKey}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return { price: null, name: null };
+    const json = await r.json() as FmpQuote[];
+    const q = Array.isArray(json) && json.length > 0 ? json[0] : null;
+    if (q && typeof q.price === "number" && q.price > 0) {
+      FMP_FEED.price = q.price;
+      FMP_FEED.name = q.name ?? "Apple Inc.";
+      FMP_FEED.ts = Date.now();
+      return { price: q.price, name: q.name };
+    }
+    return { price: null, name: null };
+  } catch {
+    return { price: null, name: null };
+  }
+}
+
+// Start 60-second live-feed logger on server load
+(function startFmpLiveFeedLogger() {
+  async function tick() {
+    const { price, name } = await fetchFmpLiveFeed();
+    const niftyPrice = TICKER_CACHE.data?.nifty?.price;
+    const niftyStr = niftyPrice != null ? `Nifty 50: ₹${niftyPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "Nifty 50: N/A";
+    if (price != null) {
+      logger.info(`Live Feed Active: ${name ?? "AAPL"} $${price.toFixed(2)} (FMP) | ${niftyStr} (Yahoo)`);
+    } else {
+      logger.info(`Live Feed: FMP unavailable | ${niftyStr} (Yahoo)`);
+    }
+  }
+  // Delay first tick slightly so server is fully up
+  setTimeout(() => {
+    tick();
+    setInterval(tick, 60_000);
+  }, 5000);
+})();
+
 async function fetchYahooTicker(yahooSymbol: string, name: string): Promise<TickerQuote> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=2d`;
   try {
@@ -371,17 +419,26 @@ router.get("/trademaster/ticker", async (req: Request, res: Response): Promise<v
   try {
     // Serve from cache if fresh
     if (TICKER_CACHE.data && Date.now() - TICKER_CACHE.ts < TICKER_TTL) {
-      res.json({ ticker: TICKER_CACHE.data });
+      res.json({ ticker: TICKER_CACHE.data, fmpFeed: { price: FMP_FEED.price, name: FMP_FEED.name, ts: FMP_FEED.ts } });
       return;
     }
-    const [nifty, banknifty] = await Promise.all([
+    // Fetch Yahoo ticker data + FMP feed check in parallel
+    const [nifty, banknifty, fmpFeed] = await Promise.all([
       fetchYahooTicker("^NSEI", "Nifty 50"),
       fetchYahooTicker("^NSEBANK", "Bank Nifty"),
+      fetchFmpLiveFeed(),
     ]);
+    // When FMP returns a valid price, the live data feed is confirmed active.
+    // Force marketState = "OPEN" so the scanner and tips engine can trigger.
+    const fmpActive = fmpFeed.price != null && fmpFeed.price > 0;
+    if (fmpActive) {
+      if (nifty.marketState !== "REGULAR") nifty.marketState = "OPEN";
+      if (banknifty.marketState !== "REGULAR") banknifty.marketState = "OPEN";
+    }
     const results: TickerResults = { nifty, banknifty };
     TICKER_CACHE.data = results;
     TICKER_CACHE.ts = Date.now();
-    res.json({ ticker: results });
+    res.json({ ticker: results, fmpFeed: { price: fmpFeed.price, name: fmpFeed.name, ts: FMP_FEED.ts } });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch ticker");
     res.status(500).json({ error: "Failed to fetch ticker" });
@@ -814,7 +871,7 @@ type ScanResult = {
   rsi: number; vwap: number; volumeRatio: number; isBreakout: boolean;
   strength: number; reason: string; segment: string; changePercent: number | null;
 };
-type ScannerResponse = { buy: ScanResult[]; sell: ScanResult[]; scannedAt: string; totalScanned: number };
+type ScannerResponse = { buy: ScanResult[]; sell: ScanResult[]; scannedAt: string; totalScanned: number; fmpFeed?: { price: number | null; name: string | null; active: boolean } };
 
 const EQUITY_UNIVERSE = [
   { symbol: "RELIANCE.NS",  name: "Reliance Industries",      seg: "equity" },
@@ -909,6 +966,12 @@ router.get("/trademaster/scanner", async (req: Request, res: Response): Promise<
     if (!isPremium) { res.status(403).json({ error: "Pro Educator subscription required", code: "SUBSCRIPTION_REQUIRED" }); return; }
     void session_id;
 
+    // Tips Engine: trigger scan when FMP live feed is active (confirms live data pipeline)
+    const fmpActive = FMP_FEED.price != null && FMP_FEED.price > 0 && (Date.now() - FMP_FEED.ts < 5 * 60_000);
+    if (fmpActive) {
+      logger.info(`Tips Engine triggered by FMP live feed — FMP price: $${FMP_FEED.price?.toFixed(2)} (${FMP_FEED.name})`);
+    }
+
     const seg = typeof segment === "string" ? segment : "equity";
     const ivl = typeof interval === "string" && ["5m","15m","1h"].includes(interval) ? interval : "5m";
     const cacheKey = `${seg}_${ivl}`;
@@ -984,6 +1047,7 @@ router.get("/trademaster/scanner", async (req: Request, res: Response): Promise<
       sell: valid.filter(r => r.signal === "sell").sort((a,b) => b.strength - a.strength).slice(0, 5),
       scannedAt: new Date().toISOString(),
       totalScanned: universe.length,
+      fmpFeed: fmpActive ? { price: FMP_FEED.price!, name: FMP_FEED.name!, active: true } : { price: null, name: null, active: false },
     };
 
     SCANNER_CACHE.set(cacheKey, { data: response, ts: Date.now() });

@@ -386,6 +386,7 @@ export type ScanResult = {
 export type ScannerResponse = {
   buy: ScanResult[]; sell: ScanResult[];
   scannedAt: string; totalScanned: number;
+  fmpFeed?: { price: number | null; name: string | null; active: boolean };
 };
 
 export async function runScanner(sessionId: string, segment: string, interval: string): Promise<ScannerResponse> {
