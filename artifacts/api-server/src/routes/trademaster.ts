@@ -232,26 +232,63 @@ function extractFnOUnderlying(upper: string): string {
   return match ? `${match[1]}.NS` : "^NSEI";
 }
 
+const SERVER_INDEX_MAP: Record<string, string> = {
+  "NIFTY": "^NSEI", "NIFTY 50": "^NSEI", "NIFTY50": "^NSEI",
+  "NIFTY FUTURES": "^NSEI", "NIFTY 50 FUTURES": "^NSEI",
+  "NIFTY FUT": "^NSEI", "NIFTY 50 FUT": "^NSEI",
+  "NIFTY SPOT": "^NSEI", "NIFTY 50 SPOT": "^NSEI",
+  "BANKNIFTY": "^NSEBANK", "BANK NIFTY": "^NSEBANK", "BANK NIFTY 50": "^NSEBANK",
+  "BANKNIFTY FUTURES": "^NSEBANK", "BANK NIFTY FUTURES": "^NSEBANK",
+  "BANKNIFTY FUT": "^NSEBANK", "BANK NIFTY FUT": "^NSEBANK",
+  "FINNIFTY": "^NSEMDCP50", "FIN NIFTY": "^NSEMDCP50", "NIFTY FIN SERVICE": "^NSEMDCP50",
+  "MIDCAPNIFTY": "^NSEMDCP50", "MIDCAP NIFTY": "^NSEMDCP50",
+  "SENSEX": "^BSESN",
+  "USDINR": "USDINR=X", "USD/INR": "USDINR=X", "USD INR": "USDINR=X",
+  "EURINR": "EURINR=X", "EUR/INR": "EURINR=X",
+  "GBPINR": "GBPINR=X", "GBP/INR": "GBPINR=X",
+  "GOLD": "GC=F", "MCX GOLD": "GC=F", "GOLD MCX": "GC=F", "GOLD MINI": "GC=F",
+  "SILVER": "SI=F", "MCX SILVER": "SI=F",
+  "CRUDEOIL": "CL=F", "CRUDE OIL": "CL=F", "MCX CRUDE": "CL=F", "CRUDE": "CL=F",
+  "NATURAL GAS": "NG=F", "NATURALGAS": "NG=F", "NG": "NG=F",
+  "COPPER": "HG=F",
+};
+
+const SERVER_COMPANY_MAP: Record<string, string> = {
+  "RELIANCE INDUSTRIES": "RELIANCE", "RELIANCE": "RELIANCE",
+  "TATA CONSULTANCY SERVICES": "TCS", "TCS": "TCS",
+  "INFOSYS": "INFY", "HDFC BANK": "HDFCBANK", "HDFC": "HDFC",
+  "ICICI BANK": "ICICIBANK", "SBI": "SBIN", "STATE BANK OF INDIA": "SBIN",
+  "AXIS BANK": "AXISBANK", "KOTAK MAHINDRA BANK": "KOTAKBANK", "KOTAK BANK": "KOTAKBANK",
+  "L&T": "LT", "LARSEN AND TOUBRO": "LT", "LARSEN & TOUBRO": "LT",
+  "ITC": "ITC", "WIPRO": "WIPRO",
+  "HCL TECHNOLOGIES": "HCLTECH", "HCL TECH": "HCLTECH",
+  "SUN PHARMA": "SUNPHARMA", "SUN PHARMACEUTICAL": "SUNPHARMA",
+  "MARUTI SUZUKI": "MARUTI", "MARUTI": "MARUTI",
+  "TATA MOTORS": "TATAMOTORS", "BAJAJ FINANCE": "BAJFINANCE",
+  "BAJAJ FINSERV": "BAJAJFINSV", "ASIAN PAINTS": "ASIANPAINT",
+  "TITAN COMPANY": "TITAN", "TITAN": "TITAN",
+  "ULTRATECH CEMENT": "ULTRACEMCO", "NTPC": "NTPC",
+  "ADANI ENTERPRISES": "ADANIENT", "ADANI PORTS": "ADANIPORTS",
+  "CIPLA": "CIPLA", "DR REDDYS": "DRREDDY", "DR REDDY": "DRREDDY",
+  "HINDALCO INDUSTRIES": "HINDALCO", "HINDALCO": "HINDALCO",
+  "TATA STEEL": "TATASTEEL", "JSW STEEL": "JSWSTEEL",
+  "HERO MOTOCORP": "HEROMOTOCO", "BAJAJ AUTO": "BAJAJ-AUTO",
+  "INDUSIND BANK": "INDUSINDBK", "TECH MAHINDRA": "TECHM",
+};
+
 function toYahooSymbol(assetName: string, segment: string): string {
-  const upper = assetName.toUpperCase().trim();
-  const INDEX_MAP: Record<string, string> = {
-    "NIFTY 50": "^NSEI", "NIFTY50": "^NSEI", "NIFTY": "^NSEI",
-    "BANKNIFTY": "^NSEBANK", "BANK NIFTY": "^NSEBANK", "BANK NIFTY 50": "^NSEBANK",
-    "FINNIFTY": "^NSEMDCP50", "FIN NIFTY": "^NSEMDCP50", "NIFTY FIN SERVICE": "^NSEMDCP50",
-    "MIDCAPNIFTY": "^NSEMDCP50", "MIDCAP NIFTY": "^NSEMDCP50",
-    "SENSEX": "^BSESN",
-    "USDINR": "USDINR=X", "USD/INR": "USDINR=X", "USD INR": "USDINR=X",
-    "EURINR": "EURINR=X", "EUR/INR": "EURINR=X",
-    "GBPINR": "GBPINR=X", "GBP/INR": "GBPINR=X",
-    "GOLD": "GC=F", "MCX GOLD": "GC=F", "GOLD MINI": "GC=F",
-    "SILVER": "SI=F", "MCX SILVER": "SI=F",
-    "CRUDEOIL": "CL=F", "CRUDE OIL": "CL=F", "MCX CRUDE": "CL=F", "CRUDE": "CL=F",
-    "NATURAL GAS": "NG=F", "NATURALGAS": "NG=F", "NG": "NG=F",
-    "COPPER": "HG=F",
-  };
-  if (INDEX_MAP[upper]) return INDEX_MAP[upper];
-  // F&O: resolve to underlying index / stock — don't try to look up the contract
+  // Strip parenthetical annotations: "L&T (LARSEN & TOUBRO)" → "L&T"
+  const upper = assetName.toUpperCase().trim().replace(/\s*\([^)]*\)/g, "").trim();
+  if (SERVER_INDEX_MAP[upper]) return SERVER_INDEX_MAP[upper];
+  // Segment-level routing for index segments
+  if (segment === "nifty") return extractFnOUnderlying(upper);
+  if (segment === "banknifty") return "^NSEBANK";
+  // F&O: resolve to underlying
   if (segment === "options" || segment === "futures" || segment === "fno") {
+    return extractFnOUnderlying(upper);
+  }
+  // Intraday index signals
+  if (segment === "intraday" && /^(NIFTY|BANKNIFTY|BANK\s*NIFTY|FINNIFTY|SENSEX)/.test(upper)) {
     return extractFnOUnderlying(upper);
   }
   if (segment === "commodity") {
@@ -260,17 +297,20 @@ function toYahooSymbol(assetName: string, segment: string): string {
     if (upper.includes("CRUDE") || upper.includes("OIL")) return "CL=F";
     if (upper.includes("NATURAL") || upper.includes("GAS")) return "NG=F";
     if (upper.includes("COPPER")) return "HG=F";
+    return "GC=F";
   }
   if (segment === "currency") {
-    if (upper.includes("USD")) return "USDINR=X";
     if (upper.includes("EUR")) return "EURINR=X";
     if (upper.includes("GBP")) return "GBPINR=X";
+    return "USDINR=X";
   }
-  // Equity: strip expiry/option suffixes cleanly
+  if (SERVER_COMPANY_MAP[upper]) return `${SERVER_COMPANY_MAP[upper]}.NS`;
+  // Equity fallback: strip generic suffixes
   const stripped = upper
     .replace(/\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s*\d{2,4}.*$/i, "")
-    .replace(/\s+(FUT|CE|PE)$/, "")
-    .replace(/\s+\d+$/, "")
+    .replace(/\s+(FUTURES|FUTURE|FUT|OPTIONS|OPTION|CE|PE|CALL|PUT)$/i, "")
+    .replace(/\s+\d+\s*(CE|PE)?$/i, "")
+    .replace(/\s+(INDUSTRIES|INDUSTRY|LIMITED|LTD|ENTERPRISES|CORPORATION|CORP)$/i, "")
     .trim();
   return `${stripped.replace(/\s+/g, "")}.NS`;
 }

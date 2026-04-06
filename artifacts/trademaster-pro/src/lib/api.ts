@@ -185,7 +185,8 @@ export type UnderlyingInfo = {
 };
 
 export function resolveUnderlyingInfo(assetName: string, segment: string): UnderlyingInfo {
-  const upper = assetName.toUpperCase().trim();
+  // Strip parenthetical annotations first: "L&T (LARSEN & TOUBRO)" → "L&T"
+  const upper = assetName.toUpperCase().trim().replace(/\s*\([^)]*\)/g, "").trim();
   const isFnO = ["options", "futures", "fno"].includes(segment);
   const isCommodity = segment === "commodity";
 
