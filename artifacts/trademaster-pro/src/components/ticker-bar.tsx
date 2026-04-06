@@ -1,18 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchTicker } from "@/lib/api";
 
-function isNSEMarketOpen(): boolean {
-  const now = new Date();
-  // IST = UTC + 5:30
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const ist = new Date(now.getTime() + istOffset);
-  const day = ist.getUTCDay(); // 0=Sun, 6=Sat
-  if (day === 0 || day === 6) return false;
-  const h = ist.getUTCHours(), m = ist.getUTCMinutes();
-  const mins = h * 60 + m;
-  return mins >= 555 && mins < 930; // 9:15 AM – 3:30 PM IST
-}
-
 export function TickerBar() {
   const { data, isError, isLoading } = useQuery({
     queryKey: ["ticker"],
@@ -29,14 +17,17 @@ export function TickerBar() {
 
   const allPricesNull = !isLoading && items.every(({ key }) => ticker[key]?.price == null);
   const showUnavailable = isError || allPricesNull;
-  const marketOpen = isNSEMarketOpen();
+
+  // Use Yahoo Finance's actual marketState as the heartbeat — "REGULAR" = live session
+  const anyMarketState = ticker.nifty?.marketState ?? ticker.banknifty?.marketState ?? null;
+  const marketLive = anyMarketState === "REGULAR";
+  const marketLabel = marketLive ? "Market Open" : anyMarketState ? `Market ${anyMarketState}` : "Market Closed";
+  const tickerLabel = marketLive ? "LIVE" : "PREV";
 
   return (
     <div className="bg-[hsl(220,13%,10%)] border-b border-[hsl(220,13%,18%)] px-4 py-2">
       <div className="flex items-center gap-6 overflow-x-auto scrollbar-none">
-        <span className="text-xs text-gray-500 font-mono shrink-0">
-          {marketOpen ? "LIVE" : "PREV"}
-        </span>
+        <span className="text-xs font-mono shrink-0 text-gray-500">{tickerLabel}</span>
         {isLoading ? (
           <span className="text-xs text-gray-600 font-mono animate-pulse">Loading market data…</span>
         ) : showUnavailable ? (
@@ -75,15 +66,15 @@ export function TickerBar() {
               <div className="w-2 h-2 bg-amber-600 rounded-full" />
               <span className="text-xs text-gray-500">Market Data</span>
             </>
-          ) : marketOpen ? (
+          ) : marketLive ? (
             <>
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-xs text-gray-500">Market Open</span>
+              <span className="text-xs text-green-500 font-semibold">Market Open</span>
             </>
           ) : (
             <>
               <div className="w-2 h-2 bg-gray-600 rounded-full" />
-              <span className="text-xs text-gray-600">Market Closed</span>
+              <span className="text-xs text-gray-500">{marketLabel}</span>
             </>
           )}
         </div>

@@ -30,7 +30,7 @@ function isValidStatus(s: unknown): s is ValidStatus {
   return typeof s === "string" && (VALID_STATUSES as readonly string[]).includes(s);
 }
 
-type TickerQuote = { name: string; price: number | null; change: number | null; changePercent: number | null; high: number | null; low: number | null };
+type TickerQuote = { name: string; price: number | null; change: number | null; changePercent: number | null; high: number | null; low: number | null; marketState: string | null };
 type TickerResults = Record<string, TickerQuote>;
 type FinnhubQuote = { c: number; d: number; dp: number; h: number; l: number };
 
@@ -332,30 +332,38 @@ async function fetchYahooTicker(yahooSymbol: string, name: string): Promise<Tick
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=2d`;
   try {
     const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(7000) });
-    if (!r.ok) return { name, price: null, change: null, changePercent: null, high: null, low: null };
+    if (!r.ok) return { name, price: null, change: null, changePercent: null, high: null, low: null, marketState: null };
     const json = await r.json() as Record<string, unknown>;
     const res0 = ((json as Record<string, Record<string, unknown[]>>)?.chart?.result)?.[0] as Record<string, unknown> | undefined;
-    if (!res0) return { name, price: null, change: null, changePercent: null, high: null, low: null };
-    const meta = res0.meta as Record<string, number>;
+    if (!res0) return { name, price: null, change: null, changePercent: null, high: null, low: null, marketState: null };
+    const meta = res0.meta as Record<string, number | string | Record<string, Record<string, number>>>;
+    // Derive marketState from currentTradingPeriod timestamps (NSE indices don't expose marketState directly)
+    const tradingPeriod = meta.currentTradingPeriod as Record<string, Record<string, number>> | undefined;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const regStart = tradingPeriod?.regular?.start ?? 0;
+    const regEnd = tradingPeriod?.regular?.end ?? 0;
+    const marketState: string = (meta.marketState as string) ??
+      (regStart > 0 && regEnd > 0 ? (nowSec >= regStart && nowSec <= regEnd ? "REGULAR" : "CLOSED") : "CLOSED");
     // regularMarketPrice works during and after hours; chartPreviousClose gives yesterday's close for change calc
-    const price = meta.regularMarketPrice ?? null;
-    const prevClose = meta.chartPreviousClose ?? meta.previousClose ?? null;
-    const change = price != null && prevClose != null ? price - prevClose : (meta.regularMarketChange ?? null);
+    const price = (meta.regularMarketPrice as number) ?? null;
+    const prevClose = ((meta.chartPreviousClose ?? meta.previousClose) as number) ?? null;
+    const change = price != null && prevClose != null ? price - prevClose : ((meta.regularMarketChange as number) ?? null);
     const changePercent = price != null && prevClose != null && prevClose > 0
       ? ((price - prevClose) / prevClose) * 100
-      : (meta.regularMarketChangePercent ?? null);
-    const high = meta.regularMarketDayHigh ?? null;
-    const low = meta.regularMarketDayLow ?? null;
+      : ((meta.regularMarketChangePercent as number) ?? null);
+    const high = (meta.regularMarketDayHigh as number) ?? null;
+    const low = (meta.regularMarketDayLow as number) ?? null;
     return {
       name,
       price: price != null ? parseFloat(price.toFixed(2)) : null,
-      change: change != null ? parseFloat(change.toFixed(2)) : null,
-      changePercent: changePercent != null ? parseFloat(changePercent.toFixed(3)) : null,
+      change: change != null ? parseFloat((change as number).toFixed(2)) : null,
+      changePercent: changePercent != null ? parseFloat((changePercent as number).toFixed(3)) : null,
       high: high != null ? parseFloat(high.toFixed(2)) : null,
       low: low != null ? parseFloat(low.toFixed(2)) : null,
+      marketState,
     };
   } catch {
-    return { name, price: null, change: null, changePercent: null, high: null, low: null };
+    return { name, price: null, change: null, changePercent: null, high: null, low: null, marketState: null };
   }
 }
 

@@ -1,0 +1,35 @@
+"Identify and fix the 'Market Off' status error in the code. 1. Force the system timezone to 'Asia/Kolkata' to match Indian Standard Time. 2. Patch the market status check logic to ignore the local system clock and instead validate the connection via a live price 'Heartbeat' from the API. 3. Add an automated session-token refresh to 'Wake Up' the live feed. 4. Ensure the is_market_open function returns True if the current time is between 09:15 and 15:30 IST, regardless of the Replit server's UTC time."
+
+Manual Fix (If you aren't using the AI Agent)
+If you want to fix the code yourself, look for the file named trade_master.py or main.py and ensure your time-check logic looks like this:
+
+Python
+import datetime
+import pytz
+
+def is_market_open():
+    # Force India Timezone
+    india_tz = pytz.timezone('Asia/Kolkata')
+    now = datetime.datetime.now(india_tz)
+    
+    # Check if today is a weekday (0-4 is Mon-Fri)
+    if now.weekday() > 4:
+        return False
+        
+    # Define Market Hours
+    market_start = now.replace(hour=9, minute=15, second=0, microsecond=0)
+    market_end = now.replace(hour=15, minute=30, second=0, microsecond=0)
+    
+    return market_start <= now <= market_end
+
+# FORCE START
+print(f"Current India Time: {datetime.datetime.now(pytz.timezone('Asia/Kolkata'))}")
+if is_market_open():
+    print("Market is ON. Syncing Live Tips...")
+    # Your start_engine() function goes here
+Three Quick "Live Market" Fixes:
+The "Secrets" Check: In Replit, go to the Tools -> Secrets (padlock icon). Make sure your API_KEY and CLIENT_ID are correct. If the API key is invalid, the tool often defaults to "Market Off" because it can't reach the server.
+
+Clear the Cache: If you are running a Python script, stop the program and run rm -rf __pycache__ in the shell, then restart.
+
+The "Token" Refresh: If you are using the SmartAPI (Angel One) or similar, your session token expires every 24 hours. Delete any token.txt or session.json file in your Replit file list and hit Run again to generate a fresh login.
