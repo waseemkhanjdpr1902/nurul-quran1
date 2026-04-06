@@ -161,6 +161,9 @@ export default function Scanner({ onNavigatePricing }: ScannerProps) {
 
   const totalFound = result ? result.buy.length + result.sell.length : 0;
   const scannedAt = result ? new Date(result.scannedAt) : null;
+  const isStale = result?.isStale ?? false;
+  const dataDate = result?.dataDate ?? null;
+  const staleSources = result?.staleSources ?? [];
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -287,6 +290,35 @@ export default function Scanner({ onNavigatePricing }: ScannerProps) {
 
       {result && !loading && (
         <div className="space-y-6">
+          {/* ── Data Stale Alert ── */}
+          {isStale && (
+            <div className="bg-red-950/40 border border-red-600/50 rounded-xl p-4 flex items-start gap-3">
+              <span className="text-2xl mt-0.5">⚠️</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-red-400 text-sm">Data Stale — Reconnecting</span>
+                  <span className="text-xs font-mono bg-red-900/40 border border-red-700/40 text-red-300 px-2 py-0.5 rounded">
+                    Last data: {dataDate ?? "unknown"} · Expected: {result.todayIST}
+                  </span>
+                </div>
+                <p className="text-red-300/80 text-xs mt-1">
+                  {staleSources.length} symbol{staleSources.length !== 1 ? "s" : ""} returned data older than today
+                  {staleSources.length > 0 && (
+                    <span className="font-mono ml-1 text-red-400/70">
+                      ({staleSources.slice(0, 4).join(", ")}{staleSources.length > 4 ? "…" : ""})
+                    </span>
+                  )}. This typically happens outside market hours or during weekends. Prices shown may reflect the last trading session.
+                </p>
+                <button
+                  onClick={handleScan}
+                  className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-red-800/40 hover:bg-red-700/50 border border-red-600/40 text-red-300 text-xs font-semibold rounded-lg transition-colors"
+                >
+                  🔄 Force Reconnect — Rescan Now
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3 text-sm">
               <span className="text-gray-400">

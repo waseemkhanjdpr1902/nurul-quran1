@@ -292,10 +292,11 @@ router.get("/trademaster/quote", async (req: Request, res: Response): Promise<vo
         const cached = quoteCache.get(s);
         if (cached && cached.expiry > now) { results[s] = cached.data; return; }
         try {
-          const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1d&range=1d&includePrePost=false`;
+          const qCacheBuster = Math.floor(Date.now() / 30000);
+          const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1d&range=1d&includePrePost=false&_t=${qCacheBuster}`;
           const resp = await fetch(url, {
             signal: AbortSignal.timeout(6000),
-            headers: { "User-Agent": "Mozilla/5.0 (compatible; TradeMaster/1.0)" },
+            headers: { "User-Agent": "Mozilla/5.0 (compatible; TradeMaster/1.0)", "Cache-Control": "no-cache", "Pragma": "no-cache" },
           });
           if (!resp.ok) { results[s] = null; return; }
           const json = await resp.json() as YahooChartResponse;
@@ -377,9 +378,10 @@ async function fetchFmpLiveFeed(): Promise<{ price: number | null; name: string 
 })();
 
 async function fetchYahooTicker(yahooSymbol: string, name: string): Promise<TickerQuote> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=2d`;
+  const cacheBuster = Math.floor(Date.now() / 60000);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=2d&_t=${cacheBuster}`;
   try {
-    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(7000) });
+    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", "Cache-Control": "no-cache", "Pragma": "no-cache" }, signal: AbortSignal.timeout(7000) });
     if (!r.ok) return { name, price: null, change: null, changePercent: null, high: null, low: null, marketState: null };
     const json = await r.json() as Record<string, unknown>;
     const res0 = ((json as Record<string, Record<string, unknown[]>>)?.chart?.result)?.[0] as Record<string, unknown> | undefined;
@@ -871,7 +873,15 @@ type ScanResult = {
   rsi: number; vwap: number; volumeRatio: number; isBreakout: boolean;
   strength: number; reason: string; segment: string; changePercent: number | null;
 };
-type ScannerResponse = { buy: ScanResult[]; sell: ScanResult[]; scannedAt: string; totalScanned: number; fmpFeed?: { price: number | null; name: string | null; active: boolean } };
+type ScannerResponse = {
+  buy: ScanResult[]; sell: ScanResult[];
+  scannedAt: string; totalScanned: number;
+  fmpFeed?: { price: number | null; name: string | null; active: boolean };
+  dataDate: string | null;
+  isStale: boolean;
+  staleSources: string[];
+  todayIST: string;
+};
 
 const EQUITY_UNIVERSE = [
   { symbol: "RELIANCE.NS",  name: "Reliance Industries",      seg: "equity" },
@@ -931,11 +941,23 @@ function scannerVolRatio(v: number[]): number {
   return avg > 0 ? parseFloat((cur / avg).toFixed(2)) : 1;
 }
 
-async function fetchScannerOHLCV(symbol: string, interval: string) {
+/** Returns today's date string in IST (Asia/Kolkata = UTC+5:30) */
+function todayIST(): string {
+  return new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+/** Given a Unix timestamp (seconds), returns its IST date string */
+function tsToDateIST(ts: number): string {
+  return new Date(ts * 1000 + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+async function fetchScannerOHLCV(symbol: string, interval: string): Promise<{ opens: number[]; highs: number[]; lows: number[]; closes: number[]; vols: number[]; cmp: number; changePct: number | null; lastCandleDate: string | null; isStale: boolean } | null> {
   const range = interval === "1h" ? "5d" : "2d";
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`;
+  // Cache-buster (_t) prevents CDN/proxy from serving stale Friday/weekend data
+  const cacheBuster = Math.floor(Date.now() / 60000); // changes every minute
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}&_t=${cacheBuster}`;
   try {
-    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(9000) });
+    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", "Cache-Control": "no-cache", "Pragma": "no-cache" }, signal: AbortSignal.timeout(9000) });
     if (!r.ok) return null;
     const json = await r.json() as Record<string, unknown>;
     const result = (json as Record<string, unknown>)?.chart as Record<string, unknown>;
@@ -944,10 +966,12 @@ async function fetchScannerOHLCV(symbol: string, interval: string) {
     const q = (res0.indicators as Record<string, unknown[]>)?.quote?.[0] as Record<string, (number | null)[]>;
     const timestamps = res0.timestamp as number[];
     const opens: number[] = [], highs: number[] = [], lows: number[] = [], closes: number[] = [], vols: number[] = [];
+    const validTs: number[] = [];
     for (let i = 0; i < (timestamps || []).length; i++) {
       const o = q?.open?.[i], h = q?.high?.[i], l = q?.low?.[i], c = q?.close?.[i], v = q?.volume?.[i];
       if (o != null && h != null && l != null && c != null && v != null) {
         opens.push(o); highs.push(h); lows.push(l); closes.push(c); vols.push(v);
+        validTs.push(timestamps[i]);
       }
     }
     if (closes.length < 16) return null;
@@ -955,7 +979,15 @@ async function fetchScannerOHLCV(symbol: string, interval: string) {
     const cmp = meta.regularMarketPrice ?? closes[closes.length - 1];
     const prev = meta.chartPreviousClose ?? meta.previousClose ?? null;
     const changePct = prev ? ((cmp - prev) / prev) * 100 : null;
-    return { opens, highs, lows, closes, vols, cmp, changePct };
+    // Timestamp validation: is the latest candle from today (IST)?
+    const lastTs = validTs[validTs.length - 1] ?? null;
+    const lastCandleDate = lastTs != null ? tsToDateIST(lastTs) : null;
+    const today = todayIST();
+    const isStale = lastCandleDate != null && lastCandleDate < today;
+    if (isStale) {
+      logger.warn(`[Scanner] Stale data detected for ${symbol}: last candle ${lastCandleDate}, expected ${today}`);
+    }
+    return { opens, highs, lows, closes, vols, cmp, changePct, lastCandleDate, isStale };
   } catch { return null; }
 }
 
@@ -983,10 +1015,15 @@ router.get("/trademaster/scanner", async (req: Request, res: Response): Promise<
     if (seg === "equity") universe = EQUITY_UNIVERSE;
     else if (seg === "fno") universe = [...INDEX_UNIVERSE, ...EQUITY_UNIVERSE.slice(0, 12)];
 
+    const staleSources: string[] = [];
+    let latestDataDate: string | null = null;
+
     const settled = await Promise.allSettled(universe.map(async (stock) => {
       const data = await fetchScannerOHLCV(stock.symbol, ivl);
       if (!data) return null;
-      const { highs, lows, closes, vols, cmp, changePct } = data;
+      const { highs, lows, closes, vols, cmp, changePct, lastCandleDate, isStale } = data;
+      if (isStale && lastCandleDate) staleSources.push(stock.symbol);
+      if (lastCandleDate && (!latestDataDate || lastCandleDate > latestDataDate)) latestDataDate = lastCandleDate;
       const rsi = scannerRSI(closes);
       const vwap = scannerVWAP(highs, lows, closes, vols);
       const volRatio = scannerVolRatio(vols);
@@ -1042,12 +1079,21 @@ router.get("/trademaster/scanner", async (req: Request, res: Response): Promise<
       .filter((r): r is PromiseFulfilledResult<ScanResult | null> => r.status === "fulfilled" && r.value !== null)
       .map(r => r.value!);
 
+    const today = todayIST();
+    const isDataStale = staleSources.length > 0;
+    if (isDataStale) {
+      logger.warn(`[Scanner] ${staleSources.length} symbols have stale data (last date: ${latestDataDate}, today: ${today}): ${staleSources.slice(0,5).join(", ")}${staleSources.length > 5 ? "…" : ""}`);
+    }
     const response: ScannerResponse = {
       buy:  valid.filter(r => r.signal === "buy").sort((a,b) => b.strength - a.strength).slice(0, 5),
       sell: valid.filter(r => r.signal === "sell").sort((a,b) => b.strength - a.strength).slice(0, 5),
       scannedAt: new Date().toISOString(),
       totalScanned: universe.length,
       fmpFeed: fmpActive ? { price: FMP_FEED.price!, name: FMP_FEED.name!, active: true } : { price: null, name: null, active: false },
+      dataDate: latestDataDate,
+      isStale: isDataStale,
+      staleSources: isDataStale ? staleSources.slice(0, 10) : [],
+      todayIST: today,
     };
 
     SCANNER_CACHE.set(cacheKey, { data: response, ts: Date.now() });
