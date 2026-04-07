@@ -1,0 +1,48 @@
+Role: Senior Full-Stack Engineer & FinTech Architect.
+Objective: Build a deployment-ready Next.js application for Trade Master Pro signals, optimized for Vercel.
+
+1. Technical Stack Requirements
+Framework: Next.js (App Router) with TypeScript.
+
+Database: Supabase or Redis (Upstash) to store signal history and session states.
+
+Backend: Vercel Serverless Functions for signal calculation.
+
+Task Scheduling: Use Vercel Cron Jobs to trigger the signal engine every 1, 3, or 5 minutes.
+
+2. Signal Engine Logic (High Frequency)
+Data Fetching: Create a GET handler in /api/signals that fetches:
+
+LTP (Last Traded Price) for Nifty & Bank Nifty.
+
+Full Option Chain (PCR, Max Pain, and Change in OI).
+
+Logic: Implement the "Scalping Logic" (9 EMA, VWAP, and RSI) within the serverless function.
+
+State Management: If a signal was "Buy" in the previous minute and remains "Buy," do not send a duplicate alert. Only trigger on State Change.
+
+3. Frontend & Monitoring
+Dashboard: A clean, mobile-responsive UI using Tailwind CSS and Shadcn/UI showing a live "Signal Status" table.
+
+Real-time Updates: Use SWR or React Query for polling the API every 30 seconds to keep the UI fresh without refreshing the page.
+
+4. Security & Deployment
+Environment Variables: Secure all API Keys (Broker API, Secret Keys) using process.env.
+
+Error Handling: Implement robust try/catch blocks. If the Broker API fails, send a "Data Lag" warning to the UI.
+
+Deployment Script: Provide a vercel.json configuration file defining the cron schedule for the /api/signals endpoint.
+
+Essential Vercel Configuration (vercel.json)
+To ensure your app updates at your requested "frequent intervals," the AI needs to generate this specific file for you:
+
+JSON
+{
+  "crons": [
+    {
+      "path": "/api/generate-signals",
+      "schedule": "*/3 * * * *" 
+    }
+  ]
+}
+> Note: The */3 * * * * syntax tells Vercel to run your signal engine every 3 minutes. This solves your "15 minutes is too long" problem by automating the trigger at the infrastructure level.

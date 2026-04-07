@@ -18,6 +18,8 @@ export const tradeMasterSignals = pgTable("trademaster_signals", {
   riskReward: numeric("risk_reward", { precision: 8, scale: 2 }),
   iv: text("iv"),
   pcr: text("pcr"),
+  delta: numeric("delta", { precision: 6, scale: 4 }),
+  volumeConfirmed: boolean("volume_confirmed").notNull().default(false),
   notes: text("notes"),
   isPremium: boolean("is_premium").notNull().default(false),
   status: signalStatusEnum("status").notNull().default("active"),
@@ -29,6 +31,22 @@ export const tradeMasterSignals = pgTable("trademaster_signals", {
 export const insertTradeMasterSignalSchema = createInsertSchema(tradeMasterSignals).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertTradeMasterSignal = z.infer<typeof insertTradeMasterSignalSchema>;
 export type TradeMasterSignal = typeof tradeMasterSignals.$inferSelect;
+
+export const webhookPlatformEnum = pgEnum("trademaster_webhook_platform", ["generic", "sensibull", "tradetron"]);
+
+export const tradeMasterWebhooks = pgTable("trademaster_webhooks", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  url: text("url").notNull(),
+  platform: webhookPlatformEnum("platform").notNull().default("generic"),
+  secret: text("secret"),
+  isActive: boolean("is_active").notNull().default(true),
+  lastFiredAt: timestamp("last_fired_at", { withTimezone: true }),
+  lastStatusCode: integer("last_status_code"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type TradeMasterWebhook = typeof tradeMasterWebhooks.$inferSelect;
 
 export const investmentReportCategoryEnum = pgEnum("trademaster_report_category", [
   "large_cap_equity", "etf", "mutual_fund", "government_bond", "gold_silver", "reit", "fixed_deposit"
