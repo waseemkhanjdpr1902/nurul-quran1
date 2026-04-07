@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/signals": {},
+    "/api/webhooks": {},
+    "/api/generate-signals": {
+      "maxDuration": 30
+    }
+  }
+}

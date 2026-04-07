@@ -1,80 +1,94 @@
-# TradeMaster Pro — Vercel Deployment
+# TradeMaster Pro — Signal Engine (Next.js + Vercel)
 
-A professional Indian equity trading signals and journal app. This is the standalone, Vercel-deployable version.
+A deployment-ready Next.js App Router application for real-time Nifty/BankNifty/FinNifty option chain signals, powered by a 9 EMA + VWAP + RSI scalping engine.
 
-## Deploy to Vercel in 3 Steps
+## Architecture
 
-### 1. Push to GitHub
-Push this folder to a new GitHub repository.
+- **Framework**: Next.js 15 App Router + TypeScript
+- **Database**: PostgreSQL (Supabase-compatible, or your existing `DATABASE_URL`)
+- **Signal Engine**: Yahoo Finance 5-min OHLCV → 9 EMA + VWAP + RSI(14) + Volume Spike
+- **Scheduling**: Vercel Cron Jobs — runs every 3 minutes automatically
+- **State-Change Detection**: Only dispatches alerts when signal changes (BUY→SELL, SELL→BUY), eliminating duplicate noise
+- **UI**: Mobile-responsive dashboard with React Query polling every 30 seconds
 
-### 2. Import in Vercel
-- Go to [vercel.com/new](https://vercel.com/new)
-- Import your repository
-- Vercel will auto-detect the Vite frontend
+## Signal Logic
 
-### 3. Set Environment Variables in Vercel Dashboard
+| Condition | Signal |
+|-----------|--------|
+| Price > 9 EMA AND Price > VWAP AND RSI 50–70 AND Volume ≥ 1.2× avg | **BUY** |
+| Price < 9 EMA AND Price < VWAP AND RSI 30–50 AND Volume ≥ 1.2× avg | **SELL** |
+| Otherwise | **NEUTRAL** |
+
+## API Routes
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/signals` | GET | Fetch latest signal states for all segments |
+| `/api/generate-signals` | GET/POST | Run signal engine (called by Vercel Cron) |
+| `/api/webhooks` | GET/POST/DELETE | Manage webhook dispatch targets |
+
+## Deploy to Vercel in 4 Steps
+
+### Step 1 — Push to GitHub
+```bash
+git init && git add . && git commit -m "TradeMaster Signal Engine"
+git remote add origin https://github.com/yourname/trademaster-signals
+git push -u origin main
+```
+
+### Step 2 — Import in Vercel
+Go to [vercel.com](https://vercel.com) → New Project → Import from GitHub.
+
+### Step 3 — Set Environment Variables
+In Vercel Dashboard → Settings → Environment Variables, add:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DATABASE_URL` | ✅ Yes | PostgreSQL connection string (Vercel Postgres, Neon, Supabase, etc.) |
-| `RAZORPAY_KEY_ID` | ✅ Yes | Razorpay live or test key ID |
-| `RAZORPAY_KEY_SECRET` | ✅ Yes | Razorpay key secret |
-| `TRADEMASTER_ADMIN_TOKEN` | ✅ Yes | Strong random string for admin API access |
-| `FMP_API_KEY` | Optional | Financial Modeling Prep key for live data feed |
-| `TELEGRAM_BOT_TOKEN` | Optional | Telegram bot token for signal notifications |
-| `TELEGRAM_CHANNEL_ID` | Optional | Telegram channel ID (e.g. `@yourchannel`) |
+| `DATABASE_URL` | ✅ Yes | PostgreSQL connection string |
+| `CRON_SECRET` | Recommended | Random string to secure the cron endpoint |
+| `TRADEMASTER_ADMIN_TOKEN` | Optional | Token for webhook admin endpoints |
 
-### Recommended Databases
-- **[Neon](https://neon.tech)** — Free PostgreSQL with serverless driver (best for Vercel)
-- **[Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres)** — One-click setup in Vercel dashboard
-- **[Supabase](https://supabase.com)** — Free tier with 500MB storage
+### Step 4 — Deploy
+Click Deploy. Vercel automatically detects Next.js and configures cron jobs from `vercel.json`.
+
+## Cron Schedule
+
+The `vercel.json` configures the signal engine to run every 3 minutes:
+```json
+{
+  "crons": [
+    { "path": "/api/generate-signals", "schedule": "*/3 * * * *" }
+  ]
+}
+```
+
+> Note: Vercel Cron requires a Pro plan or higher for schedules shorter than 1 day.
+
+## Webhook Dispatch
+
+Add webhook targets for automated trade execution:
+
+| Platform | Payload Format |
+|----------|----------------|
+| **Generic** | Full JSON with all signal data |
+| **Sensibull** | Structured with strategy, action, strike, expiry |
+| **Tradetron** | Tradetron-compatible condition payload |
+
+Webhooks only fire on **state changes** — no duplicate alerts.
 
 ## Local Development
 
 ```bash
 npm install
-
-# Create .env.local from example
-cp .env.example .env.local
-# Edit .env.local with your values
-
-# Start frontend dev server
+# Create .env.local from .env.example
 npm run dev
+# Open http://localhost:3000
+# Manually trigger engine: POST http://localhost:3000/api/generate-signals
 ```
 
-For the API during local dev, set up a local proxy or deploy to Vercel preview.
+## Database Tables
 
-## Project Structure
-
-```
-trademaster-vercel/
-├── api/
-│   └── index.ts        # All API routes (Vercel serverless function)
-├── src/                # React frontend
-│   ├── components/     # UI components (shadcn/ui based)
-│   ├── pages/          # App pages
-│   ├── lib/api.ts      # Frontend API client
-│   └── App.tsx         # Router + layout
-├── public/             # Static assets, PWA manifest, icons
-├── index.html
-├── package.json
-├── vite.config.ts
-└── vercel.json         # Routing: /api/* → serverless, /* → SPA
-```
-
-## After Deploying
-
-1. Visit your Vercel URL
-2. The app works without any data — signals can be added via admin API
-3. Seed investment reports: `POST /api/trademaster/reports/seed` (with Authorization header)
-
-## Admin API Access
-
-All admin endpoints require: `Authorization: Bearer <TRADEMASTER_ADMIN_TOKEN>`
-
-- `GET /api/trademaster/admin/verify` — Check if token is valid
-- `POST /api/trademaster/signals` — Create a new signal
-- `PATCH /api/trademaster/signals/:id` — Update a signal
-- `DELETE /api/trademaster/signals/:id` — Delete a signal
-- `POST /api/trademaster/reports/seed` — Seed investment reports
-- `GET /api/trademaster/subscriptions` — List all subscriptions
+Created automatically on first API call:
+- `trademaster_signal_states` — current signal state per segment (NIFTY/BANKNIFTY/FINNIFTY)
+- `trademaster_signals` — historical signal log (with delta & volume_confirmed columns)
+- `trademaster_webhooks` — webhook dispatch configuration

@@ -1,0 +1,7 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/api/signals/route": "/api/signals",
+  "/api/webhooks/route": "/api/webhooks",
+  "/api/generate-signals/route": "/api/generate-signals",
+  "/page": "/"
+}

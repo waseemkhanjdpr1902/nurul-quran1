@@ -1,90 +1,17 @@
 {
-  "name": "TradeMaster Pro — Trading Journal",
+  "name": "TradeMaster Pro — Signal Engine",
   "short_name": "TradeMaster",
-  "description": "Professional trading journal, P&L analytics, market calculators, and technical analysis tools for serious Indian traders.",
-  "start_url": "/trademaster/",
-  "scope": "/trademaster/",
+  "description": "Real-time Nifty/BankNifty/FinNifty option chain signals with 9 EMA + VWAP + RSI scalping engine",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#1a6b4a",
-  "background_color": "#0f1117",
+  "theme_color": "#0a0d13",
+  "background_color": "#0a0d13",
   "lang": "en-IN",
-  "dir": "ltr",
-  "categories": ["finance", "business", "productivity"],
+  "categories": ["finance", "business"],
   "icons": [
-    {
-      "src": "/trademaster/icons/icon-72.png",
-      "sizes": "72x72",
-      "type": "image/png"
-    },
-    {
-      "src": "/trademaster/icons/icon-96.png",
-      "sizes": "96x96",
-      "type": "image/png"
-    },
-    {
-      "src": "/trademaster/icons/icon-128.png",
-      "sizes": "128x128",
-      "type": "image/png"
-    },
-    {
-      "src": "/trademaster/icons/icon-144.png",
-      "sizes": "144x144",
-      "type": "image/png"
-    },
-    {
-      "src": "/trademaster/icons/icon-152.png",
-      "sizes": "152x152",
-      "type": "image/png"
-    },
-    {
-      "src": "/trademaster/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/trademaster/icons/icon-384.png",
-      "sizes": "384x384",
-      "type": "image/png"
-    },
-    {
-      "src": "/trademaster/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "My Trading Journal",
-      "short_name": "Journal",
-      "description": "Log and review your trades",
-      "url": "/trademaster/",
-      "icons": [{ "src": "/trademaster/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
-    },
-    {
-      "name": "Analytics Dashboard",
-      "short_name": "Analytics",
-      "description": "View your P&L and performance",
-      "url": "/trademaster/",
-      "icons": [{ "src": "/trademaster/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
-    },
-    {
-      "name": "Market Calculators",
-      "short_name": "Calculators",
-      "description": "Position sizer, option greeks, pivot points",
-      "url": "/trademaster/",
-      "icons": [{ "src": "/trademaster/icons/icon-96.png", "sizes": "96x96", "type": "image/png" }]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/trademaster/opengraph.jpg",
-      "sizes": "1200x630",
-      "type": "image/jpeg",
-      "form_factor": "wide",
-      "label": "TradeMaster Pro — Trading Journal Dashboard"
-    }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
