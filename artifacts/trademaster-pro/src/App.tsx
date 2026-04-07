@@ -8,29 +8,25 @@ import { SubscriptionGuard } from "@/components/subscription-guard";
 import Home from "@/pages/home";
 import Admin from "@/pages/admin";
 import Pricing from "@/pages/pricing";
-import Reports from "@/pages/reports";
 import Journal from "@/pages/journal";
-import Analytics from "@/pages/analytics";
 import Calculators from "@/pages/calculators";
-import Performance from "@/pages/performance";
-import Scanner from "@/pages/scanner";
+import Watchlist from "@/pages/watchlist";
+import Events from "@/pages/events";
 
 const queryClient = new QueryClient();
 
-type Page = "journal" | "analytics" | "watchlist" | "calculators" | "reports" | "pricing" | "admin" | "performance" | "scanner";
+type Page = "signals" | "watchlist" | "journal" | "calculators" | "events" | "pricing" | "admin";
 
 const NAV: { key: Page; label: string; icon: string }[] = [
-  { key: "watchlist", label: "Signals", icon: "📡" },
-  { key: "scanner",   label: "Scanner", icon: "🔭" },
-  { key: "journal",   label: "My Trades", icon: "📓" },
-  { key: "analytics", label: "Analytics", icon: "📊" },
-  { key: "calculators", label: "Calculators", icon: "🔢" },
-  { key: "reports",   label: "Reports", icon: "📋" },
-  { key: "performance", label: "Performance", icon: "🏆" },
+  { key: "signals",     label: "Signals",    icon: "📡" },
+  { key: "watchlist",   label: "Watchlist",  icon: "👁️" },
+  { key: "journal",     label: "My Trades",  icon: "📓" },
+  { key: "calculators", label: "Calculators",icon: "🔢" },
+  { key: "events",      label: "Events",     icon: "📅" },
 ];
 
 function App() {
-  const [page, setPage] = useState<Page>("watchlist");
+  const [page, setPage] = useState<Page>("signals");
   const [pricingMessage, setPricingMessage] = useState<string | undefined>(undefined);
 
   const navigateToPricing = useCallback((message?: string) => {
@@ -40,7 +36,7 @@ function App() {
 
   const navigateBack = useCallback(() => {
     setPricingMessage(undefined);
-    setPage("watchlist");
+    setPage("signals");
   }, []);
 
   return (
@@ -51,7 +47,7 @@ function App() {
 
           <header className="bg-[hsl(220,13%,10%)] border-b border-[hsl(220,13%,18%)] sticky top-0 z-30">
             <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-              <button onClick={() => setPage("watchlist")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <button onClick={() => setPage("signals")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                 <div className="w-9 h-9 bg-gradient-to-br from-green-600 to-emerald-700 rounded-xl flex items-center justify-center text-white font-black text-base shadow-lg shadow-green-900/40">TM</div>
                 <div className="text-left">
                   <div className="flex items-center gap-1.5">
@@ -61,6 +57,7 @@ function App() {
                   <div className="text-gray-500 text-xs">Educational Trading Tools</div>
                 </div>
               </button>
+
               <div className="flex items-center gap-1">
                 {NAV.map(n => (
                   <button
@@ -85,6 +82,7 @@ function App() {
               </div>
             </div>
 
+            {/* Mobile nav */}
             <div className="sm:hidden flex overflow-x-auto gap-1 px-4 pb-2 scrollbar-none">
               {NAV.map(n => (
                 <button
@@ -101,7 +99,7 @@ function App() {
           </header>
 
           <main className="flex-1">
-            {page === "watchlist" && (
+            {page === "signals" && (
               <SubscriptionGuard
                 onNavigatePricing={navigateToPricing}
                 redirectMessage="Access to trading signals and market charts requires an active Pro Educator subscription. Subscribe below to unlock 90 days of educational tools."
@@ -112,6 +110,9 @@ function App() {
                 />
               </SubscriptionGuard>
             )}
+
+            {page === "watchlist" && <Watchlist />}
+
             {page === "journal" && (
               <SubscriptionGuard
                 onNavigatePricing={navigateToPricing}
@@ -120,14 +121,7 @@ function App() {
                 <Journal />
               </SubscriptionGuard>
             )}
-            {page === "analytics" && (
-              <SubscriptionGuard
-                onNavigatePricing={navigateToPricing}
-                redirectMessage="Access to performance analytics requires an active Pro Educator subscription. Subscribe to unlock insights from your trading history."
-              >
-                <Analytics />
-              </SubscriptionGuard>
-            )}
+
             {page === "calculators" && (
               <SubscriptionGuard
                 onNavigatePricing={navigateToPricing}
@@ -136,37 +130,17 @@ function App() {
                 <Calculators />
               </SubscriptionGuard>
             )}
-            {page === "reports" && (
-              <SubscriptionGuard
-                onNavigatePricing={navigateToPricing}
-                redirectMessage="Access to investment analysis reports requires an active Pro Educator subscription. Subscribe to unlock 7-asset-class educational reports."
-              >
-                <Reports onNavigatePricing={() => navigateToPricing()} />
-              </SubscriptionGuard>
-            )}
-            {page === "performance" && (
-              <SubscriptionGuard
-                onNavigatePricing={navigateToPricing}
-                redirectMessage="Access to full performance history requires an active Pro Educator subscription. Subscribe to view all historical signals and outcomes."
-              >
-                <Performance onNavigatePricing={() => navigateToPricing()} />
-              </SubscriptionGuard>
-            )}
-            {page === "scanner" && (
-              <SubscriptionGuard
-                onNavigatePricing={navigateToPricing}
-                redirectMessage="The Market Sweep Scanner requires an active Pro Educator subscription. Subscribe to scan 25+ NSE stocks using RSI, VWAP, and breakout logic."
-              >
-                <Scanner onNavigatePricing={() => navigateToPricing()} />
-              </SubscriptionGuard>
-            )}
+
+            {page === "events" && <Events />}
+
             {page === "pricing" && (
               <Pricing
                 onBack={navigateBack}
                 redirectMessage={pricingMessage}
               />
             )}
-            {page === "admin" && <Admin onBack={() => setPage("watchlist")} />}
+
+            {page === "admin" && <Admin onBack={() => setPage("signals")} />}
           </main>
 
           <footer className="bg-[hsl(220,13%,10%)] border-t border-[hsl(220,13%,18%)] py-4 px-4 text-center">
