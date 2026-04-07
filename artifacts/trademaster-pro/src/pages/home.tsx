@@ -5,7 +5,6 @@ import { SignalCard } from "@/components/signal-card";
 import { useAdmin } from "@/hooks/use-admin";
 import { useSubscription } from "@/hooks/use-subscription";
 import { AdBanner } from "@/components/ad-banner";
-import { PcrSignalWidget } from "@/components/pcr-signal-widget";
 
 function todayIST(): string {
   return new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
@@ -326,9 +325,6 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
             </div>
           </div>
         )}
-
-        {/* PCR + VWAP Live Signal Widget */}
-        <PcrSignalWidget />
 
         {/* Performance Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
