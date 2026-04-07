@@ -332,62 +332,68 @@ function tryGenerateSignal(
 
   // ── Criteria ──────────────────────────────────────────────────────────────
 
-  // Price Action: current price breaks 5-min high (breakout)
-  const priceBreakout = price > high5m;
+  const low5m = Math.min(...last5.map(c => c.l));
 
-  // OI Pulse for BUY: Call OI decreasing (unwinding), Put OI increasing
+  // Condition 1 (Price): 1-min candle breaks 5-min High (BUY) or 5-min Low (SELL)
+  // AND price is above 9 EMA and VWAP
+  const priceBreakoutBuy  = price > high5m && price > ema9 && price > vwap;
+  const priceBreakoutSell = price < low5m  && price < ema9 && price < vwap;
+
+  // Condition 2 (Options Pulse): OI Change Velocity every 60s
+  // BUY:  ATM Call OI falling (short covering) + ATM Put OI rising (long buildup)
   const oiBuy  = callOiVelocity < -500 && putOiVelocity > 500;
-  // OI Pulse for SELL: Put OI decreasing, Call OI increasing
+  // SELL: ATM Put OI falling (short covering) + ATM Call OI rising (long buildup)
   const oiSell = putOiVelocity < -500 && callOiVelocity > 500;
 
-  // V-Force: price vs VWAP
+  // V-Force: price vs VWAP (already encoded in priceBreakout, kept as auxiliary)
   const vForceBuy  = price > vwap;
   const vForceSell = price < vwap;
 
-  // Volume filter: current 1-min volume ≥ 2× 20-period average
-  const volumeSpike = volRatio >= 2;
+  // Condition 3 (Volume): Volume > 150% of 20-period moving average
+  const volumeSpike = volRatio >= 1.5;
 
   // EMA crossover (9 EMA vs 21 EMA)
   const emaBullish = ema9 > ema21;
   const emaBearish = ema9 < ema21;
 
-  // RSI zone filter: RSI 45-70 for buys, 30-55 for sells (not overbought/oversold)
-  const rsiBuyZone  = rsi7 >= 45 && rsi7 <= 70;
-  const rsiSellZone = rsi7 >= 30 && rsi7 <= 55;
+  // RSI zone filter
+  const rsiBuyZone  = rsi7 >= 45 && rsi7 <= 72;
+  const rsiSellZone = rsi7 >= 28 && rsi7 <= 55;
 
   let dir: SignalDir | null = null;
   let grade: SignalGrade = "B";
   let reason = "";
 
-  // ── Grade A: All 3 criteria align ──────────────────────────────────────────
-  if (priceBreakout && oiBuy && vForceBuy && volumeSpike && emaBullish && rsiBuyZone) {
+  // ── Grade A: All 3 conditions align (Price + OI Pulse + Volume) ────────────
+  // Condition 1: 1-min candle breaks 5-min H/L + above 9EMA + above VWAP
+  // Condition 2: OI Velocity confirms (Call short-covering + Put long-buildup = BUY)
+  // Condition 3: Volume > 150% of 20-period MA
+  if (priceBreakoutBuy && oiBuy && volumeSpike && emaBullish && rsiBuyZone) {
     dir   = "BUY";
     grade = "A";
-    reason = "Heavy Call Unwinding + Volume Breakout + Price above VWAP + 9EMA > 21EMA";
-  } else if (priceBreakout && oiSell && vForceSell && volumeSpike && emaBearish && rsiSellZone) {
+    reason = "5-min High Breakout · Call OI Short-Covering · Put OI Long-Buildup · Vol >150% avg · 9EMA > 21EMA";
+  } else if (priceBreakoutSell && oiSell && volumeSpike && emaBearish && rsiSellZone) {
     dir   = "SELL";
     grade = "A";
-    reason = "Put Unwinding + Volume Breakdown + Price below VWAP + 9EMA < 21EMA";
+    reason = "5-min Low Breakdown · Put OI Short-Covering · Call OI Long-Buildup · Vol >150% avg · 9EMA < 21EMA";
   }
-  // ── Grade B: Price + Volume + VWAP ──────────────────────────────────────────
-  else if (priceBreakout && volumeSpike && vForceBuy && emaBullish && rsiBuyZone) {
+  // ── Grade B: Price Action + Volume (OI not yet confirmed) ───────────────────
+  else if (priceBreakoutBuy && volumeSpike && emaBullish && rsiBuyZone) {
     dir   = "BUY";
     grade = "B";
-    reason = "Volume Breakout + Price above VWAP + 9EMA > 21EMA";
-  } else if (priceBreakout && volumeSpike && vForceSell && emaBearish && rsiSellZone) {
+    reason = "5-min High Breakout + Price above 9EMA & VWAP + Vol >150% avg";
+  } else if (priceBreakoutSell && volumeSpike && emaBearish && rsiSellZone) {
     dir   = "SELL";
     grade = "B";
-    reason = "Volume Breakdown + Price below VWAP + 9EMA < 21EMA";
+    reason = "5-min Low Breakdown + Price below 9EMA & VWAP + Vol >150% avg";
   }
 
   if (!dir) return null;
 
-  // Calculate levels
-  const signalCandleLow  = last5[last5.length - 1].l;
-  const signalCandleHigh = last5[last5.length - 1].h;
-  const stopLoss = dir === "BUY" ? signalCandleLow * 0.998  : signalCandleHigh * 1.002;
-  const target1  = dir === "BUY" ? price * 1.003             : price * 0.997;
-  const target2  = dir === "BUY" ? price * 1.006             : price * 0.994;
+  // Calculate levels — spec: T1=0.5%, T2=1%, SL=0.3%
+  const stopLoss = dir === "BUY" ? price * (1 - 0.003) : price * (1 + 0.003);
+  const target1  = dir === "BUY" ? price * (1 + 0.005) : price * (1 - 0.005);
+  const target2  = dir === "BUY" ? price * (1 + 0.010) : price * (1 - 0.010);
 
   // ATM option name
   const stepSize = index === "NIFTY" ? 50 : 100;

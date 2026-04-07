@@ -2453,4 +2453,51 @@ router.get("/trademaster/scalp/snapshot", (_req: Request, res: Response): void =
   });
 });
 
+/** Razorpay — create premium subscription order (₹499/mo educational access) */
+router.post("/trademaster/scalp/premium-order", async (_req: Request, res: Response): Promise<void> => {
+  const keyId     = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keyId || !keySecret) {
+    res.status(503).json({ error: "Payment gateway not configured" });
+    return;
+  }
+
+  try {
+    const amountPaise = 49900; // ₹499 in paise
+    const body = JSON.stringify({
+      amount:   amountPaise,
+      currency: "INR",
+      receipt:  `scalp-premium-${Date.now()}`,
+      notes:    { product: "Signal Pulse Engine OI Velocity Access", type: "educational" },
+    });
+
+    const credentials = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+    const rzRes = await fetch("https://api.razorpay.com/v1/orders", {
+      method:  "POST",
+      headers: {
+        "Authorization": `Basic ${credentials}`,
+        "Content-Type":  "application/json",
+      },
+      body,
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!rzRes.ok) {
+      const errText = await rzRes.text();
+      res.status(502).json({ error: `Razorpay error: ${errText}` });
+      return;
+    }
+
+    const order = await rzRes.json() as { id: string };
+    res.json({
+      orderId:  order.id,
+      amount:   amountPaise,
+      currency: "INR",
+      keyId,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Order creation failed" });
+  }
+});
+
 export default router;
