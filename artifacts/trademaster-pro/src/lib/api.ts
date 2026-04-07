@@ -517,6 +517,7 @@ export type UpstoxStatus = {
   connected: boolean;
   apiKeyConfigured: boolean;
   apiSecretConfigured: boolean;
+  accessTokenConfigured: boolean;
   message?: string;
   user?: { name?: string; email?: string; broker?: string };
 };

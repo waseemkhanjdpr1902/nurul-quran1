@@ -1235,8 +1235,9 @@ router.get("/trademaster/upstox/status", async (req: Request, res: Response): Pr
   const apiKeyConfigured = !!process.env.UPSTOX_API_KEY;
   const apiSecretConfigured = !!process.env.UPSTOX_API_SECRET;
 
+  const accessTokenConfigured = !!token;
   if (!token) {
-    res.json({ ok: false, connected: false, apiKeyConfigured, apiSecretConfigured, message: "No UPSTOX_ACCESS_TOKEN set. Generate one via the auth flow." });
+    res.json({ ok: false, connected: false, apiKeyConfigured, apiSecretConfigured, accessTokenConfigured, message: "No UPSTOX_ACCESS_TOKEN set. Generate one via the auth flow." });
     return;
   }
   try {
@@ -1247,12 +1248,12 @@ router.get("/trademaster/upstox/status", async (req: Request, res: Response): Pr
     const data = await r.json() as Record<string, unknown>;
     if (r.ok) {
       const profile = data?.data as Record<string, unknown> | undefined;
-      res.json({ ok: true, connected: true, apiKeyConfigured, apiSecretConfigured, user: { name: profile?.user_name, email: profile?.email, broker: profile?.broker } });
+      res.json({ ok: true, connected: true, apiKeyConfigured, apiSecretConfigured, accessTokenConfigured, user: { name: profile?.user_name, email: profile?.email, broker: profile?.broker } });
     } else {
-      res.json({ ok: false, connected: false, apiKeyConfigured, apiSecretConfigured, message: "Token invalid or expired", status: r.status });
+      res.json({ ok: false, connected: false, apiKeyConfigured, apiSecretConfigured, accessTokenConfigured, message: "Token invalid or expired — update UPSTOX_ACCESS_TOKEN in Replit Secrets", status: r.status });
     }
   } catch {
-    res.json({ ok: false, connected: false, apiKeyConfigured, apiSecretConfigured, message: "Could not reach Upstox API" });
+    res.json({ ok: false, connected: false, apiKeyConfigured, apiSecretConfigured, accessTokenConfigured, message: "Could not reach Upstox API" });
   }
 });
 

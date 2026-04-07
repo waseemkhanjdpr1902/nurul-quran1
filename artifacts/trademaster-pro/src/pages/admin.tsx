@@ -111,7 +111,8 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
   }
 
   const isConnected = status?.connected;
-  const hasToken = !!accessToken;
+  const hasServerToken = !!status?.accessTokenConfigured;
+  const hasToken = hasServerToken || !!accessToken;
 
   return (
     <div className="space-y-4">
@@ -123,7 +124,7 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
           {[
             { label: "API Key", ok: status?.apiKeyConfigured },
             { label: "API Secret", ok: status?.apiSecretConfigured },
-            { label: "Access Token (local)", ok: hasToken },
+            { label: "Access Token (server)", ok: hasServerToken },
             { label: "Connection", ok: isConnected },
           ].map(({ label, ok }) => (
             <div key={label} className="flex items-center justify-between bg-[hsl(220,13%,16%)] rounded-lg px-3 py-2">
@@ -146,34 +147,41 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
           </div>
         )}
 
-        {/* Manual token input */}
+        {/* Token management */}
         <div className="space-y-3">
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Upstox Access Token (Daily)</label>
-            <div className="flex gap-2">
-              <input
-                type="password"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                placeholder={hasToken ? "Token saved — paste new to replace" : "Paste your Upstox access token here"}
-                className="flex-1 bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,25%)] rounded-lg px-3 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-green-500 text-sm"
-              />
-              <button
-                onClick={saveToken}
-                disabled={!tokenInput.trim()}
-                className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                Save
-              </button>
-              {hasToken && (
-                <button onClick={clearToken} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm rounded-lg transition-colors">
-                  Clear
-                </button>
-              )}
+          {hasServerToken ? (
+            <div className="bg-green-500/8 border border-green-500/20 rounded-lg px-4 py-3">
+              <div className="text-green-400 text-xs font-semibold mb-1">✅ Server token active (UPSTOX_ACCESS_TOKEN)</div>
+              <div className="text-gray-500 text-xs">Token is configured as a Replit Secret and is used automatically by all signal engine calls. Upstox tokens expire daily — update the secret each morning via Replit → Secrets → UPSTOX_ACCESS_TOKEN.</div>
             </div>
-            {saveMsg && <p className="text-green-400 text-xs mt-1">{saveMsg}</p>}
-            <p className="text-gray-600 text-xs mt-1">Token is stored in your browser only. Upstox tokens expire daily — refresh each morning.</p>
-          </div>
+          ) : (
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Fallback: Paste Access Token (browser session only)</label>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  placeholder="Paste your Upstox access token here"
+                  className="flex-1 bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,25%)] rounded-lg px-3 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-green-500 text-sm"
+                />
+                <button
+                  onClick={saveToken}
+                  disabled={!tokenInput.trim()}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  Save
+                </button>
+                {!!accessToken && (
+                  <button onClick={clearToken} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm rounded-lg transition-colors">
+                    Clear
+                  </button>
+                )}
+              </div>
+              {saveMsg && <p className="text-green-400 text-xs mt-1">{saveMsg}</p>}
+              <p className="text-gray-600 text-xs mt-1">For best results, add UPSTOX_ACCESS_TOKEN to Replit Secrets so it persists across sessions.</p>
+            </div>
+          )}
 
           {/* OAuth Flow */}
           <div className="border-t border-[hsl(220,13%,20%)] pt-3">
