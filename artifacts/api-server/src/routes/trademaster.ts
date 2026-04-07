@@ -122,7 +122,8 @@ router.get("/trademaster/signals/:id", async (req: Request, res: Response): Prom
     const isPremium = accessLevel === "admin" || await isSessionPremium(accessLevel ?? undefined);
     const [signal] = await db.select().from(tradeMasterSignals).where(eq(tradeMasterSignals.id, id));
     if (!signal) { res.status(404).json({ error: "Signal not found" }); return; }
-    res.json({ signal: signal.isPremium && !isPremium ? redactPremiumSignal(signal) : signal });
+    // TESTING MODE: all signals open — re-enable redaction before launch
+    res.json({ signal });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch signal");
     res.status(500).json({ error: "Failed to fetch signal" });
@@ -709,22 +710,7 @@ router.get("/trademaster/reports", async (req: Request, res: Response): Promise<
       rows = rows.filter((r) => r.category === category);
     }
 
-    if (!isPremium) {
-      const summary = rows.map((r) => ({
-        id: r.id,
-        category: r.category,
-        instrumentName: r.instrumentName,
-        instrumentCode: r.instrumentCode,
-        analystRating: r.analystRating,
-        riskLevel: r.riskLevel,
-        recommendedHorizon: r.recommendedHorizon,
-        rationale: null,
-        suggestedAllocationPct: null,
-      }));
-      res.json({ reports: summary, isPremium: false });
-      return;
-    }
-
+    // TESTING MODE: all reports open — re-enable premium gating before launch
     res.json({ reports: rows, isPremium: true });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch investment reports");
@@ -777,13 +763,11 @@ router.get("/trademaster/performance", async (req: Request, res: Response): Prom
     const rrValues = rows.filter((r) => r.riskReward != null).map((r) => parseFloat(r.riskReward!));
     const avgRR = rrValues.length > 0 ? (rrValues.reduce((a, b) => a + b, 0) / rrValues.length).toFixed(2) : null;
 
-    const limitedRows = isPremium ? rows : rows.slice(0, 10);
-    const signals = limitedRows.map((s) => (s.isPremium && !isPremium ? redactPremiumSignal(s) : s));
-
+    // TESTING MODE: all signals open — re-enable premium gating before launch
     res.json({
       stats: { total, targetHit, slHit, open, successRate, avgRR },
-      signals,
-      isPremium,
+      signals: rows,
+      isPremium: true,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch performance data");
