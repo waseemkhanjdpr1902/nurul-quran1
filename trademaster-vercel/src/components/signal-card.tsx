@@ -24,90 +24,19 @@ const SEGMENT_LABELS: Record<string, string> = {
   currency: "💱 Currency",
 };
 
-// NSE F&O lot sizes (as of Apr 2026)
-const LOT_SIZES: Record<string, number> = {
-  NIFTY: 75,
-  BANKNIFTY: 30,
-  FINNIFTY: 65,
-  MIDCPNIFTY: 75,
-  "HDFC BANK": 550,
-  HDFCBANK: 550,
-  RELIANCE: 250,
-  "ICICI BANK": 700,
-  ICICIBANK: 700,
-  INFOSYS: 400,
-  TCS: 150,
-  "AXIS BANK": 1200,
-  AXISBANK: 1200,
-  "BAJAJ FINANCE": 125,
-  BAJAJFINANCE: 125,
-  MARUTI: 30,
-  TATAMOTORS: 1400,
-  WIPRO: 3000,
-  HCLTECH: 700,
-};
-
-function getLotSize(assetName: string): number | null {
-  const upper = assetName.toUpperCase();
-  for (const [key, size] of Object.entries(LOT_SIZES)) {
-    if (upper.startsWith(key)) return size;
-  }
-  return null;
-}
-
-/** Extract expiry date part like "APR09", "APR13", "APR30" from asset name */
-function extractExpiry(assetName: string): string | null {
-  const m = assetName.match(/\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\d{2}\b/i);
-  return m ? m[0].toUpperCase() : null;
-}
-
-/** Detect if the option is CE (Call) or PE (Put) */
-function extractOptionType(assetName: string): "CE" | "PE" | null {
-  if (/\bCE\b/i.test(assetName)) return "CE";
-  if (/\bPE\b/i.test(assetName)) return "PE";
-  return null;
-}
-
-function isOptionsSignal(signal: Signal): boolean {
-  return signal.segment === "options" || signal.segment === "fno";
-}
-
 function formatTelegramMessage(signal: Signal): string {
   const emoji = signal.signalType === "buy" ? "🟢" : "🔴";
-  const optType = extractOptionType(signal.assetName);
-  const expiry = extractExpiry(signal.assetName);
-  const lotSize = getLotSize(signal.assetName);
-  const entry = parseFloat(signal.entryPrice);
-  const sl = parseFloat(signal.stopLoss);
-
   const lines = [
     `${emoji} <b>TradeMaster Pro — ${signal.signalType.toUpperCase()}</b>`,
     ``,
     `📊 <b>${signal.assetName}</b> [${(SEGMENT_LABELS[signal.segment] ?? signal.segment).toUpperCase()}]`,
+    ``,
+    `📌 Entry: <b>₹${signal.entryPrice}</b>`,
+    `🛑 Stop Loss: <b>₹${signal.stopLoss}</b>`,
+    `🎯 Target 1: <b>₹${signal.target1}</b>`,
   ];
-
-  if (optType || expiry || lotSize) {
-    const meta: string[] = [];
-    if (optType) meta.push(`Type: <b>${optType === "CE" ? "📈 CALL" : "📉 PUT"}</b>`);
-    if (expiry) meta.push(`Expiry: <b>${expiry}</b>`);
-    if (lotSize) meta.push(`Lot: <b>${lotSize}</b>`);
-    if (meta.length) lines.push(meta.join(" | "));
-  }
-
-  lines.push(``);
-  lines.push(`📌 Entry: <b>₹${signal.entryPrice}</b>`);
-  lines.push(`🛑 Stop Loss: <b>₹${signal.stopLoss}</b>`);
-  lines.push(`🎯 Target 1: <b>₹${signal.target1}</b>`);
   if (signal.target2) lines.push(`🎯 Target 2: <b>₹${signal.target2}</b>`);
   if (signal.riskReward) lines.push(`⚖️ Risk:Reward = <b>1:${signal.riskReward}</b>`);
-
-  if (isOptionsSignal(signal) && lotSize && !isNaN(entry) && !isNaN(sl)) {
-    const lotCost = (entry * lotSize).toLocaleString("en-IN");
-    const maxLoss = ((entry - sl) * lotSize).toLocaleString("en-IN");
-    lines.push(``);
-    lines.push(`💰 1 Lot Cost: <b>₹${lotCost}</b> | Max Loss: <b>₹${maxLoss}</b>`);
-  }
-
   if (signal.iv) lines.push(`📈 IV: ${signal.iv}`);
   if (signal.pcr) lines.push(`📊 PCR: ${signal.pcr}`);
   if (signal.notes) lines.push(``, `🧠 <i>${signal.notes}</i>`);
@@ -116,83 +45,20 @@ function formatTelegramMessage(signal: Signal): string {
 }
 
 function formatShareMessage(signal: Signal): string {
-  const optType = extractOptionType(signal.assetName);
-  const expiry = extractExpiry(signal.assetName);
-  const lotSize = getLotSize(signal.assetName);
-  const entry = parseFloat(signal.entryPrice);
-  const sl = parseFloat(signal.stopLoss);
-  const t1 = parseFloat(signal.target1);
-
-  const isOptions = isOptionsSignal(signal);
-  const headerEmoji = isOptions ? (optType === "CE" ? "📈" : optType === "PE" ? "📉" : "🔄") : (signal.signalType === "buy" ? "🟢" : "🔴");
-
-  const lines: string[] = [];
-
-  if (isOptions) {
-    lines.push(`${headerEmoji} *TradeMaster Pro — Option Chain Signal*`);
-    lines.push(``);
-    lines.push(`📊 *${signal.assetName}*`);
-
-    const meta: string[] = [];
-    if (optType) meta.push(`Type: *${optType === "CE" ? "CALL ☎️" : "PUT 🛡️"}*`);
-    if (expiry) meta.push(`Expiry: *${expiry}*`);
-    if (lotSize) meta.push(`Lot: *${lotSize}*`);
-    if (meta.length) lines.push(meta.join(" | "));
-  } else {
-    lines.push(`*TradeMaster Pro Signal*`);
-    lines.push(``);
-    lines.push(`*${signal.assetName}* [${(SEGMENT_LABELS[signal.segment] ?? signal.segment).toUpperCase()}]`);
-    lines.push(`Signal: *${signal.signalType.toUpperCase()}*`);
-  }
-
-  lines.push(``);
-  lines.push(`📌 Entry: *₹${signal.entryPrice}*`);
-
-  if (!isNaN(entry) && !isNaN(sl)) {
-    const slPct = (((entry - sl) / entry) * 100).toFixed(1);
-    lines.push(`🛑 SL: *₹${signal.stopLoss}* (−${slPct}%)`);
-  } else {
-    lines.push(`🛑 SL: *₹${signal.stopLoss}*`);
-  }
-
-  if (!isNaN(entry) && !isNaN(t1)) {
-    const t1Pct = (((t1 - entry) / entry) * 100).toFixed(1);
-    lines.push(`🎯 T1: *₹${signal.target1}* (+${t1Pct}%)`);
-  } else {
-    lines.push(`🎯 T1: *₹${signal.target1}*`);
-  }
-
-  if (signal.target2) {
-    const t2 = parseFloat(signal.target2);
-    if (!isNaN(entry) && !isNaN(t2)) {
-      const t2Pct = (((t2 - entry) / entry) * 100).toFixed(1);
-      lines.push(`🎯 T2: *₹${signal.target2}* (+${t2Pct}%)`);
-    } else {
-      lines.push(`🎯 T2: *₹${signal.target2}*`);
-    }
-  }
-
-  if (signal.riskReward) lines.push(`⚖️ R:R — *1:${signal.riskReward}*`);
-
-  if (isOptions && lotSize && !isNaN(entry) && !isNaN(sl)) {
-    const lotCost = (entry * lotSize).toLocaleString("en-IN");
-    const maxLoss = Math.round((entry - sl) * lotSize).toLocaleString("en-IN");
-    lines.push(``);
-    lines.push(`💰 1 Lot Cost: *₹${lotCost}*`);
-    lines.push(`📉 Max Loss/Lot: *₹${maxLoss}*`);
-  }
-
-  if (signal.iv || signal.pcr) {
-    const ivPcr: string[] = [];
-    if (signal.iv) ivPcr.push(`IV: ${signal.iv}`);
-    if (signal.pcr) ivPcr.push(`PCR: ${signal.pcr}`);
-    lines.push(`📈 ${ivPcr.join(" | ")}`);
-  }
-
-  if (signal.notes) lines.push(``, `💡 _${signal.notes}_`);
-  lines.push(``);
-  lines.push(`⚠️ Educational only. Not SEBI investment advice.`);
-  lines.push(`— _TradeMaster Pro_`);
+  const lines = [
+    `*TradeMaster Pro Signal*`,
+    ``,
+    `*${signal.assetName}* [${(SEGMENT_LABELS[signal.segment] ?? signal.segment).toUpperCase()}]`,
+    `Signal: *${signal.signalType.toUpperCase()}*`,
+    ``,
+    `Entry: *₹${signal.entryPrice}*`,
+    `Stop Loss: *₹${signal.stopLoss}*`,
+    `Target 1: *₹${signal.target1}*`,
+  ];
+  if (signal.target2) lines.push(`Target 2: *₹${signal.target2}*`);
+  if (signal.riskReward) lines.push(`R:R — *1:${signal.riskReward}*`);
+  if (signal.notes) lines.push(``, `_${signal.notes}_`);
+  lines.push(``, `⚠️ Educational only. Not SEBI investment advice.`);
   return lines.join("\n");
 }
 
@@ -221,16 +87,10 @@ function pctTo(from: number, to: number) {
 export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }: SignalCardProps) {
   const [telegramLoading, setTelegramLoading] = useState(false);
   const [telegramMsg, setTelegramMsg] = useState("");
-  const [copied, setCopied] = useState(false);
   // TESTING MODE: lock disabled — re-enable after accuracy testing
   const isLocked = false;
   const isBuy = signal.signalType === "buy";
   const status = STATUS_CONFIG[signal.status];
-
-  const optType = extractOptionType(signal.assetName);
-  const expiry = extractExpiry(signal.assetName);
-  const lotSize = getLotSize(signal.assetName);
-  const isOptions = isOptionsSignal(signal);
 
   const { quote, loading: quoteLoading, lastUpdated, info } = useSignalQuote(signal.assetName, signal.segment);
   const livePrice = quote?.price ?? null;
@@ -248,54 +108,57 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
 
   const changePos = (quote?.changePercent ?? 0) >= 0;
 
-  const entryNum = parseFloat(signal.entryPrice);
-  const slNum = parseFloat(signal.stopLoss);
-  const lotCostStr = lotSize && !isNaN(entryNum)
-    ? Math.round(entryNum * lotSize).toLocaleString("en-IN")
-    : null;
-  const maxLossStr = lotSize && !isNaN(entryNum) && !isNaN(slNum)
-    ? Math.round((entryNum - slNum) * lotSize).toLocaleString("en-IN")
-    : null;
-
+  /**
+   * Opens the native app (WhatsApp / Telegram) if installed on this device.
+   * Detects whether the app launch succeeded by listening for a window blur
+   * event (the browser loses focus when a native app steals it).
+   * If no native app is detected after 1.5 s it falls back to the web URL
+   * opened in a NEW tab — so the user never leaves the TradeMaster page.
+   */
   const shareViaApp = (nativeScheme: string, webFallback: string) => {
     let appOpened = false;
+
     const cleanup = () => {
       window.removeEventListener("blur", onBlur);
       clearTimeout(timer);
     };
+
     const onBlur = () => {
       appOpened = true;
       cleanup();
     };
+
     window.addEventListener("blur", onBlur);
+
+    // Give the OS 1.5 s to hand off to the native app
     const timer = setTimeout(() => {
       cleanup();
-      if (!appOpened) window.open(webFallback, "_blank");
+      if (!appOpened) {
+        // Native app not installed — open web share in a new tab
+        window.open(webFallback, "_blank");
+      }
     }, 1500);
+
+    // Try native deep link; if installed the OS intercepts it immediately
     window.location.href = nativeScheme;
   };
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent(formatShareMessage(signal));
-    shareViaApp(`whatsapp://send?text=${text}`, `https://wa.me/?text=${text}`);
-  };
-
-  const handleCopyText = async () => {
-    try {
-      await navigator.clipboard.writeText(formatShareMessage(signal));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // fallback
-    }
+    shareViaApp(
+      `whatsapp://send?text=${text}`,
+      `https://wa.me/?text=${text}`,
+    );
   };
 
   const handleTelegramShare = () => {
     const text = encodeURIComponent(formatShareMessage(signal));
     const appUrl = encodeURIComponent(`${window.location.origin}${window.location.pathname}`);
-    shareViaApp(`tg://msg?text=${text}`, `https://t.me/share/url?url=${appUrl}&text=${text}`);
+    shareViaApp(
+      `tg://msg?text=${text}`,
+      `https://t.me/share/url?url=${appUrl}&text=${text}`,
+    );
   };
-
   const handlePostToChannel = async () => {
     if (!adminToken) return;
     setTelegramLoading(true);
@@ -335,21 +198,6 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
             <span className="text-xs text-gray-500 bg-[hsl(220,13%,18%)] px-2 py-0.5 rounded">
               {SEGMENT_LABELS[signal.segment] ?? signal.segment.toUpperCase()}
             </span>
-            {/* Option type badge */}
-            {optType && (
-              <span className={`text-xs font-black px-2 py-0.5 rounded border tracking-widest ${
-                optType === "CE"
-                  ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-                  : "bg-orange-500/20 text-orange-300 border-orange-500/40"
-              }`}>
-                {optType === "CE" ? "☎️ CALL" : "🛡️ PUT"}
-              </span>
-            )}
-            {expiry && (
-              <span className="text-xs font-mono text-amber-400 bg-amber-900/20 border border-amber-700/30 px-2 py-0.5 rounded">
-                ⏰ {expiry}
-              </span>
-            )}
             {signal.isPremium && (
               <span className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-bold">PRO</span>
             )}
@@ -374,6 +222,7 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
               : "bg-red-950/30 border-red-900/40"
             : "bg-[hsl(220,13%,16%)] border-[hsl(220,13%,22%)] opacity-60"
       }`}>
+        {/* F&O Contract badge */}
         {info.isFnO && (
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
             <span className="text-xs text-gray-500">Contract:</span>
@@ -434,7 +283,7 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
       {/* Support / Resistance / Target Grid */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="bg-[hsl(220,13%,16%)] rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">Entry / Premium</div>
+          <div className="text-xs text-gray-500 mb-0.5">Entry / Support</div>
           <div className="text-white font-black font-mono text-sm">
             {signal.entryPrice === "—" ? <span className="text-gray-600">—</span> : `₹${signal.entryPrice}`}
           </div>
@@ -478,30 +327,6 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
           </div>
         )}
       </div>
-
-      {/* Lot Size / Max Loss strip (options only) */}
-      {isOptions && (lotCostStr || maxLossStr) && (
-        <div className="flex gap-2 mb-3">
-          {lotSize && (
-            <div className="bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,22%)] rounded-lg px-3 py-1.5 flex-1">
-              <span className="text-xs text-gray-500 mr-1">📦 Lot</span>
-              <span className="text-xs font-mono font-bold text-amber-300">{lotSize} shares</span>
-            </div>
-          )}
-          {lotCostStr && (
-            <div className="bg-blue-950/25 border border-blue-900/30 rounded-lg px-3 py-1.5 flex-1">
-              <span className="text-xs text-gray-500 mr-1">💰 1-Lot</span>
-              <span className="text-xs font-mono font-bold text-blue-300">₹{lotCostStr}</span>
-            </div>
-          )}
-          {maxLossStr && (
-            <div className="bg-red-950/25 border border-red-900/30 rounded-lg px-3 py-1.5 flex-1">
-              <span className="text-xs text-gray-500 mr-1">📉 Max Loss</span>
-              <span className="text-xs font-mono font-bold text-red-400">₹{maxLossStr}</span>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Day High / Low from live data */}
       {livePrice && (quote?.high || quote?.low) && (
@@ -566,16 +391,6 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
           className="flex items-center gap-1 text-xs bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/25 px-2.5 py-1.5 rounded-lg transition-colors"
         >
           📱 WhatsApp
-        </button>
-        <button
-          onClick={handleCopyText}
-          className={`flex items-center gap-1 text-xs border px-2.5 py-1.5 rounded-lg transition-colors ${
-            copied
-              ? "bg-green-500/20 text-green-300 border-green-500/30"
-              : "bg-[hsl(220,13%,18%)] hover:bg-[hsl(220,13%,22%)] text-gray-400 hover:text-gray-200 border-[hsl(220,13%,25%)]"
-          }`}
-        >
-          {copied ? "✅ Copied!" : "📋 Copy"}
         </button>
         <button
           onClick={handleTelegramShare}

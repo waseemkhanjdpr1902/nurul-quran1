@@ -1,72 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchSignals, updateSignal, type Signal } from "@/lib/api";
+import { fetchSignals, updateSignal } from "@/lib/api";
 import { SignalCard } from "@/components/signal-card";
 import { useAdmin } from "@/hooks/use-admin";
 import { useSubscription } from "@/hooks/use-subscription";
 import { AdBanner } from "@/components/ad-banner";
 
 const SESSION_KEY = "trademaster_session_id";
-
-const LOT_SIZES: Record<string, number> = {
-  NIFTY: 75, BANKNIFTY: 30, FINNIFTY: 65, MIDCPNIFTY: 75,
-  "HDFC BANK": 550, HDFCBANK: 550, RELIANCE: 250,
-  "ICICI BANK": 700, ICICIBANK: 700, INFOSYS: 400,
-  TCS: 150, AXISBANK: 1200, "AXIS BANK": 1200,
-  BAJAJFINANCE: 125, "BAJAJ FINANCE": 125, MARUTI: 30,
-};
-
-function getLotSize(name: string): number | null {
-  const u = name.toUpperCase();
-  for (const [k, v] of Object.entries(LOT_SIZES)) if (u.startsWith(k)) return v;
-  return null;
-}
-
-function buildOptionsDigest(signals: Signal[]): string {
-  const opts = signals.filter(s => s.segment === "options" && s.status === "active");
-  if (!opts.length) return "No active option chain signals right now.";
-
-  const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
-
-  const grouped: Record<string, Signal[]> = {};
-  opts.forEach(s => {
-    const m = s.assetName.match(/^([A-Z ]+)\s+\d+\s+[CP]E/i);
-    const grp = m ? m[1].trim() : "Other";
-    (grouped[grp] ??= []).push(s);
-  });
-
-  const lines = [
-    `🔥 *TradeMaster Pro — Option Chain Digest*`,
-    `📅 *${today}*`,
-    `━━━━━━━━━━━━━━━━━━━━━`,
-  ];
-
-  for (const [grp, sigs] of Object.entries(grouped)) {
-    lines.push(`\n*${grp} Options*`);
-    sigs.forEach(s => {
-      const optType = /\bCE\b/i.test(s.assetName) ? "CALL ☎️" : /\bPE\b/i.test(s.assetName) ? "PUT 🛡️" : "";
-      const lot = getLotSize(s.assetName);
-      const entry = parseFloat(s.entryPrice);
-      const sl = parseFloat(s.stopLoss);
-      const t1 = parseFloat(s.target1);
-      const slPct = !isNaN(entry) && !isNaN(sl) ? ` (−${(((entry-sl)/entry)*100).toFixed(0)}%)` : "";
-      const t1Pct = !isNaN(entry) && !isNaN(t1) ? ` (+${(((t1-entry)/entry)*100).toFixed(0)}%)` : "";
-      const maxLoss = lot && !isNaN(entry) && !isNaN(sl) ? ` | Max Loss ₹${Math.round((entry-sl)*lot).toLocaleString("en-IN")}` : "";
-      lines.push(`📊 *${s.assetName}* ${optType ? `[${optType}]` : ""}`);
-      lines.push(`  Entry ₹${s.entryPrice} | SL ₹${s.stopLoss}${slPct} | T1 ₹${s.target1}${t1Pct}${maxLoss}`);
-      if (s.target2) lines.push(`  T2 ₹${s.target2}`);
-      if (s.iv || s.pcr) {
-        const ivPcr = [s.iv ? `IV ${s.iv}` : "", s.pcr ? `PCR ${s.pcr}` : ""].filter(Boolean).join(" | ");
-        lines.push(`  ${ivPcr}`);
-      }
-    });
-  }
-
-  lines.push(`\n━━━━━━━━━━━━━━━━━━━━━`);
-  lines.push(`⚠️ _Educational only. Not SEBI investment advice._`);
-  lines.push(`— _TradeMaster Pro_`);
-  return lines.join("\n");
-}
 
 const SEGMENTS = [
   {
@@ -108,14 +48,6 @@ const SEGMENTS = [
     description: "Large & mid-cap equity breakouts",
     color: "from-green-900/60 to-green-950/60",
     accent: "green",
-  },
-  {
-    key: "options",
-    label: "Option Chain",
-    icon: "⛓️",
-    description: "Nifty · BankNifty · FinNifty · Stock options",
-    color: "from-violet-900/60 to-violet-950/60",
-    accent: "violet",
   },
   {
     key: "fno",
@@ -167,7 +99,6 @@ type HomeProps = {
 export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) {
   const [activeSegment, setActiveSegment] = useState("all");
   const [showCoverage, setShowCoverage] = useState(false);
-  const [digestCopied, setDigestCopied] = useState(false);
   const { isAdmin, adminToken } = useAdmin();
   const { isPremium, loading: subLoading, activate } = useSubscription();
   const queryClient = useQueryClient();
@@ -198,23 +129,6 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
     if (!adminToken) return;
     await updateSignal(id, { status }, adminToken);
     queryClient.invalidateQueries({ queryKey: ["signals"] });
-  };
-
-  const handleShareOptionsDigest = async (via: "whatsapp" | "copy") => {
-    const allData = await fetchSignals(undefined, sessionId);
-    const text = buildOptionsDigest(allData.signals ?? []);
-    if (via === "copy") {
-      try {
-        await navigator.clipboard.writeText(text);
-        setDigestCopied(true);
-        setTimeout(() => setDigestCopied(false), 2500);
-      } catch {
-        setDigestCopied(false);
-      }
-    } else {
-      const encoded = encodeURIComponent(text);
-      window.open(`https://wa.me/?text=${encoded}`, "_blank");
-    }
   };
 
   return (
@@ -346,36 +260,6 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
             </span>
           )}
         </div>
-
-        {/* Options Chain — Share Digest Banner */}
-        {activeSegment === "options" && signals.length > 0 && (
-          <div className="mb-5 bg-violet-950/30 border border-violet-500/25 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="text-violet-300 font-bold text-sm mb-0.5">📢 Share Option Chain Digest</div>
-              <div className="text-gray-500 text-xs">
-                One-tap to share all {signals.filter(s => s.status === "active").length} active option signals as a formatted WhatsApp group message
-              </div>
-            </div>
-            <div className="flex gap-2 shrink-0 flex-wrap">
-              <button
-                onClick={() => void handleShareOptionsDigest("whatsapp")}
-                className="flex items-center gap-1.5 text-xs font-bold bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#25D366] border border-[#25D366]/30 px-3 py-2 rounded-xl transition-colors"
-              >
-                📱 Share to WhatsApp Group
-              </button>
-              <button
-                onClick={() => void handleShareOptionsDigest("copy")}
-                className={`flex items-center gap-1.5 text-xs font-bold border px-3 py-2 rounded-xl transition-colors ${
-                  digestCopied
-                    ? "bg-green-500/20 text-green-300 border-green-500/30"
-                    : "bg-[hsl(220,13%,18%)] hover:bg-[hsl(220,13%,22%)] text-gray-300 border-[hsl(220,13%,25%)]"
-                }`}
-              >
-                {digestCopied ? "✅ Digest Copied!" : "📋 Copy Digest"}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Signals Grid */}
         {isLoading ? (

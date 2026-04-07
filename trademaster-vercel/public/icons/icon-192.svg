@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a6b4a"/>
+      <stop offset="100%" style="stop-color:#0d4a32"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="30" fill="url(#bg)"/>
+  <polyline points="30,135 55,100 80,118 120,72 155,88 175,50" fill="none" stroke="#22c55e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="120" cy="72" r="6" fill="#f59e0b"/>
+  <text x="96" y="175" font-family="Arial,sans-serif" font-size="16" font-weight="900" fill="#f59e0b" text-anchor="middle" letter-spacing="2">TM PRO</text>
+</svg>
