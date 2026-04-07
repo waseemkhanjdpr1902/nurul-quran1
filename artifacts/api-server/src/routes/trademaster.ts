@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { tradeMasterSignals, tradeMasterSubscriptions, tradeMasterInvestmentReports, tradeMasterJournal, tradeMasterConsent } from "@workspace/db/schema";
 import { eq, desc, and, sql, or, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { scalpEmitter, getScalpStats, getScalpSignals, getLiveSnapshot, type ScalpUpdate } from "../lib/trademaster-scalp-engine";
 
 const router: IRouter = Router();
 
@@ -2409,5 +2410,47 @@ function computeMaxPain(rows: { strikePrice: number; callOptions?: { marketData?
   }
   return maxPainStrike;
 }
+
+// ── HFT Scalp Engine — SSE + REST endpoints ───────────────────────────────────
+
+/** SSE stream — push live scalp updates to the frontend dashboard */
+router.get("/trademaster/scalp/stream", (req: Request, res: Response): void => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const send = (payload: ScalpUpdate) => {
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  };
+
+  // Send current snapshot immediately on connect
+  const live = getLiveSnapshot();
+  if (live) send({ type: "live", live });
+  send({ type: "stats", stats: getScalpStats() });
+  const recent = getScalpSignals().slice(0, 10);
+  for (const s of recent) send({ type: "signal", signal: s });
+
+  // Attach to emitter
+  scalpEmitter.on("update", send);
+
+  // Heartbeat every 20 s
+  const hb = setInterval(() => res.write(": heartbeat\n\n"), 20000);
+
+  req.on("close", () => {
+    clearInterval(hb);
+    scalpEmitter.off("update", send);
+  });
+});
+
+/** Snapshot — returns current stats + all signals + live data (polling fallback) */
+router.get("/trademaster/scalp/snapshot", (_req: Request, res: Response): void => {
+  res.json({
+    stats:   getScalpStats(),
+    signals: getScalpSignals(),
+    live:    getLiveSnapshot(),
+  });
+});
 
 export default router;

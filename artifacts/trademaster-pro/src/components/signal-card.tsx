@@ -353,6 +353,9 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
             {signal.isPremium && (
               <span className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-bold">PRO</span>
             )}
+            {signal.createdBy === "auto-engine" && (
+              <span className="text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded">🤖 Auto</span>
+            )}
           </div>
           <h3 className="text-white font-black text-base leading-tight truncate">{signal.assetName}</h3>
         </div>

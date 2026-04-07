@@ -12,13 +12,15 @@ import Journal from "@/pages/journal";
 import Calculators from "@/pages/calculators";
 import Watchlist from "@/pages/watchlist";
 import Events from "@/pages/events";
+import ScalpDashboard from "@/pages/scalp";
 
 const queryClient = new QueryClient();
 
-type Page = "signals" | "watchlist" | "journal" | "calculators" | "events" | "pricing" | "admin";
+type Page = "signals" | "scalp" | "watchlist" | "journal" | "calculators" | "events" | "pricing" | "admin";
 
 const NAV: { key: Page; label: string; icon: string }[] = [
   { key: "signals",     label: "Signals",    icon: "📡" },
+  { key: "scalp",       label: "HFT Scalp",  icon: "⚡" },
   { key: "watchlist",   label: "Watchlist",  icon: "👁️" },
   { key: "journal",     label: "My Trades",  icon: "📓" },
   { key: "calculators", label: "Calculators",icon: "🔢" },
@@ -110,6 +112,8 @@ function App() {
                 />
               </SubscriptionGuard>
             )}
+
+            {page === "scalp" && <ScalpDashboard />}
 
             {page === "watchlist" && <Watchlist />}
 

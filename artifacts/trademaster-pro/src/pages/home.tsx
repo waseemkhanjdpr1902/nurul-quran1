@@ -7,6 +7,21 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { AdBanner } from "@/components/ad-banner";
 import { PcrSignalWidget } from "@/components/pcr-signal-widget";
 
+function todayIST(): string {
+  return new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+}
+
+function istTimeStr(isoStr: string): string {
+  return new Date(isoStr).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" });
+}
+
+function pnlPct(signal: Signal): number | null {
+  const entry = parseFloat(signal.entryPrice);
+  const exit  = signal.exitPrice ? parseFloat(signal.exitPrice) : null;
+  if (!exit || isNaN(entry) || isNaN(exit) || entry === 0) return null;
+  return signal.signalType === "buy" ? ((exit - entry) / entry) * 100 : ((entry - exit) / entry) * 100;
+}
+
 const SESSION_KEY = "trademaster_session_id";
 
 const LOT_SIZES: Record<string, number> = {
@@ -187,6 +202,23 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
     queryKey: ["signals", activeSegment, sessionId],
     queryFn: () => fetchSignals(activeSegment === "all" ? undefined : activeSegment, sessionId),
     refetchInterval: 30000,
+  });
+
+  // Separate query for "Closed Today" — always fetches all segments
+  const { data: allData } = useQuery({
+    queryKey: ["signals-all", sessionId],
+    queryFn: () => fetchSignals(undefined, sessionId),
+    refetchInterval: 60000,
+  });
+
+  const today = todayIST();
+  const closedToday = (allData?.signals ?? []).filter((s) => {
+    if (s.status === "active") return false;
+    const closedDateStr = s.closedAt
+      ? new Date(s.closedAt).toISOString().slice(0, 10)
+      : null;
+    const createdDateStr = new Date(s.createdAt).toISOString().slice(0, 10);
+    return (closedDateStr ?? createdDateStr) === today;
   });
 
   const signals = data?.signals ?? [];
@@ -454,6 +486,62 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
               </div>
             )}
           </>
+        )}
+
+        {/* Closed Today */}
+        {closedToday.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm font-black text-gray-300">Closed Today</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-700/50 text-gray-500 border border-gray-700/60 uppercase tracking-widest">
+                {closedToday.length} signal{closedToday.length !== 1 ? "s" : ""}
+              </span>
+              <div className="h-px flex-1 bg-[hsl(220,13%,18%)]" />
+              {(() => {
+                const wins = closedToday.filter(s => s.status === "target_hit").length;
+                const rate = closedToday.length > 0 ? ((wins / closedToday.length) * 100).toFixed(0) : null;
+                return rate ? (
+                  <span className={`text-[10px] font-bold ${parseInt(rate) >= 60 ? "text-green-400" : parseInt(rate) >= 40 ? "text-amber-400" : "text-red-400"}`}>
+                    {rate}% win rate today
+                  </span>
+                ) : null;
+              })()}
+            </div>
+            <div className="space-y-1.5">
+              {closedToday
+                .sort((a, b) => (b.closedAt ?? b.createdAt).localeCompare(a.closedAt ?? a.createdAt))
+                .map((s) => {
+                const isBuy = s.signalType === "buy";
+                const pnl = pnlPct(s);
+                const isWin = s.status === "target_hit";
+                const isAuto = s.createdBy === "auto-engine";
+                return (
+                  <div key={s.id} className="flex items-center gap-2 bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-lg px-3 py-2 flex-wrap">
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border shrink-0 ${isBuy ? "text-green-400 border-green-500/30 bg-green-500/10" : "text-red-400 border-red-500/30 bg-red-500/10"}`}>
+                      {isBuy ? "▲" : "▼"}
+                    </span>
+                    <span className="text-white font-bold text-xs truncate flex-1">{s.assetName}</span>
+                    {isAuto && <span className="text-[9px] text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1 py-0.5 rounded shrink-0">🤖</span>}
+                    <span className="text-xs font-mono text-gray-500 shrink-0">
+                      ₹{s.entryPrice}
+                      {s.exitPrice && <> → ₹{parseFloat(s.exitPrice).toFixed(2)}</>}
+                    </span>
+                    {pnl != null && (
+                      <span className={`text-xs font-black shrink-0 ${pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {pnl >= 0 ? "+" : ""}{pnl.toFixed(1)}%
+                      </span>
+                    )}
+                    <span className={`text-[10px] shrink-0 ${isWin ? "text-green-400" : "text-red-400"}`}>
+                      {isWin ? "✅" : "❌"}
+                    </span>
+                    {s.closedAt && (
+                      <span className="text-[9px] text-gray-600 font-mono shrink-0">{istTimeStr(s.closedAt)}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Disclaimer */}

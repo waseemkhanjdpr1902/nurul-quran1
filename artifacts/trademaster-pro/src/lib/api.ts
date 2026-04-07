@@ -16,6 +16,8 @@ export type Signal = {
   isPremium: boolean;
   status: "active" | "target_hit" | "sl_hit";
   createdBy: string;
+  closedAt?: string | null;
+  exitPrice?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -397,6 +399,9 @@ export type PerformanceSignal = {
   riskReward?: string | null;
   status: string;
   isPremium: boolean;
+  createdBy?: string | null;
+  closedAt?: string | null;
+  exitPrice?: string | null;
   createdAt: string;
 };
 

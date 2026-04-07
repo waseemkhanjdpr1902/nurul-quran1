@@ -24,6 +24,8 @@ export const tradeMasterSignals = pgTable("trademaster_signals", {
   isPremium: boolean("is_premium").notNull().default(false),
   status: signalStatusEnum("status").notNull().default("active"),
   createdBy: text("created_by").notNull().default("admin"),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  exitPrice: numeric("exit_price", { precision: 12, scale: 4 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
