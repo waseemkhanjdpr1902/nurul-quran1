@@ -1186,7 +1186,7 @@ const UPSTOX_INSTRUMENT_MAP: Record<string, string> = {
   SUNPHARMA:    "NSE_EQ|INE044A01036",   // Sun Pharmaceutical
 };
 
-/** Segments that use monthly expiry (last Thursday of month) */
+/** Segments that use monthly expiry (last Tuesday of month — NSE stock F&O rule) */
 const MONTHLY_EXPIRY_SEGMENTS = new Set([
   "TCS","HDFCBANK","ICICIBANK","RELIANCE","INFY","SBIN","AXISBANK","WIPRO",
   "LT","HINDUNILVR","BAJFINANCE","KOTAKBANK","ADANIENT","ADANIPORTS","MARUTI",
@@ -1235,7 +1235,7 @@ router.post("/trademaster/upstox/token", async (req: Request, res: Response): Pr
 /** Fetch live option chain from Upstox for a segment */
 router.get("/trademaster/upstox/option-chain", async (req: Request, res: Response): Promise<void> => {
   if (!requireAdmin(req, res)) return;
-  const { segment = "NIFTY", expiry_date, access_token } = req.query as Record<string, string>;
+  const { segment = "NIFTY", expiry_date, access_token, contract_type = "weekly" } = req.query as Record<string, string>;
   const token = access_token || (req.headers["x-upstox-token"] as string) || process.env.UPSTOX_ACCESS_TOKEN;
 
   if (!token) { res.status(400).json({ error: "access_token required (query param, x-upstox-token header, or UPSTOX_ACCESS_TOKEN env)" }); return; }
@@ -1243,15 +1243,20 @@ router.get("/trademaster/upstox/option-chain", async (req: Request, res: Respons
   const instrument = UPSTOX_INSTRUMENT_MAP[segment.toUpperCase()];
   if (!instrument) { res.status(400).json({ error: `Unknown segment. Valid: ${Object.keys(UPSTOX_INSTRUMENT_MAP).join(", ")}` }); return; }
 
-  // Auto-select expiry: monthly (last Thu) for stocks, weekly (nearest Thu/Tue) for indices
   const seg = segment.toUpperCase();
   let resolvedExpiry: string;
   if (expiry_date) {
+    // User explicit override — trust it completely
     resolvedExpiry = expiry_date;
   } else if (MONTHLY_EXPIRY_SEGMENTS.has(seg)) {
+    // Stocks always use monthly (last Tuesday of month)
     resolvedExpiry = nextMonthlyExpiry();
+  } else if (contract_type === "monthly") {
+    // Index monthly series: last Thursday (NIFTY/BANKNIFTY) or last Tuesday (FINNIFTY)
+    resolvedExpiry = nextIndexMonthlyExpiry(seg);
   } else {
-    resolvedExpiry = nextWeeklyExpiry(seg as "NIFTY" | "BANKNIFTY" | "FINNIFTY");
+    // Index weekly: nearest Thursday (NIFTY/BANKNIFTY) or nearest Tuesday (FINNIFTY)
+    resolvedExpiry = nextWeeklyExpiry(seg);
   }
 
   try {
@@ -1263,9 +1268,10 @@ router.get("/trademaster/upstox/option-chain", async (req: Request, res: Respons
     const data = await r.json() as Record<string, unknown>;
     if (!r.ok) { res.status(r.status).json({ error: "Upstox API error", details: data }); return; }
 
-    // Parse and compute PCR, OI Change, LTP from the option chain
-    const parsed = parseUpstoxOptionChain(data, segment.toUpperCase(), resolvedExpiry);
-    res.json({ ok: true, segment: segment.toUpperCase(), expiry: resolvedExpiry, ...parsed, fetchedAt: new Date().toISOString() });
+    // Parse chain + compute signals
+    const parsed = parseUpstoxOptionChain(data, seg, resolvedExpiry);
+    const signals = computeOptionChainSignals(parsed, seg);
+    res.json({ ok: true, segment: seg, expiry: resolvedExpiry, contractType: contract_type, ...parsed, signals, fetchedAt: new Date().toISOString() });
   } catch (err) {
     logger.error({ err }, "[Upstox] Option chain fetch failed");
     res.status(500).json({ error: "Failed to fetch option chain from Upstox" });
@@ -1301,15 +1307,47 @@ router.get("/trademaster/upstox/status", async (req: Request, res: Response): Pr
   }
 });
 
-function nextWeeklyExpiry(segment: "NIFTY" | "BANKNIFTY" | "FINNIFTY" | string): string {
+function nextWeeklyExpiry(segment: string): string {
   const now = new Date(Date.now() + 5.5 * 3600000); // IST
   const target = segment === "FINNIFTY" ? 2 : 4; // Tuesday=2, Thursday=4
   const day = now.getDay();
   let daysAhead = (target - day + 7) % 7;
-  if (daysAhead === 0) daysAhead = 7; // if today is expiry day, next week
+  if (daysAhead === 0) daysAhead = 7; // if today is expiry day, move to next week
   const expiry = new Date(now);
   expiry.setDate(now.getDate() + daysAhead);
   return expiry.toISOString().slice(0, 10);
+}
+
+/**
+ * Returns the last Thursday (NIFTY/BANKNIFTY/SENSEX/MIDCPNIFTY) or last Tuesday (FINNIFTY)
+ * of the current month for index monthly series. Rolls to next month if current expiry has passed.
+ */
+function nextIndexMonthlyExpiry(segment: string): string {
+  const now = new Date(Date.now() + 5.5 * 3600000); // IST
+  const targetDay = segment === "FINNIFTY" ? 2 : 4;  // Tue=2, Thu=4
+
+  function lastWeekdayOf(year: number, month: number, dow: number): Date {
+    const lastDay = new Date(year, month + 1, 0);
+    const daysBack = (lastDay.getDay() - dow + 7) % 7;
+    const result = new Date(lastDay);
+    result.setDate(lastDay.getDate() - daysBack);
+    return result;
+  }
+
+  const year = now.getFullYear(), month = now.getMonth();
+  const today = new Date(year, month, now.getDate());
+  let expiry = lastWeekdayOf(year, month, targetDay);
+
+  if (today >= expiry) {
+    const nm = month === 11 ? 0 : month + 1;
+    const ny = month === 11 ? year + 1 : year;
+    expiry = lastWeekdayOf(ny, nm, targetDay);
+  }
+
+  const y = expiry.getFullYear();
+  const m = String(expiry.getMonth() + 1).padStart(2, "0");
+  const d = String(expiry.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 /**
@@ -1351,6 +1389,99 @@ function nextMonthlyExpiry(): string {
   const m = String(expiry.getMonth() + 1).padStart(2, "0");
   const d = String(expiry.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+interface ChainSignal {
+  bias: "BULLISH" | "BEARISH" | "NEUTRAL";
+  title: string;
+  detail: string;
+  strength: "STRONG" | "MODERATE" | "WEAK";
+  contract?: string; // specific contract e.g. "NIFTY 22500 CE"
+}
+
+function computeOptionChainSignals(
+  parsed: ReturnType<typeof parseUpstoxOptionChain>,
+  segment: string
+): ChainSignal[] {
+  const { pcr, pcrOiChange, atmStrike, maxCallStrike, maxPutStrike, maxPain, strikes } = parsed;
+  const signals: ChainSignal[] = [];
+  const sym = segment.toUpperCase();
+
+  // ── 1. PCR Signal ────────────────────────────────────────────────────────
+  if (pcr !== null) {
+    if (pcr >= 1.4)       signals.push({ bias: "BULLISH", strength: "STRONG",   title: `PCR ${pcr.toFixed(2)} — Heavy Put Writing`, detail: "Very high PCR: aggressive put writers dominate. Expect strong support; market likely to stay elevated or move up.", contract: `Sell ${sym} ${maxPutStrike.toLocaleString("en-IN")} PE` });
+    else if (pcr >= 1.15) signals.push({ bias: "BULLISH", strength: "MODERATE", title: `PCR ${pcr.toFixed(2)} — Bullish Bias`, detail: "PCR above 1.15 indicates more put writers; market has a bullish tilt.", contract: `Sell ${sym} ${maxPutStrike.toLocaleString("en-IN")} PE` });
+    else if (pcr <= 0.65) signals.push({ bias: "BEARISH", strength: "STRONG",   title: `PCR ${pcr.toFixed(2)} — Heavy Call Writing`, detail: "Very low PCR: aggressive call writers dominate. Expect strong resistance; market likely to stay under pressure.", contract: `Sell ${sym} ${maxCallStrike.toLocaleString("en-IN")} CE` });
+    else if (pcr <= 0.85) signals.push({ bias: "BEARISH", strength: "MODERATE", title: `PCR ${pcr.toFixed(2)} — Bearish Bias`, detail: "PCR below 0.85 indicates more call writers; market has a bearish tilt.", contract: `Sell ${sym} ${maxCallStrike.toLocaleString("en-IN")} CE` });
+    else                  signals.push({ bias: "NEUTRAL", strength: "WEAK",     title: `PCR ${pcr.toFixed(2)} — Balanced`, detail: "PCR between 0.85–1.15: call and put writers are balanced; no clear directional bias from PCR alone." });
+  }
+
+  // ── 2. OI Change Direction ───────────────────────────────────────────────
+  if (pcrOiChange !== null && isFinite(pcrOiChange)) {
+    if (pcrOiChange >= 1.5)      signals.push({ bias: "BULLISH", strength: "MODERATE", title: "Fresh Put Build-up", detail: `PCR (OI Change) = ${pcrOiChange.toFixed(2)}: new puts being added in size — put writers are confident about support.` });
+    else if (pcrOiChange <= 0.6) signals.push({ bias: "BEARISH", strength: "MODERATE", title: "Fresh Call Build-up", detail: `PCR (OI Change) = ${pcrOiChange.toFixed(2)}: new calls being added in size — call writers are confident about resistance.` });
+    else if (pcrOiChange < 0)    signals.push({ bias: "BULLISH", strength: "MODERATE", title: "CE OI Unwinding", detail: `Negative PCR (OI Change): call writers exiting positions — bearish pressure is reducing.` });
+  }
+
+  // ── 3. Max Pain Signal ───────────────────────────────────────────────────
+  if (maxPain > 0 && atmStrike > 0) {
+    const diff = atmStrike - maxPain;
+    const pct  = Math.abs(diff / maxPain) * 100;
+    if (pct >= 0.8) {
+      if (diff > 0) signals.push({ bias: "BEARISH", strength: pct >= 2 ? "STRONG" : "MODERATE", title: `Max Pain Pull-down → ${maxPain.toLocaleString("en-IN")}`, detail: `Spot (ATM ${atmStrike.toLocaleString("en-IN")}) is ${pct.toFixed(1)}% above max pain. As expiry nears, price tends to gravitate toward ${maxPain.toLocaleString("en-IN")}.`, contract: `Buy ${sym} ${(atmStrike - Math.round((diff / 2) / 50) * 50).toLocaleString("en-IN")} PE` });
+      else          signals.push({ bias: "BULLISH", strength: pct >= 2 ? "STRONG" : "MODERATE", title: `Max Pain Pull-up → ${maxPain.toLocaleString("en-IN")}`, detail: `Spot (ATM ${atmStrike.toLocaleString("en-IN")}) is ${pct.toFixed(1)}% below max pain. As expiry nears, price tends to gravitate toward ${maxPain.toLocaleString("en-IN")}.`, contract: `Buy ${sym} ${(atmStrike + Math.round((Math.abs(diff) / 2) / 50) * 50).toLocaleString("en-IN")} CE` });
+    }
+  }
+
+  // ── 4. CE Wall (Resistance) ──────────────────────────────────────────────
+  if (maxCallStrike > 0 && atmStrike > 0) {
+    const dist = maxCallStrike - atmStrike;
+    const distPct = (dist / atmStrike) * 100;
+    const proximity = distPct <= 1 ? "at ATM" : distPct <= 2 ? "just above" : `${distPct.toFixed(1)}% above`;
+    signals.push({ bias: "BEARISH", strength: distPct <= 1 ? "STRONG" : "MODERATE", title: `CE Wall at ${maxCallStrike.toLocaleString("en-IN")} — Resistance`, detail: `Max call OI ${proximity} ATM at ${maxCallStrike.toLocaleString("en-IN")}. Strong resistance zone; call writers defending this level.`, contract: `Sell ${sym} ${maxCallStrike.toLocaleString("en-IN")} CE` });
+  }
+
+  // ── 5. PE Wall (Support) ─────────────────────────────────────────────────
+  if (maxPutStrike > 0 && atmStrike > 0) {
+    const dist = atmStrike - maxPutStrike;
+    const distPct = (dist / atmStrike) * 100;
+    const proximity = distPct <= 1 ? "at ATM" : distPct <= 2 ? "just below" : `${distPct.toFixed(1)}% below`;
+    signals.push({ bias: "BULLISH", strength: distPct <= 1 ? "STRONG" : "MODERATE", title: `PE Wall at ${maxPutStrike.toLocaleString("en-IN")} — Support`, detail: `Max put OI ${proximity} ATM at ${maxPutStrike.toLocaleString("en-IN")}. Strong support zone; put writers defending this level.`, contract: `Sell ${sym} ${maxPutStrike.toLocaleString("en-IN")} PE` });
+  }
+
+  // ── 6. Near-ATM OI Change signals ────────────────────────────────────────
+  if (strikes.length > 0 && atmStrike > 0) {
+    const atmIdx = strikes.findIndex(r => r.strike === atmStrike);
+    if (atmIdx >= 0) {
+      const window = strikes.slice(Math.max(0, atmIdx - 4), atmIdx + 5);
+
+      // Highest positive CE OI change near ATM → resistance forming
+      const topCeAdd = [...window].filter(r => (r.ce.oiChange ?? 0) > 0).sort((a, b) => (b.ce.oiChange ?? 0) - (a.ce.oiChange ?? 0))[0];
+      if (topCeAdd && topCeAdd.strike !== maxCallStrike) {
+        signals.push({ bias: "BEARISH", strength: "MODERATE", title: `Fresh CE Writing at ${topCeAdd.strike.toLocaleString("en-IN")}`, detail: `Active call OI addition near ATM at ${topCeAdd.strike.toLocaleString("en-IN")}. Call writers building resistance — avoid fresh longs above this level.`, contract: `Sell ${sym} ${topCeAdd.strike.toLocaleString("en-IN")} CE` });
+      }
+
+      // Highest positive PE OI change near ATM → support forming
+      const topPeAdd = [...window].filter(r => (r.pe.oiChange ?? 0) > 0).sort((a, b) => (b.pe.oiChange ?? 0) - (a.pe.oiChange ?? 0))[0];
+      if (topPeAdd && topPeAdd.strike !== maxPutStrike) {
+        signals.push({ bias: "BULLISH", strength: "MODERATE", title: `Fresh PE Writing at ${topPeAdd.strike.toLocaleString("en-IN")}`, detail: `Active put OI addition near ATM at ${topPeAdd.strike.toLocaleString("en-IN")}. Put writers building support — this level should hold on dips.`, contract: `Sell ${sym} ${topPeAdd.strike.toLocaleString("en-IN")} PE` });
+      }
+
+      // CE OI unwinding near ATM → bulls getting confident
+      const topCeExit = [...window].filter(r => (r.ce.oiChange ?? 0) < 0).sort((a, b) => (a.ce.oiChange ?? 0) - (b.ce.oiChange ?? 0))[0];
+      if (topCeExit) {
+        signals.push({ bias: "BULLISH", strength: "WEAK", title: `CE Unwinding at ${topCeExit.strike.toLocaleString("en-IN")}`, detail: `Call writers exiting at ${topCeExit.strike.toLocaleString("en-IN")} near ATM — resistance is weakening; bullish short-term.` });
+      }
+
+      // PE OI unwinding near ATM → bears getting confident
+      const topPeExit = [...window].filter(r => (r.pe.oiChange ?? 0) < 0).sort((a, b) => (a.pe.oiChange ?? 0) - (b.pe.oiChange ?? 0))[0];
+      if (topPeExit) {
+        signals.push({ bias: "BEARISH", strength: "WEAK", title: `PE Unwinding at ${topPeExit.strike.toLocaleString("en-IN")}`, detail: `Put writers exiting at ${topPeExit.strike.toLocaleString("en-IN")} near ATM — support is weakening; bearish short-term.` });
+      }
+    }
+  }
+
+  return signals;
 }
 
 function parseUpstoxOptionChain(raw: Record<string, unknown>, segment: string, expiry: string) {

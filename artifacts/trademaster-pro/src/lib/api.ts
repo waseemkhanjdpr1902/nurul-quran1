@@ -529,10 +529,19 @@ export type UpstoxStrike = {
   isATM: boolean;
 };
 
+export type ChainSignal = {
+  bias: "BULLISH" | "BEARISH" | "NEUTRAL";
+  title: string;
+  detail: string;
+  strength: "STRONG" | "MODERATE" | "WEAK";
+  contract?: string;
+};
+
 export type UpstoxOptionChain = {
   ok: boolean;
   segment: string;
   expiry: string;
+  contractType?: string;
   pcr: number | null;
   pcrOiChange: number | null;
   atmStrike: number;
@@ -543,6 +552,7 @@ export type UpstoxOptionChain = {
   totalCallOI: number;
   totalPutOI: number;
   strikes: UpstoxStrike[];
+  signals: ChainSignal[];
   fetchedAt: string;
   error?: string;
 };
@@ -571,10 +581,11 @@ export async function exchangeUpstoxCode(adminToken: string, code: string, redir
   return r.json();
 }
 
-export async function fetchUpstoxOptionChain(adminToken: string, segment: string, accessToken?: string, expiryDate?: string): Promise<UpstoxOptionChain> {
+export async function fetchUpstoxOptionChain(adminToken: string, segment: string, accessToken?: string, expiryDate?: string, contractType?: string): Promise<UpstoxOptionChain> {
   const params = new URLSearchParams({ segment });
-  if (accessToken) params.set("access_token", accessToken);
-  if (expiryDate)  params.set("expiry_date", expiryDate);
+  if (accessToken)   params.set("access_token", accessToken);
+  if (expiryDate)    params.set("expiry_date", expiryDate);
+  if (contractType)  params.set("contract_type", contractType);
   const r = await fetch(`${API_BASE}/upstox/option-chain?${params}`, {
     headers: { "Authorization": `Bearer ${adminToken}` },
   });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchSignals, createSignal, updateSignal, deleteSignal, fetchSubscriptions, updateSubscription, fetchUpstoxStatus, fetchUpstoxOptionChain, type Signal, type Subscription, type UpstoxStatus, type UpstoxOptionChain } from "@/lib/api";
+import { fetchSignals, createSignal, updateSignal, deleteSignal, fetchSubscriptions, updateSubscription, fetchUpstoxStatus, fetchUpstoxOptionChain, type Signal, type Subscription, type UpstoxStatus, type UpstoxOptionChain, type ChainSignal } from "@/lib/api";
 import { useAdmin } from "@/hooks/use-admin";
 
 const SEGMENTS = ["nifty", "banknifty", "options", "futures", "equity", "intraday", "commodity", "currency"] as const;
@@ -26,6 +26,7 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
   const [accessToken, setAccessToken] = useState(localStorage.getItem("upstox_access_token") ?? "");
   const [tokenInput, setTokenInput] = useState("");
   const [segment, setSegment] = useState("NIFTY");
+  const [contractType, setContractType] = useState<"weekly" | "monthly">("weekly");
   const [expiryOverride, setExpiryOverride] = useState("");
   const [chainLoading, setChainLoading] = useState(false);
   const [chainData, setChainData] = useState<UpstoxOptionChain | null>(null);
@@ -97,12 +98,16 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
     }
   }
 
+  const INDEX_SEGMENTS = new Set(["NIFTY","BANKNIFTY","FINNIFTY","MIDCPNIFTY","SENSEX"]);
+  const isIndexSegment = INDEX_SEGMENTS.has(segment.toUpperCase());
+
   async function fetchChain() {
     setChainLoading(true);
     setChainError("");
     setChainData(null);
     try {
-      const data = await fetchUpstoxOptionChain(adminToken, segment, accessToken || undefined, expiryOverride || undefined);
+      const ct = isIndexSegment ? contractType : undefined;
+      const data = await fetchUpstoxOptionChain(adminToken, segment, accessToken || undefined, expiryOverride || undefined, ct);
       setChainData(data);
     } catch (err) {
       setChainError(err instanceof Error ? err.message : "Failed to fetch option chain");
@@ -224,22 +229,48 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
       <div className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl p-6">
         <h2 className="text-white font-semibold text-lg mb-4">📊 Live Option Chain</h2>
 
+        {/* Weekly / Monthly toggle — indices only */}
+        {isIndexSegment && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-gray-500">Contract Series:</span>
+            {(["weekly", "monthly"] as const).map((ct) => (
+              <button
+                key={ct}
+                onClick={() => { setContractType(ct); setExpiryOverride(""); setChainData(null); }}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${contractType === ct ? "bg-green-600 text-white" : "bg-[hsl(220,13%,18%)] text-gray-400 hover:text-white border border-[hsl(220,13%,25%)]"}`}
+              >
+                {ct === "weekly" ? "⚡ Weekly" : "📅 Monthly"}
+              </button>
+            ))}
+            <span className="text-xs text-gray-600 ml-1">
+              {contractType === "weekly"
+                ? segment === "FINNIFTY" ? "(nearest Tuesday)" : "(nearest Thursday)"
+                : segment === "FINNIFTY" ? "(last Tuesday of month)" : "(last Thursday of month)"}
+            </span>
+          </div>
+        )}
+        {!isIndexSegment && (
+          <div className="text-xs text-gray-600 mb-4 bg-[hsl(220,13%,16%)] rounded-lg px-3 py-2 inline-block">
+            📅 Monthly contract · Expiry: last Tuesday of the month
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Instrument</label>
             <select
               value={segment}
-              onChange={(e) => { setSegment(e.target.value); setExpiryOverride(""); setChainData(null); }}
+              onChange={(e) => { setSegment(e.target.value); setExpiryOverride(""); setContractType("weekly"); setChainData(null); }}
               className="w-full bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,25%)] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500"
             >
-              <optgroup label="── Indices (Weekly) ──">
+              <optgroup label="── Indices ──">
                 <option value="NIFTY">Nifty 50</option>
                 <option value="BANKNIFTY">Bank Nifty</option>
                 <option value="FINNIFTY">Nifty FinServ</option>
                 <option value="MIDCPNIFTY">Midcap Nifty</option>
                 <option value="SENSEX">Sensex</option>
               </optgroup>
-              <optgroup label="── Stocks (Monthly) ──">
+              <optgroup label="── Stocks (Monthly — Last Tue) ──">
                 <option value="TCS">TCS</option>
                 <option value="HDFCBANK">HDFC Bank</option>
                 <option value="ICICIBANK">ICICI Bank</option>
@@ -321,8 +352,44 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
             </div>
 
             <div className="text-xs text-gray-600">
-              Fetched: {new Date(chainData.fetchedAt).toLocaleTimeString("en-IN")} · Expiry: {chainData.expiry} · Total CE OI: {fmtOI(chainData.totalCallOI)} · Total PE OI: {fmtOI(chainData.totalPutOI)}
+              Fetched: {new Date(chainData.fetchedAt).toLocaleTimeString("en-IN")} · Expiry: {chainData.expiry}{chainData.contractType ? ` (${chainData.contractType})` : ""} · CE OI: {fmtOI(chainData.totalCallOI)} · PE OI: {fmtOI(chainData.totalPutOI)}
             </div>
+
+            {/* Signal Cards */}
+            {chainData.signals && chainData.signals.length > 0 && (
+              <div>
+                <h3 className="text-white font-semibold text-sm mb-2 mt-1">📡 Option Chain Signals</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(chainData.signals as ChainSignal[]).map((sig, i) => {
+                    const colors = {
+                      BULLISH: { bg: "bg-green-500/10", border: "border-green-500/25", badge: "bg-green-500/20 text-green-400", dot: "bg-green-400" },
+                      BEARISH: { bg: "bg-red-500/10",   border: "border-red-500/25",   badge: "bg-red-500/20 text-red-400",     dot: "bg-red-400"   },
+                      NEUTRAL: { bg: "bg-gray-500/10",  border: "border-gray-500/25",  badge: "bg-gray-500/20 text-gray-400",   dot: "bg-gray-400"  },
+                    }[sig.bias];
+                    const strengthLabel = { STRONG: "Strong", MODERATE: "Moderate", WEAK: "Weak" }[sig.strength];
+                    return (
+                      <div key={i} className={`${colors.bg} border ${colors.border} rounded-lg px-3 py-2.5`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${colors.dot}`} />
+                            <span className="text-white text-xs font-semibold leading-tight">{sig.title}</span>
+                          </div>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ml-2 ${colors.badge}`}>
+                            {strengthLabel}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-xs leading-relaxed">{sig.detail}</p>
+                        {sig.contract && (
+                          <div className="mt-1.5 text-xs font-bold text-yellow-400 bg-yellow-400/10 rounded px-2 py-0.5 inline-block">
+                            💡 {sig.contract}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Strike table toggle */}
             <button
