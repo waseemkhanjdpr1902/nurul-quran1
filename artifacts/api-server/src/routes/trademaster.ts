@@ -1828,10 +1828,11 @@ router.post("/trademaster/daily-tips", async (req: Request, res: Response): Prom
           });
         }
 
-        // Signal C: ATM CE buy — always generated, PCR context in notes
+        // Signal C: ATM CE buy — always generated, PCR context + both LTPs in notes
         if (atmStrike > 0 && atmCeLTP > 0.5) {
           const entry = parseFloat(atmCeLTP.toFixed(2));
           const pcrBias = pcr == null ? "N/A" : pcr >= 1.20 ? `${pcrStr} (bullish — favours CE)` : pcr <= 0.80 ? `${pcrStr} (bearish — CE higher risk)` : `${pcrStr} (neutral)`;
+          const peBand = atmPeLTP > 0.5 ? ` | ATM PE LTP ₹${atmPeLTP.toFixed(2)}` : "";
           tipSignals.push({
             segment: "options",
             assetName: `${seg} ${atmStrike.toLocaleString("en-IN")} CE`,
@@ -1841,15 +1842,16 @@ router.post("/trademaster/daily-tips", async (req: Request, res: Response): Prom
             target1:   parseFloat((entry * 1.60).toFixed(2)),
             target2:   parseFloat((entry * 2.20).toFixed(2)),
             pcr: pcrStr ?? undefined,
-            notes: `Buy ${seg} ${atmStrike} ATM CE — PCR ${pcrBias}. Expiry ${expiry}. SL 35% below premium; targets 60% and 120% gain. ${pcr != null && pcr >= 1.20 ? "High PCR: put writers dominate, strong support base." : pcr != null && pcr <= 0.80 ? "Low PCR: call writers active, buy CE for countertrend bounce only." : "Neutral PCR: use strict SL."}`,
+            notes: `Buy ${seg} ${atmStrike} ATM CE — LTP ₹${entry}${peBand} · PCR ${pcrBias}. Expiry ${expiry}. SL 35% below premium; targets 60% and 120% gain. ${pcr != null && pcr >= 1.20 ? "High PCR: put writers dominate, strong support base." : pcr != null && pcr <= 0.80 ? "Low PCR: call writers active, buy CE for countertrend bounce only." : "Neutral PCR: use strict SL."}`,
             isPremium: true,
           });
         }
 
-        // Signal D: ATM PE buy — always generated, PCR context in notes
+        // Signal D: ATM PE buy — always generated, PCR context + both LTPs in notes
         if (atmStrike > 0 && atmPeLTP > 0.5) {
           const entry = parseFloat(atmPeLTP.toFixed(2));
           const pcrBias = pcr == null ? "N/A" : pcr <= 0.80 ? `${pcrStr} (bearish — favours PE)` : pcr >= 1.20 ? `${pcrStr} (bullish — PE higher risk)` : `${pcrStr} (neutral)`;
+          const ceBand = atmCeLTP > 0.5 ? ` | ATM CE LTP ₹${atmCeLTP.toFixed(2)}` : "";
           tipSignals.push({
             segment: "options",
             assetName: `${seg} ${atmStrike.toLocaleString("en-IN")} PE`,
@@ -1859,7 +1861,7 @@ router.post("/trademaster/daily-tips", async (req: Request, res: Response): Prom
             target1:   parseFloat((entry * 1.60).toFixed(2)),
             target2:   parseFloat((entry * 2.20).toFixed(2)),
             pcr: pcrStr ?? undefined,
-            notes: `Buy ${seg} ${atmStrike} ATM PE — PCR ${pcrBias}. Expiry ${expiry}. SL 35% below premium; targets 60% and 120% gain. ${pcr != null && pcr <= 0.80 ? "Low PCR: call writers dominate, strong resistance. PE momentum play." : pcr != null && pcr >= 1.20 ? "High PCR: put writers active, buy PE only for reversal / hedge." : "Neutral PCR: use strict SL."}`,
+            notes: `Buy ${seg} ${atmStrike} ATM PE — LTP ₹${entry}${ceBand} · PCR ${pcrBias}. Expiry ${expiry}. SL 35% below premium; targets 60% and 120% gain. ${pcr != null && pcr <= 0.80 ? "Low PCR: call writers dominate, strong resistance. PE momentum play." : pcr != null && pcr >= 1.20 ? "High PCR: put writers active, buy PE only for reversal / hedge." : "Neutral PCR: use strict SL."}`,
             isPremium: true,
           });
         }

@@ -434,7 +434,7 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
       {/* Support / Resistance / Target Grid */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="bg-[hsl(220,13%,16%)] rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">Entry / Premium</div>
+          <div className="text-xs text-gray-500 mb-0.5">{signal.segment === "options" ? "LTP (at signal)" : "Entry"}</div>
           <div className="text-white font-black font-mono text-sm">
             {signal.entryPrice === "—" ? <span className="text-gray-600">—</span> : `₹${signal.entryPrice}`}
           </div>
