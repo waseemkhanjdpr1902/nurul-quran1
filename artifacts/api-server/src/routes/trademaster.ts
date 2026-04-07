@@ -1152,10 +1152,46 @@ router.get("/trademaster/scanner", async (req: Request, res: Response): Promise<
 // ─── Upstox Integration ───────────────────────────────────────────────────────
 
 const UPSTOX_INSTRUMENT_MAP: Record<string, string> = {
-  NIFTY: "NSE_INDEX|Nifty 50",
-  BANKNIFTY: "NSE_INDEX|Nifty Bank",
-  FINNIFTY: "NSE_INDEX|Nifty Fin Service",
+  // ── Index options (weekly expiry) ──────────────────────────────────────────
+  NIFTY:       "NSE_INDEX|Nifty 50",
+  BANKNIFTY:   "NSE_INDEX|Nifty Bank",
+  FINNIFTY:    "NSE_INDEX|Nifty Fin Service",
+  MIDCPNIFTY:  "NSE_INDEX|Nifty Midcap Select",
+  SENSEX:      "BSE_INDEX|SENSEX",
+
+  // ── Stock options (monthly expiry — last Thursday of the month) ────────────
+  TCS:          "NSE_EQ|INE467B01029",   // Tata Consultancy Services
+  HDFCBANK:     "NSE_EQ|INE040A01034",   // HDFC Bank
+  ICICIBANK:    "NSE_EQ|INE090A01021",   // ICICI Bank
+  RELIANCE:     "NSE_EQ|INE002A01018",   // Reliance Industries
+  INFY:         "NSE_EQ|INE009A01021",   // Infosys
+  SBIN:         "NSE_EQ|INE062A01020",   // State Bank of India
+  AXISBANK:     "NSE_EQ|INE238A01034",   // Axis Bank
+  WIPRO:        "NSE_EQ|INE075A01022",   // Wipro
+  LT:           "NSE_EQ|INE018A01030",   // Larsen & Toubro
+  HINDUNILVR:   "NSE_EQ|INE030A01027",   // Hindustan Unilever
+  BAJFINANCE:   "NSE_EQ|INE296A01024",   // Bajaj Finance
+  KOTAKBANK:    "NSE_EQ|INE237A01028",   // Kotak Mahindra Bank
+  ADANIENT:     "NSE_EQ|INE423A01024",   // Adani Enterprises
+  ADANIPORTS:   "NSE_EQ|INE742F01042",   // Adani Ports
+  MARUTI:       "NSE_EQ|INE585B01010",   // Maruti Suzuki
+  TITAN:        "NSE_EQ|INE280A01028",   // Titan Company
+  ASIANPAINT:   "NSE_EQ|INE021A01026",   // Asian Paints
+  ULTRACEMCO:   "NSE_EQ|INE481G01011",   // UltraTech Cement
+  M_M:          "NSE_EQ|INE101A01026",   // Mahindra & Mahindra
+  TATASTEEL:    "NSE_EQ|INE081A01020",   // Tata Steel
+  ONGC:         "NSE_EQ|INE213A01029",   // ONGC
+  NTPC:         "NSE_EQ|INE733E01010",   // NTPC
+  POWERGRID:    "NSE_EQ|INE752E01010",   // Power Grid
+  SUNPHARMA:    "NSE_EQ|INE044A01036",   // Sun Pharmaceutical
 };
+
+/** Segments that use monthly expiry (last Thursday of month) */
+const MONTHLY_EXPIRY_SEGMENTS = new Set([
+  "TCS","HDFCBANK","ICICIBANK","RELIANCE","INFY","SBIN","AXISBANK","WIPRO",
+  "LT","HINDUNILVR","BAJFINANCE","KOTAKBANK","ADANIENT","ADANIPORTS","MARUTI",
+  "TITAN","ASIANPAINT","ULTRACEMCO","M_M","TATASTEEL","ONGC","NTPC","POWERGRID","SUNPHARMA",
+]);
 
 /** Build Upstox OAuth2 authorization URL so user can get an access token */
 router.get("/trademaster/upstox/auth-url", (req: Request, res: Response): void => {
@@ -1207,8 +1243,16 @@ router.get("/trademaster/upstox/option-chain", async (req: Request, res: Respons
   const instrument = UPSTOX_INSTRUMENT_MAP[segment.toUpperCase()];
   if (!instrument) { res.status(400).json({ error: `Unknown segment. Valid: ${Object.keys(UPSTOX_INSTRUMENT_MAP).join(", ")}` }); return; }
 
-  // If no expiry_date, get the next weekly expiry (nearest Thursday for Nifty/BankNifty, nearest Tuesday for FinNifty)
-  const resolvedExpiry = expiry_date || nextWeeklyExpiry(segment.toUpperCase() as "NIFTY" | "BANKNIFTY" | "FINNIFTY");
+  // Auto-select expiry: monthly (last Thu) for stocks, weekly (nearest Thu/Tue) for indices
+  const seg = segment.toUpperCase();
+  let resolvedExpiry: string;
+  if (expiry_date) {
+    resolvedExpiry = expiry_date;
+  } else if (MONTHLY_EXPIRY_SEGMENTS.has(seg)) {
+    resolvedExpiry = nextMonthlyExpiry();
+  } else {
+    resolvedExpiry = nextWeeklyExpiry(seg as "NIFTY" | "BANKNIFTY" | "FINNIFTY");
+  }
 
   try {
     const url = `https://api.upstox.com/v2/option/chain?instrument_key=${encodeURIComponent(instrument)}&expiry_date=${resolvedExpiry}`;
@@ -1257,7 +1301,7 @@ router.get("/trademaster/upstox/status", async (req: Request, res: Response): Pr
   }
 });
 
-function nextWeeklyExpiry(segment: "NIFTY" | "BANKNIFTY" | "FINNIFTY"): string {
+function nextWeeklyExpiry(segment: "NIFTY" | "BANKNIFTY" | "FINNIFTY" | string): string {
   const now = new Date(Date.now() + 5.5 * 3600000); // IST
   const target = segment === "FINNIFTY" ? 2 : 4; // Tuesday=2, Thursday=4
   const day = now.getDay();
@@ -1266,6 +1310,45 @@ function nextWeeklyExpiry(segment: "NIFTY" | "BANKNIFTY" | "FINNIFTY"): string {
   const expiry = new Date(now);
   expiry.setDate(now.getDate() + daysAhead);
   return expiry.toISOString().slice(0, 10);
+}
+
+/**
+ * Returns the last Thursday of the current month (IST). If today is on or past
+ * that Thursday, returns the last Thursday of next month. Stock F&O on NSE
+ * expires on the last Thursday of the month; if that day is a market holiday
+ * the expiry shifts to the previous business day — override via expiry_date if needed.
+ */
+function nextMonthlyExpiry(): string {
+  const now = new Date(Date.now() + 5.5 * 3600000); // IST
+
+  function lastThursdayOf(year: number, month: number): Date {
+    // Last calendar day of the given month (month is 0-indexed: 0=Jan … 11=Dec)
+    const lastDay = new Date(year, month + 1, 0);
+    const dow = lastDay.getDay();           // 0=Sun … 4=Thu … 6=Sat
+    const daysBack = (dow - 4 + 7) % 7;   // steps back to reach nearest Thursday ≤ lastDay
+    const result = new Date(lastDay);
+    result.setDate(lastDay.getDate() - daysBack);
+    return result;
+  }
+
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const today = new Date(year, month, now.getDate());
+
+  let expiry = lastThursdayOf(year, month);
+
+  // If today's date >= expiry date, roll to next month
+  if (today >= expiry) {
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const nextYear  = month === 11 ? year + 1 : year;
+    expiry = lastThursdayOf(nextYear, nextMonth);
+  }
+
+  // Format as YYYY-MM-DD
+  const y = expiry.getFullYear();
+  const m = String(expiry.getMonth() + 1).padStart(2, "0");
+  const d = String(expiry.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function parseUpstoxOptionChain(raw: Record<string, unknown>, segment: string, expiry: string) {

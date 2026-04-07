@@ -26,6 +26,7 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
   const [accessToken, setAccessToken] = useState(localStorage.getItem("upstox_access_token") ?? "");
   const [tokenInput, setTokenInput] = useState("");
   const [segment, setSegment] = useState("NIFTY");
+  const [expiryOverride, setExpiryOverride] = useState("");
   const [chainLoading, setChainLoading] = useState(false);
   const [chainData, setChainData] = useState<UpstoxOptionChain | null>(null);
   const [chainError, setChainError] = useState("");
@@ -101,7 +102,7 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
     setChainError("");
     setChainData(null);
     try {
-      const data = await fetchUpstoxOptionChain(adminToken, segment, accessToken || undefined);
+      const data = await fetchUpstoxOptionChain(adminToken, segment, accessToken || undefined, expiryOverride || undefined);
       setChainData(data);
     } catch (err) {
       setChainError(err instanceof Error ? err.message : "Failed to fetch option chain");
@@ -223,24 +224,65 @@ function UpstoxPanel({ adminToken }: { adminToken: string }) {
       <div className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl p-6">
         <h2 className="text-white font-semibold text-lg mb-4">📊 Live Option Chain</h2>
 
-        <div className="flex gap-3 mb-4">
-          <div className="flex-1">
-            <label className="text-xs text-gray-500 mb-1 block">Index</label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Instrument</label>
             <select
               value={segment}
-              onChange={(e) => setSegment(e.target.value)}
+              onChange={(e) => { setSegment(e.target.value); setExpiryOverride(""); setChainData(null); }}
               className="w-full bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,25%)] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500"
             >
-              <option value="NIFTY">Nifty 50</option>
-              <option value="BANKNIFTY">Bank Nifty</option>
-              <option value="FINNIFTY">Nifty FinServ</option>
+              <optgroup label="── Indices (Weekly) ──">
+                <option value="NIFTY">Nifty 50</option>
+                <option value="BANKNIFTY">Bank Nifty</option>
+                <option value="FINNIFTY">Nifty FinServ</option>
+                <option value="MIDCPNIFTY">Midcap Nifty</option>
+                <option value="SENSEX">Sensex</option>
+              </optgroup>
+              <optgroup label="── Stocks (Monthly) ──">
+                <option value="TCS">TCS</option>
+                <option value="HDFCBANK">HDFC Bank</option>
+                <option value="ICICIBANK">ICICI Bank</option>
+                <option value="RELIANCE">Reliance</option>
+                <option value="INFY">Infosys</option>
+                <option value="SBIN">SBI</option>
+                <option value="AXISBANK">Axis Bank</option>
+                <option value="WIPRO">Wipro</option>
+                <option value="LT">L&amp;T</option>
+                <option value="HINDUNILVR">HUL</option>
+                <option value="BAJFINANCE">Bajaj Finance</option>
+                <option value="KOTAKBANK">Kotak Bank</option>
+                <option value="ADANIENT">Adani Enterprises</option>
+                <option value="ADANIPORTS">Adani Ports</option>
+                <option value="MARUTI">Maruti Suzuki</option>
+                <option value="TITAN">Titan</option>
+                <option value="ASIANPAINT">Asian Paints</option>
+                <option value="ULTRACEMCO">UltraTech Cement</option>
+                <option value="M_M">M&amp;M</option>
+                <option value="TATASTEEL">Tata Steel</option>
+                <option value="ONGC">ONGC</option>
+                <option value="NTPC">NTPC</option>
+                <option value="POWERGRID">Power Grid</option>
+                <option value="SUNPHARMA">Sun Pharma</option>
+              </optgroup>
             </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">
+              Expiry Date <span className="text-gray-600">(auto-calculated · override if needed)</span>
+            </label>
+            <input
+              type="date"
+              value={expiryOverride}
+              onChange={(e) => setExpiryOverride(e.target.value)}
+              className="w-full bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,25%)] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500"
+            />
           </div>
           <div className="flex items-end">
             <button
               onClick={fetchChain}
               disabled={chainLoading || !hasToken}
-              className="px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
+              className="w-full px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
             >
               {chainLoading ? "Fetching…" : "Fetch Live Data"}
             </button>

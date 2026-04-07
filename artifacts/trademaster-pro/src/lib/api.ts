@@ -571,9 +571,10 @@ export async function exchangeUpstoxCode(adminToken: string, code: string, redir
   return r.json();
 }
 
-export async function fetchUpstoxOptionChain(adminToken: string, segment: string, accessToken?: string): Promise<UpstoxOptionChain> {
+export async function fetchUpstoxOptionChain(adminToken: string, segment: string, accessToken?: string, expiryDate?: string): Promise<UpstoxOptionChain> {
   const params = new URLSearchParams({ segment });
   if (accessToken) params.set("access_token", accessToken);
+  if (expiryDate)  params.set("expiry_date", expiryDate);
   const r = await fetch(`${API_BASE}/upstox/option-chain?${params}`, {
     headers: { "Authorization": `Bearer ${adminToken}` },
   });
