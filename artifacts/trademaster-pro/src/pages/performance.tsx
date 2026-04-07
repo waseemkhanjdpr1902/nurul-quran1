@@ -123,40 +123,91 @@ function DateGroupHeader({ dateStr, signals }: { dateStr: string; signals: Perfo
   const wins   = closed.filter(s => s.status === "target_hit").length;
   const losses = closed.filter(s => s.status === "sl_hit").length;
   const winRate = closed.length > 0 ? ((wins / closed.length) * 100).toFixed(0) : null;
+  const [expanded, setExpanded] = useState(false);
 
   const pnls = closed.map(pnlPct).filter((v): v is number => v != null);
   const avgPnl = pnls.length > 0 ? pnls.reduce((a,b) => a+b, 0) / pnls.length : null;
+  const totalPnl = pnls.length > 0 ? pnls.reduce((a,b) => a+b, 0) : null;
+
+  // Avg R:R for the day (only signals with R:R data)
+  const rrs = closed.map(s => s.riskReward ? parseFloat(s.riskReward) : null).filter((v): v is number => v != null);
+  const avgRR = rrs.length > 0 ? (rrs.reduce((a,b) => a+b, 0) / rrs.length).toFixed(1) : null;
+
+  // Per-segment breakdown
+  const segMap: Record<string, { wins: number; total: number; pnl: number[] }> = {};
+  for (const s of closed) {
+    const seg = SEGMENT_LABELS[s.segment] ?? s.segment;
+    if (!segMap[seg]) segMap[seg] = { wins: 0, total: 0, pnl: [] };
+    segMap[seg].total++;
+    if (s.status === "target_hit") segMap[seg].wins++;
+    const p = pnlPct(s);
+    if (p != null) segMap[seg].pnl.push(p);
+  }
+  const segEntries = Object.entries(segMap).sort((a,b) => b[1].total - a[1].total);
 
   const today = todayIST(), yesterday = yesterdayIST();
   const label = dateStr === today ? "Today" : dateStr === yesterday ? "Yesterday" :
     new Date(dateStr + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
   return (
-    <div className="flex items-center gap-3 mb-2">
-      <div className="flex items-center gap-2">
-        <span className="text-white font-black text-sm">{label}</span>
-        <span className="text-xs text-gray-600 font-mono">{dateStr}</span>
+    <div className="mb-2">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setExpanded(v => !v)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <span className="text-white font-black text-sm">{label}</span>
+          <span className="text-xs text-gray-600 font-mono">{dateStr}</span>
+          <span className="text-gray-700 text-[9px]">{expanded ? "▲" : "▼"}</span>
+        </button>
+        <div className="h-px flex-1 bg-[hsl(220,13%,20%)]" />
+        {closed.length > 0 && (
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            {winRate && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
+                parseInt(winRate) >= 60 ? "text-green-400 bg-green-500/10 border-green-500/25" :
+                parseInt(winRate) >= 40 ? "text-amber-400 bg-amber-500/10 border-amber-500/25" :
+                "text-red-400 bg-red-500/10 border-red-500/25"
+              }`}>
+                {winRate}% win
+              </span>
+            )}
+            <span className="text-xs text-gray-500">✅{wins} ❌{losses}</span>
+            {avgPnl != null && (
+              <span className={`text-xs font-mono font-bold ${avgPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                avg {avgPnl >= 0 ? "+" : ""}{avgPnl.toFixed(1)}%
+              </span>
+            )}
+            {totalPnl != null && (
+              <span className={`text-[10px] font-mono ${totalPnl >= 0 ? "text-green-500/70" : "text-red-500/70"}`}>
+                ({totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(1)}% total)
+              </span>
+            )}
+            {avgRR && (
+              <span className="text-[10px] text-blue-400 font-mono">R:R 1:{avgRR}</span>
+            )}
+          </div>
+        )}
       </div>
-      <div className="h-px flex-1 bg-[hsl(220,13%,20%)]" />
-      {closed.length > 0 && (
-        <div className="flex items-center gap-2 shrink-0">
-          {winRate && (
-            <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
-              parseInt(winRate) >= 60 ? "text-green-400 bg-green-500/10 border-green-500/25" :
-              parseInt(winRate) >= 40 ? "text-amber-400 bg-amber-500/10 border-amber-500/25" :
-              "text-red-400 bg-red-500/10 border-red-500/25"
-            }`}>
-              {winRate}% win
-            </span>
-          )}
-          <span className="text-xs text-gray-500">
-            ✅{wins} ❌{losses}
-          </span>
-          {avgPnl != null && (
-            <span className={`text-xs font-mono font-bold ${avgPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-              avg {avgPnl >= 0 ? "+" : ""}{avgPnl.toFixed(1)}%
-            </span>
-          )}
+
+      {/* Per-date segment breakdown — collapsible */}
+      {expanded && segEntries.length > 0 && (
+        <div className="mt-2 ml-1 flex flex-wrap gap-1.5">
+          {segEntries.map(([seg, v]) => {
+            const segWinRate = v.total > 0 ? Math.round((v.wins / v.total) * 100) : 0;
+            const segAvgPnl  = v.pnl.length > 0 ? v.pnl.reduce((a,b) => a+b, 0) / v.pnl.length : null;
+            return (
+              <div key={seg} className="bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,22%)] rounded-lg px-2.5 py-1.5 flex items-center gap-2">
+                <span className="text-[10px] text-gray-400 font-semibold">{seg}</span>
+                <span className="text-[10px] text-gray-600">{v.wins}/{v.total}</span>
+                <span className={`text-[10px] font-bold ${segWinRate >= 60 ? "text-green-400" : segWinRate >= 40 ? "text-amber-400" : "text-red-400"}`}>
+                  {segWinRate}%
+                </span>
+                {segAvgPnl != null && (
+                  <span className={`text-[9px] font-mono ${segAvgPnl >= 0 ? "text-green-500/70" : "text-red-500/70"}`}>
+                    {segAvgPnl >= 0 ? "+" : ""}{segAvgPnl.toFixed(1)}%
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import { db } from "@workspace/db";
 import { tradeMasterSignals, tradeMasterSubscriptions, tradeMasterInvestmentReports, tradeMasterJournal, tradeMasterConsent } from "@workspace/db/schema";
 import { eq, desc, and, sql, or, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
-import { scalpEmitter, getScalpStats, getScalpSignals, getLiveSnapshot, type ScalpUpdate } from "../lib/trademaster-scalp-engine";
+import { scalpEmitter, getScalpStats, getScalpSignals, getLiveSnapshot, getAvoidedSignals, type ScalpUpdate } from "../lib/trademaster-scalp-engine";
 
 const router: IRouter = Router();
 
@@ -2444,12 +2444,13 @@ router.get("/trademaster/scalp/stream", (req: Request, res: Response): void => {
   });
 });
 
-/** Snapshot — returns current stats + all signals + live data (polling fallback) */
+/** Snapshot — returns current stats + all signals + live data + avoided signals */
 router.get("/trademaster/scalp/snapshot", (_req: Request, res: Response): void => {
   res.json({
     stats:   getScalpStats(),
     signals: getScalpSignals(),
     live:    getLiveSnapshot(),
+    avoided: getAvoidedSignals(),
   });
 });
 
