@@ -19,7 +19,7 @@ function isValidSegment(s: unknown): s is ValidSegment {
 }
 
 function buildSegmentWhere(segment: string) {
-  if (segment === "fno") return or(eq(tradeMasterSignals.segment, "options"), eq(tradeMasterSignals.segment, "futures"));
+  if (segment === "fno") return eq(tradeMasterSignals.segment, "options");
   if (segment === "stocks") return eq(tradeMasterSignals.segment, "equity");
   return eq(tradeMasterSignals.segment, segment);
 }
