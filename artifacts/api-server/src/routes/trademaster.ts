@@ -1828,39 +1828,40 @@ router.post("/trademaster/daily-tips", async (req: Request, res: Response): Prom
           });
         }
 
-        // Signal C: Directional ATM buy — PCR-driven bias
-        if (pcr !== null && atmStrike > 0) {
-          if (pcr >= 1.20 && atmCeLTP > 0.5) {
-            // High PCR = heavy put writing = bulls dominate = buy CE
-            const entry = parseFloat(atmCeLTP.toFixed(2));
-            tipSignals.push({
-              segment: "options",
-              assetName: `${seg} ${atmStrike.toLocaleString("en-IN")} CE`,
-              signalType: "buy",
-              entryPrice: entry,
-              stopLoss: parseFloat((entry * 0.65).toFixed(2)),
-              target1:   parseFloat((entry * 1.60).toFixed(2)),
-              target2:   parseFloat((entry * 2.20).toFixed(2)),
-              pcr: pcrStr ?? undefined,
-              notes: `PCR ${pcrStr} (bullish): Aggressive put writing signals strong support. Buy ${seg} ${atmStrike} ATM CE for upside momentum. SL 35% of premium; target 60%→120% gain before expiry.`,
-              isPremium: true,
-            });
-          } else if (pcr <= 0.80 && atmPeLTP > 0.5) {
-            // Low PCR = heavy call writing = bears dominate = buy PE
-            const entry = parseFloat(atmPeLTP.toFixed(2));
-            tipSignals.push({
-              segment: "options",
-              assetName: `${seg} ${atmStrike.toLocaleString("en-IN")} PE`,
-              signalType: "buy",
-              entryPrice: entry,
-              stopLoss: parseFloat((entry * 0.65).toFixed(2)),
-              target1:   parseFloat((entry * 1.60).toFixed(2)),
-              target2:   parseFloat((entry * 2.20).toFixed(2)),
-              pcr: pcrStr ?? undefined,
-              notes: `PCR ${pcrStr} (bearish): Heavy call writing signals resistance overhead. Buy ${seg} ${atmStrike} ATM PE for downside momentum. SL 35% of premium; target 60%→120% gain before expiry.`,
-              isPremium: true,
-            });
-          }
+        // Signal C: ATM CE buy — always generated, PCR context in notes
+        if (atmStrike > 0 && atmCeLTP > 0.5) {
+          const entry = parseFloat(atmCeLTP.toFixed(2));
+          const pcrBias = pcr == null ? "N/A" : pcr >= 1.20 ? `${pcrStr} (bullish — favours CE)` : pcr <= 0.80 ? `${pcrStr} (bearish — CE higher risk)` : `${pcrStr} (neutral)`;
+          tipSignals.push({
+            segment: "options",
+            assetName: `${seg} ${atmStrike.toLocaleString("en-IN")} CE`,
+            signalType: "buy",
+            entryPrice: entry,
+            stopLoss: parseFloat((entry * 0.65).toFixed(2)),
+            target1:   parseFloat((entry * 1.60).toFixed(2)),
+            target2:   parseFloat((entry * 2.20).toFixed(2)),
+            pcr: pcrStr ?? undefined,
+            notes: `Buy ${seg} ${atmStrike} ATM CE — PCR ${pcrBias}. Expiry ${expiry}. SL 35% below premium; targets 60% and 120% gain. ${pcr != null && pcr >= 1.20 ? "High PCR: put writers dominate, strong support base." : pcr != null && pcr <= 0.80 ? "Low PCR: call writers active, buy CE for countertrend bounce only." : "Neutral PCR: use strict SL."}`,
+            isPremium: true,
+          });
+        }
+
+        // Signal D: ATM PE buy — always generated, PCR context in notes
+        if (atmStrike > 0 && atmPeLTP > 0.5) {
+          const entry = parseFloat(atmPeLTP.toFixed(2));
+          const pcrBias = pcr == null ? "N/A" : pcr <= 0.80 ? `${pcrStr} (bearish — favours PE)` : pcr >= 1.20 ? `${pcrStr} (bullish — PE higher risk)` : `${pcrStr} (neutral)`;
+          tipSignals.push({
+            segment: "options",
+            assetName: `${seg} ${atmStrike.toLocaleString("en-IN")} PE`,
+            signalType: "buy",
+            entryPrice: entry,
+            stopLoss: parseFloat((entry * 0.65).toFixed(2)),
+            target1:   parseFloat((entry * 1.60).toFixed(2)),
+            target2:   parseFloat((entry * 2.20).toFixed(2)),
+            pcr: pcrStr ?? undefined,
+            notes: `Buy ${seg} ${atmStrike} ATM PE — PCR ${pcrBias}. Expiry ${expiry}. SL 35% below premium; targets 60% and 120% gain. ${pcr != null && pcr <= 0.80 ? "Low PCR: call writers dominate, strong resistance. PE momentum play." : pcr != null && pcr >= 1.20 ? "High PCR: put writers active, buy PE only for reversal / hedge." : "Neutral PCR: use strict SL."}`,
+            isPremium: true,
+          });
         }
       } catch (err) {
         logger.warn({ err, seg }, "[DailyTips] Option chain fetch failed");
