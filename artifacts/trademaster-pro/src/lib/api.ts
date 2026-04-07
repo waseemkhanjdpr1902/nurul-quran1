@@ -552,6 +552,7 @@ export type UpstoxOptionChain = {
   totalCallOI: number;
   totalPutOI: number;
   strikes: UpstoxStrike[];
+  strikeInterval: number;
   signals: ChainSignal[];
   fetchedAt: string;
   error?: string;

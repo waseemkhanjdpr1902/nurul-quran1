@@ -1403,9 +1403,30 @@ function computeOptionChainSignals(
   parsed: ReturnType<typeof parseUpstoxOptionChain>,
   segment: string
 ): ChainSignal[] {
-  const { pcr, pcrOiChange, atmStrike, maxCallStrike, maxPutStrike, maxPain, strikes } = parsed;
+  const { pcr, pcrOiChange, atmStrike, maxCallStrike, maxPutStrike, maxPain, strikes, strikeInterval } = parsed;
   const signals: ChainSignal[] = [];
   const sym = segment.toUpperCase();
+
+  /** Snap a target price to the nearest valid strike in the chain */
+  function snapToStrike(target: number, preferAbove = true): number {
+    if (strikes.length === 0) return Math.round(target / strikeInterval) * strikeInterval;
+    const sorted = preferAbove
+      ? [...strikes].sort((a, b) => Math.abs(a.strike - target) - Math.abs(b.strike - target))
+      : [...strikes].sort((a, b) => Math.abs(a.strike - target) - Math.abs(b.strike - target));
+    return sorted[0]?.strike ?? target;
+  }
+
+  /** Nearest CE strike at or just above a price */
+  function nearestCeAbove(price: number): number {
+    const above = strikes.filter(s => s.strike >= price);
+    return above.length > 0 ? above[0].strike : snapToStrike(price, true);
+  }
+
+  /** Nearest PE strike at or just below a price */
+  function nearestPeBelow(price: number): number {
+    const below = strikes.filter(s => s.strike <= price);
+    return below.length > 0 ? below[below.length - 1].strike : snapToStrike(price, false);
+  }
 
   // ── 1. PCR Signal ────────────────────────────────────────────────────────
   if (pcr !== null) {
@@ -1428,8 +1449,16 @@ function computeOptionChainSignals(
     const diff = atmStrike - maxPain;
     const pct  = Math.abs(diff / maxPain) * 100;
     if (pct >= 0.8) {
-      if (diff > 0) signals.push({ bias: "BEARISH", strength: pct >= 2 ? "STRONG" : "MODERATE", title: `Max Pain Pull-down → ${maxPain.toLocaleString("en-IN")}`, detail: `Spot (ATM ${atmStrike.toLocaleString("en-IN")}) is ${pct.toFixed(1)}% above max pain. As expiry nears, price tends to gravitate toward ${maxPain.toLocaleString("en-IN")}.`, contract: `Buy ${sym} ${(atmStrike - Math.round((diff / 2) / 50) * 50).toLocaleString("en-IN")} PE` });
-      else          signals.push({ bias: "BULLISH", strength: pct >= 2 ? "STRONG" : "MODERATE", title: `Max Pain Pull-up → ${maxPain.toLocaleString("en-IN")}`, detail: `Spot (ATM ${atmStrike.toLocaleString("en-IN")}) is ${pct.toFixed(1)}% below max pain. As expiry nears, price tends to gravitate toward ${maxPain.toLocaleString("en-IN")}.`, contract: `Buy ${sym} ${(atmStrike + Math.round((Math.abs(diff) / 2) / 50) * 50).toLocaleString("en-IN")} CE` });
+      const midTarget = atmStrike + (maxPain - atmStrike) / 2;
+      if (diff > 0) {
+        // Spot above max pain → price likely to fall → buy put near midpoint
+        const peStrike = nearestPeBelow(midTarget);
+        signals.push({ bias: "BEARISH", strength: pct >= 2 ? "STRONG" : "MODERATE", title: `Max Pain Pull-down → ${maxPain.toLocaleString("en-IN")}`, detail: `ATM ${atmStrike.toLocaleString("en-IN")} is ${pct.toFixed(1)}% above max pain. As expiry nears, price tends to drift toward ${maxPain.toLocaleString("en-IN")}.`, contract: `Buy ${sym} ${peStrike.toLocaleString("en-IN")} PE` });
+      } else {
+        // Spot below max pain → price likely to rise → buy call near midpoint
+        const ceStrike = nearestCeAbove(midTarget);
+        signals.push({ bias: "BULLISH", strength: pct >= 2 ? "STRONG" : "MODERATE", title: `Max Pain Pull-up → ${maxPain.toLocaleString("en-IN")}`, detail: `ATM ${atmStrike.toLocaleString("en-IN")} is ${pct.toFixed(1)}% below max pain. As expiry nears, price tends to drift toward ${maxPain.toLocaleString("en-IN")}.`, contract: `Buy ${sym} ${ceStrike.toLocaleString("en-IN")} CE` });
+      }
     }
   }
 
@@ -1486,45 +1515,95 @@ function computeOptionChainSignals(
 
 function parseUpstoxOptionChain(raw: Record<string, unknown>, segment: string, expiry: string) {
   const rows = (raw?.data as unknown[]) ?? [];
+
+  interface ChainRow {
+    strikePrice: number;
+    callOptions?: { marketData?: { ltp?: number; oi?: number; oiDayChange?: number }; optionGreeks?: { delta?: number } };
+    putOptions?:  { marketData?: { ltp?: number; oi?: number; oiDayChange?: number } };
+  }
+  const typedRows = rows as ChainRow[];
+
+  // ── Pass 1: find ATM via closest CE delta to 0.5 ─────────────────────────
+  // Fallback: if all deltas are 0 (no greeks), use the strike with the
+  // smallest |CE LTP - PE LTP| (roughly balanced = ATM) or median strike.
+  let atmStrike = 0;
+  let bestDeltaDiff = 999;
+  let bestLtpDiff = Infinity;
+
+  for (const row of typedRows) {
+    const delta = row.callOptions?.optionGreeks?.delta;
+    if (delta != null && delta !== 0) {
+      const diff = Math.abs(delta - 0.5);
+      if (diff < bestDeltaDiff) { bestDeltaDiff = diff; atmStrike = row.strikePrice; }
+    } else {
+      // No greeks: use smallest |CE LTP - PE LTP| as proxy for ATM
+      const ceLtp = row.callOptions?.marketData?.ltp ?? 0;
+      const peLtp = row.putOptions?.marketData?.ltp ?? 0;
+      if (ceLtp > 0 && peLtp > 0) {
+        const diff = Math.abs(ceLtp - peLtp);
+        if (diff < bestLtpDiff) { bestLtpDiff = diff; if (atmStrike === 0) atmStrike = row.strikePrice; }
+      }
+    }
+  }
+  // If still 0, fall back to median strike
+  if (atmStrike === 0 && typedRows.length > 0) {
+    const sorted = [...typedRows].sort((a, b) => a.strikePrice - b.strikePrice);
+    atmStrike = sorted[Math.floor(sorted.length / 2)].strikePrice;
+  }
+
+  // ── Derive strike interval (used for wall proximity filtering) ────────────
+  const sortedStrikes = [...typedRows].map(r => r.strikePrice).sort((a, b) => a - b);
+  let strikeInterval = 50; // default
+  if (sortedStrikes.length >= 2) {
+    const diffs = sortedStrikes.slice(1).map((s, i) => s - sortedStrikes[i]).filter(d => d > 0);
+    if (diffs.length > 0) strikeInterval = Math.min(...diffs);
+  }
+
+  // ── Pass 2: totals (all strikes) + walls restricted to ±15% of ATM ───────
   let totalCallOI = 0, totalPutOI = 0;
   let totalCallOIChange = 0, totalPutOIChange = 0;
   let maxCallOI = 0, maxPutOI = 0;
   let maxCallStrike = 0, maxPutStrike = 0;
   let atmLTP: { ce: number | null; pe: number | null } = { ce: null, pe: null };
-  let atmStrike = 0;
 
-  interface ChainRow { strikePrice: number; callOptions?: { marketData?: { ltp?: number; oi?: number; oiDayChange?: number }; optionGreeks?: { delta?: number } }; putOptions?: { marketData?: { ltp?: number; oi?: number; oiDayChange?: number } } }
-  const typedRows = rows as ChainRow[];
+  // Walls only within this band around ATM (15% for indices, 20% for stocks with bigger OTM OI)
+  const wallBand = atmStrike * 0.20;
 
-  // Find approximate ATM strike (closest to index price)
-  // We use the strike with the smallest |CE delta - 0.5| as ATM
-  let bestDeltaDiff = 999;
   for (const row of typedRows) {
-    const ceDelta = Math.abs((row.callOptions?.optionGreeks?.delta ?? 0) - 0.5);
-    if (ceDelta < bestDeltaDiff) { bestDeltaDiff = ceDelta; atmStrike = row.strikePrice; }
     const ceOI = row.callOptions?.marketData?.oi ?? 0;
     const peOI = row.putOptions?.marketData?.oi ?? 0;
-    totalCallOI += ceOI; totalPutOI += peOI;
+    totalCallOI += ceOI;
+    totalPutOI  += peOI;
     totalCallOIChange += row.callOptions?.marketData?.oiDayChange ?? 0;
-    totalPutOIChange += row.putOptions?.marketData?.oiDayChange ?? 0;
-    if (ceOI > maxCallOI) { maxCallOI = ceOI; maxCallStrike = row.strikePrice; }
-    if (peOI > maxPutOI) { maxPutOI = peOI; maxPutStrike = row.strikePrice; }
+    totalPutOIChange  += row.putOptions?.marketData?.oiDayChange  ?? 0;
+
+    if (row.strikePrice === atmStrike) {
+      atmLTP = { ce: row.callOptions?.marketData?.ltp ?? null, pe: row.putOptions?.marketData?.ltp ?? null };
+    }
+
+    // Only record CE/PE walls within the proximity band
+    if (Math.abs(row.strikePrice - atmStrike) <= wallBand) {
+      // CE Wall: highest call OI at or ABOVE ATM (resistance)
+      if (row.strikePrice >= atmStrike && ceOI > maxCallOI) { maxCallOI = ceOI; maxCallStrike = row.strikePrice; }
+      // PE Wall: highest put OI at or BELOW ATM (support)
+      if (row.strikePrice <= atmStrike && peOI > maxPutOI)  { maxPutOI  = peOI;  maxPutStrike  = row.strikePrice; }
+    }
   }
-  const atmRow = typedRows.find(r => r.strikePrice === atmStrike);
-  if (atmRow) { atmLTP = { ce: atmRow.callOptions?.marketData?.ltp ?? null, pe: atmRow.putOptions?.marketData?.ltp ?? null }; }
 
   const pcr = totalCallOI > 0 ? +(totalPutOI / totalCallOI).toFixed(4) : null;
   const pcrOiChange = totalCallOIChange !== 0 ? +(totalPutOIChange / Math.abs(totalCallOIChange)).toFixed(4) : null;
   const maxPain = computeMaxPain(typedRows);
 
-  const strikes = typedRows.map(r => ({
-    strike: r.strikePrice,
-    ce: { ltp: r.callOptions?.marketData?.ltp ?? null, oi: r.callOptions?.marketData?.oi ?? null, oiChange: r.callOptions?.marketData?.oiDayChange ?? null },
-    pe: { ltp: r.putOptions?.marketData?.ltp ?? null, oi: r.putOptions?.marketData?.oi ?? null, oiChange: r.putOptions?.marketData?.oiDayChange ?? null },
-    isATM: r.strikePrice === atmStrike,
-  }));
+  const strikes = typedRows
+    .sort((a, b) => a.strikePrice - b.strikePrice)
+    .map(r => ({
+      strike: r.strikePrice,
+      ce: { ltp: r.callOptions?.marketData?.ltp ?? null, oi: r.callOptions?.marketData?.oi ?? null, oiChange: r.callOptions?.marketData?.oiDayChange ?? null },
+      pe: { ltp: r.putOptions?.marketData?.ltp ?? null,  oi: r.putOptions?.marketData?.oi  ?? null, oiChange: r.putOptions?.marketData?.oiDayChange  ?? null },
+      isATM: r.strikePrice === atmStrike,
+    }));
 
-  return { pcr, pcrOiChange, atmStrike, atmLTP, maxCallStrike, maxPutStrike, maxPain, totalCallOI, totalPutOI, strikes, segment, expiry };
+  return { pcr, pcrOiChange, atmStrike, atmLTP, maxCallStrike, maxPutStrike, maxPain, totalCallOI, totalPutOI, strikes, strikeInterval, segment, expiry };
 }
 
 function computeMaxPain(rows: { strikePrice: number; callOptions?: { marketData?: { oi?: number } }; putOptions?: { marketData?: { oi?: number } } }[]): number {
