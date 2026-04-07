@@ -144,7 +144,54 @@ function determineSignal(
   return "neutral";
 }
 
+const UPSTOX_INSTRUMENT_MAP: Record<Segment, string> = {
+  NIFTY: "NSE_INDEX|Nifty 50",
+  BANKNIFTY: "NSE_INDEX|Nifty Bank",
+  FINNIFTY: "NSE_INDEX|Nifty Fin Service",
+};
+
+function nextWeeklyExpiry(segment: Segment): string {
+  const now = new Date(Date.now() + 5.5 * 3600000);
+  const target = segment === "FINNIFTY" ? 2 : 4;
+  const day = now.getDay();
+  let daysAhead = (target - day + 7) % 7;
+  if (daysAhead === 0) daysAhead = 7;
+  const expiry = new Date(now);
+  expiry.setDate(now.getDate() + daysAhead);
+  return expiry.toISOString().slice(0, 10);
+}
+
+async function fetchPCRFromUpstox(segment: Segment): Promise<number | null> {
+  const token = process.env.UPSTOX_ACCESS_TOKEN;
+  if (!token) return null;
+  try {
+    const instrument = encodeURIComponent(UPSTOX_INSTRUMENT_MAP[segment]);
+    const expiry = nextWeeklyExpiry(segment);
+    const url = `https://api.upstox.com/v2/option/chain?instrument_key=${instrument}&expiry_date=${expiry}`;
+    const resp = await fetch(url, {
+      headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const rows = (data?.data as unknown[]) ?? [];
+    let totalCE = 0, totalPE = 0;
+    for (const row of rows as { callOptions?: { marketData?: { oi?: number } }; putOptions?: { marketData?: { oi?: number } } }[]) {
+      totalCE += row.callOptions?.marketData?.oi ?? 0;
+      totalPE += row.putOptions?.marketData?.oi ?? 0;
+    }
+    return totalCE > 0 ? +(totalPE / totalCE).toFixed(4) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchPCR(segment: Segment): Promise<number | null> {
+  // Try Upstox first (live, accurate)
+  const upstoxPCR = await fetchPCRFromUpstox(segment);
+  if (upstoxPCR != null) return upstoxPCR;
+
+  // Fallback: NSE public API
   try {
     const nseSym = segment === "BANKNIFTY" ? "BANKNIFTY" : segment === "FINNIFTY" ? "FINNIFTY" : "NIFTY";
     const url = `https://www.nseindia.com/api/option-chain-indices?symbol=${nseSym}`;

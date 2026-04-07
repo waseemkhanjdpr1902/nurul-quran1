@@ -1149,4 +1149,181 @@ router.get("/trademaster/scanner", async (req: Request, res: Response): Promise<
   }
 });
 
+// ─── Upstox Integration ───────────────────────────────────────────────────────
+
+const UPSTOX_INSTRUMENT_MAP: Record<string, string> = {
+  NIFTY: "NSE_INDEX|Nifty 50",
+  BANKNIFTY: "NSE_INDEX|Nifty Bank",
+  FINNIFTY: "NSE_INDEX|Nifty Fin Service",
+};
+
+/** Build Upstox OAuth2 authorization URL so user can get an access token */
+router.get("/trademaster/upstox/auth-url", (req: Request, res: Response): void => {
+  if (!requireAdmin(req, res)) return;
+  const apiKey = process.env.UPSTOX_API_KEY;
+  if (!apiKey) { res.status(500).json({ error: "UPSTOX_API_KEY not configured" }); return; }
+  const redirectUri = (req.query.redirect_uri as string) || `${req.protocol}://${req.headers.host}/api/trademaster/upstox/callback`;
+  const url = `https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id=${encodeURIComponent(apiKey)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  res.json({ url, redirectUri });
+});
+
+/** Exchange authorization code for access token */
+router.post("/trademaster/upstox/token", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  const { code, redirect_uri } = req.body as { code?: string; redirect_uri?: string };
+  const apiKey = process.env.UPSTOX_API_KEY;
+  const apiSecret = process.env.UPSTOX_API_SECRET;
+  if (!apiKey || !apiSecret) { res.status(500).json({ error: "UPSTOX_API_KEY / UPSTOX_API_SECRET not configured" }); return; }
+  if (!code) { res.status(400).json({ error: "code is required" }); return; }
+  try {
+    const params = new URLSearchParams({
+      code, client_id: apiKey, client_secret: apiSecret,
+      redirect_uri: redirect_uri || "",
+      grant_type: "authorization_code",
+    });
+    const r = await fetch("https://api.upstox.com/v2/login/authorization/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+      body: params.toString(),
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await r.json() as Record<string, unknown>;
+    if (!r.ok) { res.status(r.status).json({ error: data?.message ?? "Token exchange failed", details: data }); return; }
+    res.json({ ok: true, access_token: data.access_token, token_type: data.token_type, expires_in: data.expires_in });
+  } catch (err) {
+    logger.error({ err }, "[Upstox] Token exchange failed");
+    res.status(500).json({ error: "Token exchange request failed" });
+  }
+});
+
+/** Fetch live option chain from Upstox for a segment */
+router.get("/trademaster/upstox/option-chain", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  const { segment = "NIFTY", expiry_date, access_token } = req.query as Record<string, string>;
+  const token = access_token || (req.headers["x-upstox-token"] as string) || process.env.UPSTOX_ACCESS_TOKEN;
+
+  if (!token) { res.status(400).json({ error: "access_token required (query param, x-upstox-token header, or UPSTOX_ACCESS_TOKEN env)" }); return; }
+
+  const instrument = UPSTOX_INSTRUMENT_MAP[segment.toUpperCase()];
+  if (!instrument) { res.status(400).json({ error: `Unknown segment. Valid: ${Object.keys(UPSTOX_INSTRUMENT_MAP).join(", ")}` }); return; }
+
+  // If no expiry_date, get the next weekly expiry (nearest Thursday for Nifty/BankNifty, nearest Tuesday for FinNifty)
+  const resolvedExpiry = expiry_date || nextWeeklyExpiry(segment.toUpperCase() as "NIFTY" | "BANKNIFTY" | "FINNIFTY");
+
+  try {
+    const url = `https://api.upstox.com/v2/option/chain?instrument_key=${encodeURIComponent(instrument)}&expiry_date=${resolvedExpiry}`;
+    const r = await fetch(url, {
+      headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await r.json() as Record<string, unknown>;
+    if (!r.ok) { res.status(r.status).json({ error: "Upstox API error", details: data }); return; }
+
+    // Parse and compute PCR, OI Change, LTP from the option chain
+    const parsed = parseUpstoxOptionChain(data, segment.toUpperCase(), resolvedExpiry);
+    res.json({ ok: true, segment: segment.toUpperCase(), expiry: resolvedExpiry, ...parsed, fetchedAt: new Date().toISOString() });
+  } catch (err) {
+    logger.error({ err }, "[Upstox] Option chain fetch failed");
+    res.status(500).json({ error: "Failed to fetch option chain from Upstox" });
+  }
+});
+
+/** Test connectivity with the stored access token */
+router.get("/trademaster/upstox/status", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  const token = process.env.UPSTOX_ACCESS_TOKEN;
+  const apiKeyConfigured = !!process.env.UPSTOX_API_KEY;
+  const apiSecretConfigured = !!process.env.UPSTOX_API_SECRET;
+
+  if (!token) {
+    res.json({ ok: false, connected: false, apiKeyConfigured, apiSecretConfigured, message: "No UPSTOX_ACCESS_TOKEN set. Generate one via the auth flow." });
+    return;
+  }
+  try {
+    const r = await fetch("https://api.upstox.com/v2/user/profile", {
+      headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+      signal: AbortSignal.timeout(6000),
+    });
+    const data = await r.json() as Record<string, unknown>;
+    if (r.ok) {
+      const profile = data?.data as Record<string, unknown> | undefined;
+      res.json({ ok: true, connected: true, apiKeyConfigured, apiSecretConfigured, user: { name: profile?.user_name, email: profile?.email, broker: profile?.broker } });
+    } else {
+      res.json({ ok: false, connected: false, apiKeyConfigured, apiSecretConfigured, message: "Token invalid or expired", status: r.status });
+    }
+  } catch {
+    res.json({ ok: false, connected: false, apiKeyConfigured, apiSecretConfigured, message: "Could not reach Upstox API" });
+  }
+});
+
+function nextWeeklyExpiry(segment: "NIFTY" | "BANKNIFTY" | "FINNIFTY"): string {
+  const now = new Date(Date.now() + 5.5 * 3600000); // IST
+  const target = segment === "FINNIFTY" ? 2 : 4; // Tuesday=2, Thursday=4
+  const day = now.getDay();
+  let daysAhead = (target - day + 7) % 7;
+  if (daysAhead === 0) daysAhead = 7; // if today is expiry day, next week
+  const expiry = new Date(now);
+  expiry.setDate(now.getDate() + daysAhead);
+  return expiry.toISOString().slice(0, 10);
+}
+
+function parseUpstoxOptionChain(raw: Record<string, unknown>, segment: string, expiry: string) {
+  const rows = (raw?.data as unknown[]) ?? [];
+  let totalCallOI = 0, totalPutOI = 0;
+  let totalCallOIChange = 0, totalPutOIChange = 0;
+  let maxCallOI = 0, maxPutOI = 0;
+  let maxCallStrike = 0, maxPutStrike = 0;
+  let atmLTP: { ce: number | null; pe: number | null } = { ce: null, pe: null };
+  let atmStrike = 0;
+
+  interface ChainRow { strikePrice: number; callOptions?: { marketData?: { ltp?: number; oi?: number; oiDayChange?: number }; optionGreeks?: { delta?: number } }; putOptions?: { marketData?: { ltp?: number; oi?: number; oiDayChange?: number } } }
+  const typedRows = rows as ChainRow[];
+
+  // Find approximate ATM strike (closest to index price)
+  // We use the strike with the smallest |CE delta - 0.5| as ATM
+  let bestDeltaDiff = 999;
+  for (const row of typedRows) {
+    const ceDelta = Math.abs((row.callOptions?.optionGreeks?.delta ?? 0) - 0.5);
+    if (ceDelta < bestDeltaDiff) { bestDeltaDiff = ceDelta; atmStrike = row.strikePrice; }
+    const ceOI = row.callOptions?.marketData?.oi ?? 0;
+    const peOI = row.putOptions?.marketData?.oi ?? 0;
+    totalCallOI += ceOI; totalPutOI += peOI;
+    totalCallOIChange += row.callOptions?.marketData?.oiDayChange ?? 0;
+    totalPutOIChange += row.putOptions?.marketData?.oiDayChange ?? 0;
+    if (ceOI > maxCallOI) { maxCallOI = ceOI; maxCallStrike = row.strikePrice; }
+    if (peOI > maxPutOI) { maxPutOI = peOI; maxPutStrike = row.strikePrice; }
+  }
+  const atmRow = typedRows.find(r => r.strikePrice === atmStrike);
+  if (atmRow) { atmLTP = { ce: atmRow.callOptions?.marketData?.ltp ?? null, pe: atmRow.putOptions?.marketData?.ltp ?? null }; }
+
+  const pcr = totalCallOI > 0 ? +(totalPutOI / totalCallOI).toFixed(4) : null;
+  const pcrOiChange = totalCallOIChange !== 0 ? +(totalPutOIChange / Math.abs(totalCallOIChange)).toFixed(4) : null;
+  const maxPain = computeMaxPain(typedRows);
+
+  const strikes = typedRows.map(r => ({
+    strike: r.strikePrice,
+    ce: { ltp: r.callOptions?.marketData?.ltp ?? null, oi: r.callOptions?.marketData?.oi ?? null, oiChange: r.callOptions?.marketData?.oiDayChange ?? null },
+    pe: { ltp: r.putOptions?.marketData?.ltp ?? null, oi: r.putOptions?.marketData?.oi ?? null, oiChange: r.putOptions?.marketData?.oiDayChange ?? null },
+    isATM: r.strikePrice === atmStrike,
+  }));
+
+  return { pcr, pcrOiChange, atmStrike, atmLTP, maxCallStrike, maxPutStrike, maxPain, totalCallOI, totalPutOI, strikes, segment, expiry };
+}
+
+function computeMaxPain(rows: { strikePrice: number; callOptions?: { marketData?: { oi?: number } }; putOptions?: { marketData?: { oi?: number } } }[]): number {
+  let minLoss = Infinity, maxPainStrike = 0;
+  for (const target of rows) {
+    const s = target.strikePrice;
+    let loss = 0;
+    for (const r of rows) {
+      const ceOI = r.callOptions?.marketData?.oi ?? 0;
+      const peOI = r.putOptions?.marketData?.oi ?? 0;
+      if (r.strikePrice < s) loss += (s - r.strikePrice) * ceOI;
+      if (r.strikePrice > s) loss += (r.strikePrice - s) * peOI;
+    }
+    if (loss < minLoss) { minLoss = loss; maxPainStrike = s; }
+  }
+  return maxPainStrike;
+}
+
 export default router;

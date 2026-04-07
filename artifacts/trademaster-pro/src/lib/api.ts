@@ -509,3 +509,76 @@ export async function runScanner(sessionId: string, segment: string, interval: s
   }
   return r.json();
 }
+
+// ─── Upstox API ───────────────────────────────────────────────────────────────
+
+export type UpstoxStatus = {
+  ok: boolean;
+  connected: boolean;
+  apiKeyConfigured: boolean;
+  apiSecretConfigured: boolean;
+  message?: string;
+  user?: { name?: string; email?: string; broker?: string };
+};
+
+export type UpstoxStrike = {
+  strike: number;
+  ce: { ltp: number | null; oi: number | null; oiChange: number | null };
+  pe: { ltp: number | null; oi: number | null; oiChange: number | null };
+  isATM: boolean;
+};
+
+export type UpstoxOptionChain = {
+  ok: boolean;
+  segment: string;
+  expiry: string;
+  pcr: number | null;
+  pcrOiChange: number | null;
+  atmStrike: number;
+  atmLTP: { ce: number | null; pe: number | null };
+  maxCallStrike: number;
+  maxPutStrike: number;
+  maxPain: number;
+  totalCallOI: number;
+  totalPutOI: number;
+  strikes: UpstoxStrike[];
+  fetchedAt: string;
+  error?: string;
+};
+
+export async function fetchUpstoxStatus(adminToken: string): Promise<UpstoxStatus> {
+  const r = await fetch(`${API_BASE}/upstox/status`, {
+    headers: { "Authorization": `Bearer ${adminToken}` },
+  });
+  return r.json();
+}
+
+export async function fetchUpstoxAuthUrl(adminToken: string): Promise<{ url: string; redirectUri: string }> {
+  const r = await fetch(`${API_BASE}/upstox/auth-url`, {
+    headers: { "Authorization": `Bearer ${adminToken}` },
+  });
+  if (!r.ok) throw new Error("Failed to get auth URL");
+  return r.json();
+}
+
+export async function exchangeUpstoxCode(adminToken: string, code: string, redirectUri: string): Promise<{ ok: boolean; access_token?: string; error?: string }> {
+  const r = await fetch(`${API_BASE}/upstox/token`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${adminToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ code, redirect_uri: redirectUri }),
+  });
+  return r.json();
+}
+
+export async function fetchUpstoxOptionChain(adminToken: string, segment: string, accessToken?: string): Promise<UpstoxOptionChain> {
+  const params = new URLSearchParams({ segment });
+  if (accessToken) params.set("access_token", accessToken);
+  const r = await fetch(`${API_BASE}/upstox/option-chain?${params}`, {
+    headers: { "Authorization": `Bearer ${adminToken}` },
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ error: "Option chain fetch failed" })) as { error?: string };
+    throw new Error(err.error ?? "Option chain fetch failed");
+  }
+  return r.json();
+}

@@ -1,12 +1,338 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchSignals, createSignal, updateSignal, deleteSignal, fetchSubscriptions, updateSubscription, type Signal, type Subscription } from "@/lib/api";
+import { fetchSignals, createSignal, updateSignal, deleteSignal, fetchSubscriptions, updateSubscription, fetchUpstoxStatus, fetchUpstoxOptionChain, type Signal, type Subscription, type UpstoxStatus, type UpstoxOptionChain } from "@/lib/api";
 import { useAdmin } from "@/hooks/use-admin";
 
 const SEGMENTS = ["nifty", "banknifty", "options", "futures", "equity", "intraday", "commodity", "currency"] as const;
 const SIGNAL_TYPES = ["buy", "sell"] as const;
 
 type AdminProps = { onBack: () => void };
+
+// ─── Upstox Panel ─────────────────────────────────────────────────────────────
+
+function fmt(v: number | null | undefined, d = 2): string {
+  if (v == null) return "–";
+  return v.toLocaleString("en-IN", { maximumFractionDigits: d, minimumFractionDigits: d });
+}
+
+function fmtOI(v: number | null | undefined): string {
+  if (v == null) return "–";
+  if (Math.abs(v) >= 1_00_000) return (v / 1_00_000).toFixed(2) + "L";
+  if (Math.abs(v) >= 1_000) return (v / 1_000).toFixed(1) + "K";
+  return v.toString();
+}
+
+function UpstoxPanel({ adminToken }: { adminToken: string }) {
+  const [accessToken, setAccessToken] = useState(localStorage.getItem("upstox_access_token") ?? "");
+  const [tokenInput, setTokenInput] = useState("");
+  const [segment, setSegment] = useState("NIFTY");
+  const [chainLoading, setChainLoading] = useState(false);
+  const [chainData, setChainData] = useState<UpstoxOptionChain | null>(null);
+  const [chainError, setChainError] = useState("");
+  const [saveMsg, setSaveMsg] = useState("");
+  const [showAuth, setShowAuth] = useState(false);
+  const [authCode, setAuthCode] = useState("");
+  const [authMsg, setAuthMsg] = useState("");
+  const [showStrikes, setShowStrikes] = useState(false);
+
+  const { data: status, refetch: refetchStatus } = useQuery<UpstoxStatus>({
+    queryKey: ["upstox-status", adminToken],
+    queryFn: () => fetchUpstoxStatus(adminToken),
+    staleTime: 30000,
+  });
+
+  function saveToken() {
+    if (!tokenInput.trim()) return;
+    localStorage.setItem("upstox_access_token", tokenInput.trim());
+    setAccessToken(tokenInput.trim());
+    setTokenInput("");
+    setSaveMsg("Access token saved locally ✓");
+    setTimeout(() => setSaveMsg(""), 3000);
+    refetchStatus();
+  }
+
+  function clearToken() {
+    localStorage.removeItem("upstox_access_token");
+    setAccessToken("");
+    setSaveMsg("Token cleared");
+    setTimeout(() => setSaveMsg(""), 3000);
+  }
+
+  async function openAuthUrl() {
+    try {
+      const r = await fetch(`/api/trademaster/upstox/auth-url`, {
+        headers: { "Authorization": `Bearer ${adminToken}` },
+      });
+      const data = await r.json() as { url: string; redirectUri: string };
+      window.open(data.url, "_blank");
+      setShowAuth(true);
+      setAuthMsg(`After login, copy the 'code' parameter from the redirect URL and paste below.`);
+    } catch {
+      setAuthMsg("Failed to get auth URL — check UPSTOX_API_KEY is configured.");
+    }
+  }
+
+  async function exchangeCode() {
+    if (!authCode.trim()) return;
+    try {
+      const r = await fetch(`/api/trademaster/upstox/token`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${adminToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ code: authCode.trim() }),
+      });
+      const data = await r.json() as { ok: boolean; access_token?: string; error?: string };
+      if (data.ok && data.access_token) {
+        localStorage.setItem("upstox_access_token", data.access_token);
+        setAccessToken(data.access_token);
+        setAuthMsg("✅ Access token obtained and saved!");
+        setShowAuth(false);
+        setAuthCode("");
+        refetchStatus();
+      } else {
+        setAuthMsg(`❌ ${data.error ?? "Token exchange failed"}`);
+      }
+    } catch {
+      setAuthMsg("❌ Token exchange failed");
+    }
+  }
+
+  async function fetchChain() {
+    setChainLoading(true);
+    setChainError("");
+    setChainData(null);
+    try {
+      const data = await fetchUpstoxOptionChain(adminToken, segment, accessToken || undefined);
+      setChainData(data);
+    } catch (err) {
+      setChainError(err instanceof Error ? err.message : "Failed to fetch option chain");
+    } finally {
+      setChainLoading(false);
+    }
+  }
+
+  const isConnected = status?.connected;
+  const hasToken = !!accessToken;
+
+  return (
+    <div className="space-y-4">
+      {/* Status Card */}
+      <div className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl p-6">
+        <h2 className="text-white font-semibold text-lg mb-4">🔗 Upstox Live Data</h2>
+
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {[
+            { label: "API Key", ok: status?.apiKeyConfigured },
+            { label: "API Secret", ok: status?.apiSecretConfigured },
+            { label: "Access Token (local)", ok: hasToken },
+            { label: "Connection", ok: isConnected },
+          ].map(({ label, ok }) => (
+            <div key={label} className="flex items-center justify-between bg-[hsl(220,13%,16%)] rounded-lg px-3 py-2">
+              <span className="text-xs text-gray-400">{label}</span>
+              <span className={`text-xs font-bold ${ok ? "text-green-400" : "text-red-400"}`}>{ok ? "✓ OK" : "✗ Missing"}</span>
+            </div>
+          ))}
+        </div>
+
+        {isConnected && status?.user && (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3 mb-4">
+            <div className="text-green-400 text-sm font-semibold">Connected to Upstox</div>
+            <div className="text-gray-400 text-xs mt-1">{status.user.name} · {status.user.email} · {status.user.broker}</div>
+          </div>
+        )}
+
+        {status && !isConnected && status.message && (
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-3 mb-4 text-yellow-400 text-sm">
+            {status.message}
+          </div>
+        )}
+
+        {/* Manual token input */}
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Upstox Access Token (Daily)</label>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                placeholder={hasToken ? "Token saved — paste new to replace" : "Paste your Upstox access token here"}
+                className="flex-1 bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,25%)] rounded-lg px-3 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-green-500 text-sm"
+              />
+              <button
+                onClick={saveToken}
+                disabled={!tokenInput.trim()}
+                className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                Save
+              </button>
+              {hasToken && (
+                <button onClick={clearToken} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm rounded-lg transition-colors">
+                  Clear
+                </button>
+              )}
+            </div>
+            {saveMsg && <p className="text-green-400 text-xs mt-1">{saveMsg}</p>}
+            <p className="text-gray-600 text-xs mt-1">Token is stored in your browser only. Upstox tokens expire daily — refresh each morning.</p>
+          </div>
+
+          {/* OAuth Flow */}
+          <div className="border-t border-[hsl(220,13%,20%)] pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500">Don't have a token? Use the Upstox login flow.</span>
+              <button
+                onClick={openAuthUrl}
+                disabled={!status?.apiKeyConfigured}
+                className="px-3 py-1.5 text-xs bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 rounded-lg transition-colors disabled:opacity-40"
+              >
+                Open Upstox Login ↗
+              </button>
+            </div>
+            {showAuth && (
+              <div className="mt-3 space-y-2">
+                {authMsg && <p className="text-yellow-400 text-xs">{authMsg}</p>}
+                <div className="flex gap-2">
+                  <input
+                    value={authCode}
+                    onChange={(e) => setAuthCode(e.target.value)}
+                    placeholder="Paste authorization code from redirect URL"
+                    className="flex-1 bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,25%)] rounded-lg px-3 py-2 text-white placeholder-gray-600 text-xs focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    onClick={exchangeCode}
+                    disabled={!authCode.trim()}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs rounded-lg"
+                  >
+                    Exchange
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Option Chain Fetcher */}
+      <div className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl p-6">
+        <h2 className="text-white font-semibold text-lg mb-4">📊 Live Option Chain</h2>
+
+        <div className="flex gap-3 mb-4">
+          <div className="flex-1">
+            <label className="text-xs text-gray-500 mb-1 block">Index</label>
+            <select
+              value={segment}
+              onChange={(e) => setSegment(e.target.value)}
+              className="w-full bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,25%)] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-green-500"
+            >
+              <option value="NIFTY">Nifty 50</option>
+              <option value="BANKNIFTY">Bank Nifty</option>
+              <option value="FINNIFTY">Nifty FinServ</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={fetchChain}
+              disabled={chainLoading || !hasToken}
+              className="px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              {chainLoading ? "Fetching…" : "Fetch Live Data"}
+            </button>
+          </div>
+        </div>
+
+        {!hasToken && (
+          <p className="text-yellow-400 text-xs mb-4">⚠️ Save an Upstox access token above to fetch live data.</p>
+        )}
+
+        {chainError && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-red-400 text-sm mb-4">
+            ❌ {chainError}
+          </div>
+        )}
+
+        {chainData && (
+          <div className="space-y-4">
+            {/* Summary strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: "PCR (OI)", value: chainData.pcr != null ? chainData.pcr.toFixed(3) : "–", color: chainData.pcr != null ? (chainData.pcr > 1.2 ? "text-green-400" : chainData.pcr < 0.8 ? "text-red-400" : "text-white") : "text-gray-500" },
+                { label: "ATM Strike", value: chainData.atmStrike > 0 ? chainData.atmStrike.toLocaleString("en-IN") : "–", color: "text-blue-400" },
+                { label: "Max Pain", value: chainData.maxPain > 0 ? chainData.maxPain.toLocaleString("en-IN") : "–", color: "text-yellow-400" },
+                { label: "CE Wall", value: chainData.maxCallStrike > 0 ? chainData.maxCallStrike.toLocaleString("en-IN") : "–", color: "text-red-400" },
+                { label: "PE Wall", value: chainData.maxPutStrike > 0 ? chainData.maxPutStrike.toLocaleString("en-IN") : "–", color: "text-green-400" },
+                { label: "ATM CE LTP", value: chainData.atmLTP.ce != null ? `₹${fmt(chainData.atmLTP.ce)}` : "–", color: "text-white" },
+                { label: "ATM PE LTP", value: chainData.atmLTP.pe != null ? `₹${fmt(chainData.atmLTP.pe)}` : "–", color: "text-white" },
+                { label: "PCR OI Chg", value: chainData.pcrOiChange != null ? chainData.pcrOiChange.toFixed(3) : "–", color: "text-gray-300" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-[hsl(220,13%,16%)] rounded-lg px-3 py-2.5">
+                  <div className="text-xs text-gray-500 mb-0.5">{label}</div>
+                  <div className={`text-base font-bold ${color}`}>{value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="text-xs text-gray-600">
+              Fetched: {new Date(chainData.fetchedAt).toLocaleTimeString("en-IN")} · Expiry: {chainData.expiry} · Total CE OI: {fmtOI(chainData.totalCallOI)} · Total PE OI: {fmtOI(chainData.totalPutOI)}
+            </div>
+
+            {/* Strike table toggle */}
+            <button
+              onClick={() => setShowStrikes(!showStrikes)}
+              className="text-xs text-blue-400 hover:text-blue-300 underline"
+            >
+              {showStrikes ? "Hide" : "Show"} full strike table ({chainData.strikes.length} strikes)
+            </button>
+
+            {showStrikes && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-[hsl(220,13%,20%)]">
+                      {["CE OI Chg", "CE OI", "CE LTP", "Strike", "PE LTP", "PE OI", "PE OI Chg"].map((h) => (
+                        <th key={h} className="text-gray-500 font-semibold px-2 py-2 text-right first:text-left">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chainData.strikes.map((row) => (
+                      <tr key={row.strike} className={`border-b border-[hsl(220,13%,18%)] ${row.isATM ? "bg-blue-500/10" : ""}`}>
+                        <td className={`px-2 py-1.5 text-right ${(row.ce.oiChange ?? 0) > 0 ? "text-red-400" : "text-green-400"}`}>{fmtOI(row.ce.oiChange)}</td>
+                        <td className="px-2 py-1.5 text-right text-gray-300">{fmtOI(row.ce.oi)}</td>
+                        <td className="px-2 py-1.5 text-right text-white font-semibold">{fmt(row.ce.ltp)}</td>
+                        <td className={`px-2 py-1.5 text-center font-bold ${row.isATM ? "text-blue-400" : "text-gray-200"}`}>{row.strike.toLocaleString("en-IN")}{row.isATM ? " ◀" : ""}</td>
+                        <td className="px-2 py-1.5 text-left text-white font-semibold">{fmt(row.pe.ltp)}</td>
+                        <td className="px-2 py-1.5 text-left text-gray-300">{fmtOI(row.pe.oi)}</td>
+                        <td className={`px-2 py-1.5 text-left ${(row.pe.oiChange ?? 0) > 0 ? "text-green-400" : "text-red-400"}`}>{fmtOI(row.pe.oiChange)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Instructions card */}
+      <div className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl p-5">
+        <h3 className="text-white font-semibold mb-3 text-sm">📖 How to get your Upstox Access Token</h3>
+        <ol className="space-y-2 text-xs text-gray-400 list-none">
+          {[
+            "Register your app at developer.upstox.com — your API Key & Secret are now configured in Replit.",
+            'Set your Redirect URI in Upstox Developer Console (e.g. http://localhost:3000 for testing).',
+            'Click "Open Upstox Login" above → log in → copy the code= value from the redirect URL.',
+            "Paste the code and click Exchange — your access token is saved automatically.",
+            "Tokens expire daily. Repeat each morning before the 9:15 AM NSE opening.",
+          ].map((step, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="text-green-500 font-bold flex-shrink-0">{i + 1}.</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
 
 type FormData = {
   segment: string;
@@ -28,7 +354,7 @@ const EMPTY_FORM: FormData = {
   iv: "", pcr: "", notes: "", isPremium: false,
 };
 
-type AdminTab = "signals" | "subscriptions";
+type AdminTab = "signals" | "subscriptions" | "upstox";
 
 export default function Admin({ onBack }: AdminProps) {
   const { isAdmin, adminToken, login, logout } = useAdmin();
@@ -180,8 +506,8 @@ export default function Admin({ onBack }: AdminProps) {
           </div>
         </div>
 
-        <div className="flex gap-2 mb-6">
-          {(["signals", "subscriptions"] as AdminTab[]).map((tab) => (
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {(["signals", "subscriptions", "upstox"] as AdminTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -189,7 +515,7 @@ export default function Admin({ onBack }: AdminProps) {
                 activeTab === tab ? "bg-green-600 text-white" : "bg-[hsl(220,13%,16%)] text-gray-400 hover:text-white"
               }`}
             >
-              {tab === "signals" ? `📊 Signals (${signals.length})` : `💳 Subscriptions`}
+              {tab === "signals" ? `📊 Signals (${signals.length})` : tab === "subscriptions" ? `💳 Subscriptions` : `🔗 Upstox Live`}
             </button>
           ))}
         </div>
@@ -305,6 +631,10 @@ export default function Admin({ onBack }: AdminProps) {
               )}
             </div>
           </>
+        )}
+
+        {activeTab === "upstox" && adminToken && (
+          <UpstoxPanel adminToken={adminToken} />
         )}
 
         {activeTab === "subscriptions" && (
