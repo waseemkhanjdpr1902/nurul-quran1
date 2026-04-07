@@ -108,12 +108,56 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
 
   const changePos = (quote?.changePercent ?? 0) >= 0;
 
-  const handleWhatsApp = () => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(formatShareMessage(signal))}`, "_blank");
+  /**
+   * Opens the native app (WhatsApp / Telegram) if installed on this device.
+   * Detects whether the app launch succeeded by listening for a window blur
+   * event (the browser loses focus when a native app steals it).
+   * If no native app is detected after 1.5 s it falls back to the web URL
+   * opened in a NEW tab — so the user never leaves the TradeMaster page.
+   */
+  const shareViaApp = (nativeScheme: string, webFallback: string) => {
+    let appOpened = false;
+
+    const cleanup = () => {
+      window.removeEventListener("blur", onBlur);
+      clearTimeout(timer);
+    };
+
+    const onBlur = () => {
+      appOpened = true;
+      cleanup();
+    };
+
+    window.addEventListener("blur", onBlur);
+
+    // Give the OS 1.5 s to hand off to the native app
+    const timer = setTimeout(() => {
+      cleanup();
+      if (!appOpened) {
+        // Native app not installed — open web share in a new tab
+        window.open(webFallback, "_blank");
+      }
+    }, 1500);
+
+    // Try native deep link; if installed the OS intercepts it immediately
+    window.location.href = nativeScheme;
   };
+
+  const handleWhatsApp = () => {
+    const text = encodeURIComponent(formatShareMessage(signal));
+    shareViaApp(
+      `whatsapp://send?text=${text}`,
+      `https://wa.me/?text=${text}`,
+    );
+  };
+
   const handleTelegramShare = () => {
-    const appUrl = `${window.location.origin}${window.location.pathname}`;
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(formatShareMessage(signal))}`, "_blank");
+    const text = encodeURIComponent(formatShareMessage(signal));
+    const appUrl = encodeURIComponent(`${window.location.origin}${window.location.pathname}`);
+    shareViaApp(
+      `tg://msg?text=${text}`,
+      `https://t.me/share/url?url=${appUrl}&text=${text}`,
+    );
   };
   const handlePostToChannel = async () => {
     if (!adminToken) return;
