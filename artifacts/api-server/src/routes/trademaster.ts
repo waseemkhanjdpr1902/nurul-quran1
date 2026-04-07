@@ -1313,19 +1313,21 @@ function nextWeeklyExpiry(segment: "NIFTY" | "BANKNIFTY" | "FINNIFTY" | string):
 }
 
 /**
- * Returns the last Thursday of the current month (IST). If today is on or past
- * that Thursday, returns the last Thursday of next month. Stock F&O on NSE
- * expires on the last Thursday of the month; if that day is a market holiday
- * the expiry shifts to the previous business day — override via expiry_date if needed.
+ * Returns the last Tuesday of the current month (IST).
+ * NSE stock (equity) monthly F&O expires on the last Tuesday of the month
+ * (index monthly F&O uses last Thursday; stock monthly uses last Tuesday to
+ * differentiate from the weekly index expiry day).
+ * If today is on or past that Tuesday, rolls to next month.
+ * Override via expiry_date query param if a holiday shifts the actual date.
  */
 function nextMonthlyExpiry(): string {
   const now = new Date(Date.now() + 5.5 * 3600000); // IST
 
-  function lastThursdayOf(year: number, month: number): Date {
+  function lastTuesdayOf(year: number, month: number): Date {
     // Last calendar day of the given month (month is 0-indexed: 0=Jan … 11=Dec)
     const lastDay = new Date(year, month + 1, 0);
-    const dow = lastDay.getDay();           // 0=Sun … 4=Thu … 6=Sat
-    const daysBack = (dow - 4 + 7) % 7;   // steps back to reach nearest Thursday ≤ lastDay
+    const dow = lastDay.getDay();           // 0=Sun … 2=Tue … 6=Sat
+    const daysBack = (dow - 2 + 7) % 7;   // steps back to reach nearest Tuesday ≤ lastDay
     const result = new Date(lastDay);
     result.setDate(lastDay.getDate() - daysBack);
     return result;
@@ -1335,13 +1337,13 @@ function nextMonthlyExpiry(): string {
   const month = now.getMonth();
   const today = new Date(year, month, now.getDate());
 
-  let expiry = lastThursdayOf(year, month);
+  let expiry = lastTuesdayOf(year, month);
 
   // If today's date >= expiry date, roll to next month
   if (today >= expiry) {
     const nextMonth = month === 11 ? 0 : month + 1;
     const nextYear  = month === 11 ? year + 1 : year;
-    expiry = lastThursdayOf(nextYear, nextMonth);
+    expiry = lastTuesdayOf(nextYear, nextMonth);
   }
 
   // Format as YYYY-MM-DD
