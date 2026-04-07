@@ -1278,6 +1278,228 @@ router.get("/trademaster/upstox/option-chain", async (req: Request, res: Respons
   }
 });
 
+/**
+ * POST /trademaster/daily-tips
+ * Auto-generates 6–9 analyst signals from live Upstox option chain + Yahoo Finance data.
+ * - NIFTY + BANKNIFTY: CE Wall sell, PE Wall sell, directional ATM buy (based on PCR)
+ * - Top stocks: RSI/VWAP/volume momentum signals (15-min chart)
+ * All signals are inserted into the DB and returned.
+ */
+router.post("/trademaster/daily-tips", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  const token = process.env.UPSTOX_ACCESS_TOKEN;
+
+  interface TipDraft {
+    segment: string; assetName: string; signalType: "buy" | "sell";
+    entryPrice: number; stopLoss: number; target1: number; target2?: number;
+    pcr?: string; iv?: string; notes: string; isPremium: boolean;
+  }
+  const tipSignals: TipDraft[] = [];
+
+  // ── 1. NIFTY + BANKNIFTY option chain signals ─────────────────────────────
+  if (token) {
+    for (const seg of ["NIFTY", "BANKNIFTY"]) {
+      try {
+        const instrument = UPSTOX_INSTRUMENT_MAP[seg];
+        const expiry = nextWeeklyExpiry(seg);
+        const url = `https://api.upstox.com/v2/option/chain?instrument_key=${encodeURIComponent(instrument)}&expiry_date=${expiry}`;
+        const r = await fetch(url, {
+          headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!r.ok) continue;
+        const data = await r.json() as Record<string, unknown>;
+        const parsed = parseUpstoxOptionChain(data, seg, expiry);
+        const { pcr, atmStrike, atmLTP, maxCallStrike, maxPutStrike, strikes } = parsed;
+
+        // Find LTPs at wall strikes and ATM
+        const ceWallLTP = strikes.find(s => s.strike === maxCallStrike)?.ce.ltp ?? 0;
+        const peWallLTP = strikes.find(s => s.strike === maxPutStrike)?.pe.ltp ?? 0;
+        const atmCeLTP  = atmLTP.ce ?? 0;
+        const atmPeLTP  = atmLTP.pe ?? 0;
+        const pcrStr = pcr?.toFixed(2) ?? null;
+
+        // Signal A: Sell CE Wall — premium decay at resistance
+        if (maxCallStrike > 0 && ceWallLTP > 0.5) {
+          const entry = parseFloat(ceWallLTP.toFixed(2));
+          tipSignals.push({
+            segment: "options",
+            assetName: `${seg} ${maxCallStrike.toLocaleString("en-IN")} CE`,
+            signalType: "sell",
+            entryPrice: entry,
+            stopLoss: parseFloat((entry * 1.30).toFixed(2)),
+            target1:   parseFloat((entry * 0.60).toFixed(2)),
+            target2:   parseFloat((entry * 0.40).toFixed(2)),
+            pcr: pcrStr ?? undefined,
+            notes: `Sell ${seg} ${maxCallStrike} CE — highest call OI resistance wall (PCR ${pcrStr ?? "N/A"}). Premium decay trade. Expiry ${expiry}. SL at 30% above entry; targets at 40% and 60% decay.`,
+            isPremium: true,
+          });
+        }
+
+        // Signal B: Sell PE Wall — premium decay at support
+        if (maxPutStrike > 0 && peWallLTP > 0.5) {
+          const entry = parseFloat(peWallLTP.toFixed(2));
+          tipSignals.push({
+            segment: "options",
+            assetName: `${seg} ${maxPutStrike.toLocaleString("en-IN")} PE`,
+            signalType: "sell",
+            entryPrice: entry,
+            stopLoss: parseFloat((entry * 1.30).toFixed(2)),
+            target1:   parseFloat((entry * 0.60).toFixed(2)),
+            target2:   parseFloat((entry * 0.40).toFixed(2)),
+            pcr: pcrStr ?? undefined,
+            notes: `Sell ${seg} ${maxPutStrike} PE — highest put OI support wall (PCR ${pcrStr ?? "N/A"}). Premium decay trade. Expiry ${expiry}. SL at 30% above entry; targets at 40% and 60% decay.`,
+            isPremium: true,
+          });
+        }
+
+        // Signal C: Directional ATM buy — PCR-driven bias
+        if (pcr !== null && atmStrike > 0) {
+          if (pcr >= 1.20 && atmCeLTP > 0.5) {
+            // High PCR = heavy put writing = bulls dominate = buy CE
+            const entry = parseFloat(atmCeLTP.toFixed(2));
+            tipSignals.push({
+              segment: "options",
+              assetName: `${seg} ${atmStrike.toLocaleString("en-IN")} CE`,
+              signalType: "buy",
+              entryPrice: entry,
+              stopLoss: parseFloat((entry * 0.65).toFixed(2)),
+              target1:   parseFloat((entry * 1.60).toFixed(2)),
+              target2:   parseFloat((entry * 2.20).toFixed(2)),
+              pcr: pcrStr ?? undefined,
+              notes: `PCR ${pcrStr} (bullish): Aggressive put writing signals strong support. Buy ${seg} ${atmStrike} ATM CE for upside momentum. SL 35% of premium; target 60%→120% gain before expiry.`,
+              isPremium: true,
+            });
+          } else if (pcr <= 0.80 && atmPeLTP > 0.5) {
+            // Low PCR = heavy call writing = bears dominate = buy PE
+            const entry = parseFloat(atmPeLTP.toFixed(2));
+            tipSignals.push({
+              segment: "options",
+              assetName: `${seg} ${atmStrike.toLocaleString("en-IN")} PE`,
+              signalType: "buy",
+              entryPrice: entry,
+              stopLoss: parseFloat((entry * 0.65).toFixed(2)),
+              target1:   parseFloat((entry * 1.60).toFixed(2)),
+              target2:   parseFloat((entry * 2.20).toFixed(2)),
+              pcr: pcrStr ?? undefined,
+              notes: `PCR ${pcrStr} (bearish): Heavy call writing signals resistance overhead. Buy ${seg} ${atmStrike} ATM PE for downside momentum. SL 35% of premium; target 60%→120% gain before expiry.`,
+              isPremium: true,
+            });
+          }
+        }
+      } catch (err) {
+        logger.warn({ err, seg }, "[DailyTips] Option chain fetch failed");
+      }
+    }
+  }
+
+  // ── 2. Stock intraday signals (15-min RSI + VWAP + volume filter) ─────────
+  const STOCK_TIP_UNIVERSE = [
+    { symbol: "RELIANCE.NS",  name: "Reliance Industries" },
+    { symbol: "HDFCBANK.NS",  name: "HDFC Bank" },
+    { symbol: "ICICIBANK.NS", name: "ICICI Bank" },
+    { symbol: "INFY.NS",      name: "Infosys" },
+    { symbol: "TCS.NS",       name: "TCS" },
+    { symbol: "AXISBANK.NS",  name: "Axis Bank" },
+    { symbol: "SBIN.NS",      name: "SBI" },
+    { symbol: "WIPRO.NS",     name: "Wipro" },
+    { symbol: "TATASTEEL.NS", name: "Tata Steel" },
+    { symbol: "BAJFINANCE.NS","name": "Bajaj Finance" },
+  ];
+
+  const stockResults = await Promise.allSettled(
+    STOCK_TIP_UNIVERSE.map(async (stock) => {
+      const data = await fetchScannerOHLCV(stock.symbol, "15m");
+      if (!data) return null;
+      const { highs, lows, closes, vols, cmp, changePct } = data;
+      const rsi = scannerRSI(closes);
+      const vwap = scannerVWAP(highs, lows, closes, vols);
+      const volRatio = scannerVolRatio(vols);
+      const recent10h = highs.slice(-11, -1);
+      const recent10l = lows.slice(-11, -1);
+
+      const isBuy  = rsi > 58 && cmp > vwap * 1.002 && volRatio > 1.25 && changePct > 0.3;
+      const isSell = rsi < 42 && cmp < vwap * 0.998 && volRatio > 1.25 && changePct < -0.3;
+      if (!isBuy && !isSell) return null;
+
+      const signal: "buy" | "sell" = isBuy ? "buy" : "sell";
+      const slVal = signal === "buy"
+        ? Math.min(...recent10l) * 0.998
+        : Math.max(...recent10h) * 1.002;
+      const risk = Math.abs(cmp - slVal);
+      const t1 = signal === "buy" ? cmp + risk * 1.5 : cmp - risk * 1.5;
+      const t2 = signal === "buy" ? cmp + risk * 2.5 : cmp - risk * 2.5;
+
+      const reasons: string[] = [];
+      reasons.push(`RSI ${rsi.toFixed(0)}`);
+      if (signal === "buy") {
+        if (cmp > vwap) reasons.push("above VWAP");
+        if (volRatio > 1.5) reasons.push(`${volRatio.toFixed(1)}x vol surge`);
+        if (changePct > 1)  reasons.push(`+${changePct.toFixed(1)}% momentum`);
+      } else {
+        if (cmp < vwap) reasons.push("below VWAP");
+        if (volRatio > 1.5) reasons.push(`${volRatio.toFixed(1)}x vol surge`);
+        if (changePct < -1) reasons.push(`${changePct.toFixed(1)}% selling pressure`);
+      }
+
+      return { stock, signal, entry: cmp, sl: slVal, t1, t2, reasons };
+    })
+  );
+
+  let stockCount = 0;
+  for (const r of stockResults) {
+    if (r.status === "fulfilled" && r.value && stockCount < 4) {
+      const { stock, signal, entry, sl, t1, t2, reasons } = r.value;
+      tipSignals.push({
+        segment: "equity",
+        assetName: stock.name,
+        signalType: signal,
+        entryPrice: parseFloat(entry.toFixed(2)),
+        stopLoss:   parseFloat(sl.toFixed(2)),
+        target1:    parseFloat(t1.toFixed(2)),
+        target2:    parseFloat(t2.toFixed(2)),
+        notes: `${signal.toUpperCase()} signal on 15m chart — ${reasons.join(" · ")}. Entry near ₹${entry.toFixed(0)}. Intraday trade — exit by 3:10 PM. Trail SL after T1 hit.`,
+        isPremium: false,
+      });
+      stockCount++;
+    }
+  }
+
+  // ── 3. Save to DB ─────────────────────────────────────────────────────────
+  if (tipSignals.length === 0) {
+    res.json({ message: "No qualifying signals found — try again after market open (9:30 AM IST)", generated: 0, signals: [] });
+    return;
+  }
+
+  const inserted = [];
+  for (const sig of tipSignals) {
+    try {
+      const [s] = await db.insert(tradeMasterSignals).values({
+        segment:     sig.segment,
+        assetName:   sig.assetName,
+        signalType:  sig.signalType,
+        entryPrice:  String(sig.entryPrice),
+        stopLoss:    String(sig.stopLoss),
+        target1:     String(sig.target1),
+        target2:     sig.target2 != null ? String(sig.target2) : null,
+        riskReward:  calcRR(sig.entryPrice, sig.stopLoss, sig.target1),
+        iv:          sig.iv ?? null,
+        pcr:         sig.pcr ?? null,
+        notes:       sig.notes,
+        isPremium:   sig.isPremium,
+        status:      "active",
+        createdBy:   "auto-tips",
+      }).returning();
+      inserted.push(s);
+    } catch (err) {
+      logger.warn({ err, asset: sig.assetName }, "[DailyTips] Failed to insert signal");
+    }
+  }
+
+  res.status(201).json({ message: `Generated ${inserted.length} daily tips`, generated: inserted.length, signals: inserted });
+});
+
 /** Test connectivity with the stored access token */
 router.get("/trademaster/upstox/status", async (req: Request, res: Response): Promise<void> => {
   if (!requireAdmin(req, res)) return;

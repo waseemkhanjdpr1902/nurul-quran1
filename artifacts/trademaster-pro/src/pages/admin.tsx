@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchSignals, createSignal, updateSignal, deleteSignal, fetchSubscriptions, updateSubscription, fetchUpstoxStatus, fetchUpstoxOptionChain, type Signal, type Subscription, type UpstoxStatus, type UpstoxOptionChain, type ChainSignal } from "@/lib/api";
+import { fetchSignals, createSignal, updateSignal, deleteSignal, fetchSubscriptions, updateSubscription, fetchUpstoxStatus, fetchUpstoxOptionChain, generateDailyTips, type Signal, type Subscription, type UpstoxStatus, type UpstoxOptionChain, type ChainSignal } from "@/lib/api";
 import { useAdmin } from "@/hooks/use-admin";
 
 const SEGMENTS = ["nifty", "banknifty", "options", "futures", "equity", "intraday", "commodity", "currency"] as const;
@@ -500,6 +500,24 @@ export default function Admin({ onBack }: AdminProps) {
   const subscriptions: Subscription[] = subsData?.subscriptions ?? [];
 
   const [loginLoading, setLoginLoading] = useState(false);
+  const [tipsLoading, setTipsLoading] = useState(false);
+  const [tipsMsg, setTipsMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const handleGenerateTips = async () => {
+    if (!adminToken || tipsLoading) return;
+    setTipsLoading(true);
+    setTipsMsg(null);
+    try {
+      const result = await generateDailyTips(adminToken);
+      setTipsMsg({ text: result.generated > 0 ? `✅ ${result.generated} signals generated and posted!` : result.message, ok: result.generated > 0 });
+      if (result.generated > 0) queryClient.invalidateQueries({ queryKey: ["trademaster-signals"] });
+    } catch (err) {
+      setTipsMsg({ text: err instanceof Error ? err.message : "Failed to generate tips", ok: false });
+    } finally {
+      setTipsLoading(false);
+      setTimeout(() => setTipsMsg(null), 7000);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -639,6 +657,30 @@ export default function Admin({ onBack }: AdminProps) {
 
         {activeTab === "signals" && (
           <>
+            {/* ── Auto Daily Tips Generator ─────────────────────────────── */}
+            <div className="bg-gradient-to-r from-green-900/30 to-blue-900/30 border border-green-500/30 rounded-xl p-5 mb-6 flex items-start gap-4">
+              <div className="flex-1">
+                <h2 className="text-white font-semibold text-sm mb-1">🤖 AI Analyst — Generate Daily Tips</h2>
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  Fetches live NIFTY &amp; BANKNIFTY option chains + top stock data and auto-generates 6–9 analyst-grade signals (CE/PE wall sells, directional ATM buys, stock momentum). Signals post instantly to the feed.
+                </p>
+                {tipsMsg && (
+                  <p className={`mt-2 text-xs font-medium ${tipsMsg.ok ? "text-green-400" : "text-red-400"}`}>{tipsMsg.text}</p>
+                )}
+              </div>
+              <button
+                onClick={handleGenerateTips}
+                disabled={tipsLoading}
+                className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                {tipsLoading ? (
+                  <><span className="animate-spin">⟳</span> Generating…</>
+                ) : (
+                  <>⚡ Generate Today's Tips</>
+                )}
+              </button>
+            </div>
+
             <div className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl p-6 mb-6">
               <h2 className="text-white font-semibold text-lg mb-4">
                 {editingId !== null ? "✏️ Edit Signal" : "➕ Post New Signal"}

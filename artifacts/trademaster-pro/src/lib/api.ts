@@ -582,6 +582,18 @@ export async function exchangeUpstoxCode(adminToken: string, code: string, redir
   return r.json();
 }
 
+export async function generateDailyTips(adminToken: string): Promise<{ message: string; generated: number; signals: Signal[] }> {
+  const r = await fetch(`${API_BASE}/daily-tips`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${adminToken}`, "Content-Type": "application/json" },
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ error: "Failed to generate tips" })) as { error?: string };
+    throw new Error(err.error ?? "Failed to generate daily tips");
+  }
+  return r.json();
+}
+
 export async function fetchUpstoxOptionChain(adminToken: string, segment: string, accessToken?: string, expiryDate?: string, contractType?: string): Promise<UpstoxOptionChain> {
   const params = new URLSearchParams({ segment });
   if (accessToken)   params.set("access_token", accessToken);
