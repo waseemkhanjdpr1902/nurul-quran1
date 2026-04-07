@@ -1406,6 +1406,111 @@ function computePositionalMasterSignal(
   };
 }
 
+// ── PCR + VWAP Signal Route (180-second cache) ────────────────────────────────
+
+interface PcrSignalResult {
+  segment: string;
+  pcr: number | null;
+  ltp: number | null;
+  vwap: number | null;
+  signal: "BUY" | "SELL" | "NEUTRAL";
+  reason: string;
+  updatedAt: string;
+}
+
+const PCR_SIGNAL_CACHE: { data: PcrSignalResult[] | null; ts: number } = { data: null, ts: 0 };
+const PCR_SIGNAL_TTL = 180_000; // 180 seconds
+
+router.get("/trademaster/pcr-signal", async (req: Request, res: Response): Promise<void> => {
+  const now = Date.now();
+  const age = now - PCR_SIGNAL_CACHE.ts;
+  if (PCR_SIGNAL_CACHE.data && age < PCR_SIGNAL_TTL) {
+    res.json({
+      signals: PCR_SIGNAL_CACHE.data,
+      cached: true,
+      cachedAt: new Date(PCR_SIGNAL_CACHE.ts).toISOString(),
+      nextRefreshIn: Math.ceil((PCR_SIGNAL_TTL - age) / 1000),
+    });
+    return;
+  }
+
+  const token = process.env.UPSTOX_ACCESS_TOKEN ?? null;
+
+  const INDEX_MAP: { seg: string; instrument: string }[] = [
+    { seg: "NIFTY",     instrument: "NSE_INDEX|Nifty 50"  },
+    { seg: "BANKNIFTY", instrument: "NSE_INDEX|Nifty Bank" },
+  ];
+
+  const results = await Promise.all(INDEX_MAP.map(async ({ seg, instrument }) => {
+    let pcr:  number | null = null;
+    let ltp:  number | null = null;
+    let vwap: number | null = null;
+
+    // 1. Fetch option chain PCR
+    if (token) {
+      try {
+        const expiry = nextWeeklyExpiry(seg);
+        const url = `https://api.upstox.com/v2/option/chain?instrument_key=${encodeURIComponent(instrument)}&expiry_date=${expiry}`;
+        const r = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (r.ok) {
+          const data = await r.json() as Record<string, unknown>;
+          const parsed = parseUpstoxOptionChain(data, seg, expiry);
+          pcr = parsed.pcr;
+        }
+      } catch { /* Upstox unavailable */ }
+    }
+
+    // 2. Fetch 5-min intraday candles for LTP + VWAP
+    try {
+      const candles = await fetchUpstoxCandles(seg, "intraday", token);
+      if (candles && candles.closes.length >= 5) {
+        ltp  = candles.closes[candles.closes.length - 1];
+        vwap = scannerVWAP(candles.highs, candles.lows, candles.closes, candles.vols);
+      }
+    } catch { /* candles unavailable */ }
+
+    // 3. Apply signal rule
+    let signal: "BUY" | "SELL" | "NEUTRAL" = "NEUTRAL";
+    let reason = "";
+
+    if (pcr !== null && ltp !== null && vwap !== null) {
+      const ltpFmt  = `₹${ltp.toFixed(2)}`;
+      const vwapFmt = `₹${vwap.toFixed(2)}`;
+      const pcrFmt  = pcr.toFixed(2);
+      if (pcr > 1.2 && ltp > vwap) {
+        signal = "BUY";
+        reason = `PCR ${pcrFmt} > 1.2 (heavy put writing = bullish) · Price ${ltpFmt} above VWAP ${vwapFmt}`;
+      } else if (pcr < 0.8 && ltp < vwap) {
+        signal = "SELL";
+        reason = `PCR ${pcrFmt} < 0.8 (heavy call writing = bearish) · Price ${ltpFmt} below VWAP ${vwapFmt}`;
+      } else {
+        const pcrNote  = pcr > 1.2 ? "PCR bullish" : pcr < 0.8 ? "PCR bearish" : `PCR ${pcrFmt} neutral`;
+        const priceNote = ltp > vwap ? `Price above VWAP` : `Price below VWAP`;
+        reason = `${pcrNote} · ${priceNote} — no confirmed directional alignment`;
+      }
+    } else if (!token) {
+      reason = "UPSTOX_ACCESS_TOKEN not configured";
+    } else {
+      reason = "Market data unavailable — market may be closed";
+    }
+
+    return { segment: seg, pcr, ltp, vwap, signal, reason, updatedAt: new Date().toISOString() } satisfies PcrSignalResult;
+  }));
+
+  PCR_SIGNAL_CACHE.data = results;
+  PCR_SIGNAL_CACHE.ts   = Date.now();
+
+  res.json({
+    signals: results,
+    cached: false,
+    cachedAt: new Date().toISOString(),
+    nextRefreshIn: 180,
+  });
+});
+
 // ── Master Signals Route ─────────────────────────────────────────────────────
 
 const MASTER_SIGNALS_CACHE: { data: MasterSignal[] | null; ts: number } = { data: null, ts: 0 };

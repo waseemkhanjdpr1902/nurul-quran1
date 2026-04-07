@@ -650,6 +650,29 @@ export async function generateDailyTips(adminToken: string): Promise<{ message: 
   return r.json();
 }
 
+export type PcrSignalItem = {
+  segment: string;
+  pcr: number | null;
+  ltp: number | null;
+  vwap: number | null;
+  signal: "BUY" | "SELL" | "NEUTRAL";
+  reason: string;
+  updatedAt: string;
+};
+
+export type PcrSignalResponse = {
+  signals: PcrSignalItem[];
+  cached: boolean;
+  cachedAt: string;
+  nextRefreshIn: number;
+};
+
+export async function fetchPcrSignals(): Promise<PcrSignalResponse> {
+  const r = await fetch(`${API_BASE}/pcr-signal`);
+  if (!r.ok) throw new Error("PCR signal fetch failed");
+  return r.json();
+}
+
 export async function fetchUpstoxOptionChain(adminToken: string, segment: string, accessToken?: string, expiryDate?: string, contractType?: string): Promise<UpstoxOptionChain> {
   const params = new URLSearchParams({ segment });
   if (accessToken)   params.set("access_token", accessToken);
