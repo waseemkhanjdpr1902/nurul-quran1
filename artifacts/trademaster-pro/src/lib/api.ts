@@ -582,6 +582,62 @@ export async function exchangeUpstoxCode(adminToken: string, code: string, redir
   return r.json();
 }
 
+// ── Master Signal Engine Types ────────────────────────────────────────────────
+
+export type MasterSignalStrength = "Strong Buy" | "Buy" | "Neutral" | "Sell" | "Strong Sell";
+
+export type OIAlert = {
+  strike: number;
+  optionType: "CE" | "PE";
+  oiChange: number;
+  oiChangePct: number;
+  action: "Writing" | "Unwinding";
+};
+
+export type MasterSignal = {
+  segment: string;
+  timeframe: "Intraday" | "Positional";
+  signal: MasterSignalStrength;
+  entry: number;
+  sl: number;
+  target: number;
+  target2: number;
+  dataReason: string;
+  indicators: {
+    ema9?: number;
+    vwap?: number;
+    rsi?: number;
+    pcr?: number;
+    dma20?: number;
+    dma50?: number;
+    macdLine?: number;
+    signalLine?: number;
+    macdHistogram?: number;
+    atr?: number;
+  };
+  oiAlerts: OIAlert[];
+  confidence: number;
+  fetchedAt: string;
+};
+
+export type MasterSignalsResponse = {
+  signals: MasterSignal[];
+  cached: boolean;
+  fetchedAt: string;
+  error?: string;
+};
+
+export async function fetchMasterSignals(adminToken: string): Promise<MasterSignalsResponse> {
+  const r = await fetch(`${API_BASE}/master-signals`, {
+    headers: { "Authorization": `Bearer ${adminToken}` },
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ error: "Failed to fetch master signals" })) as { error?: string };
+    throw new Error(err.error ?? "Failed to fetch master signals");
+  }
+  return r.json();
+}
+
 export async function generateDailyTips(adminToken: string): Promise<{ message: string; generated: number; signals: Signal[] }> {
   const r = await fetch(`${API_BASE}/daily-tips`, {
     method: "POST",

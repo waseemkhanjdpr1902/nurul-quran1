@@ -1036,6 +1036,480 @@ async function fetchScannerOHLCV(symbol: string, interval: string): Promise<{ op
   } catch { return null; }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// MASTER SIGNAL ENGINE — Quantitative Analytics Suite
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Math Helpers ─────────────────────────────────────────────────────────────
+
+/** Compute full EMA array (oldest → newest), seeds with SMA. */
+function computeEMA(closes: number[], period: number): number[] {
+  if (closes.length < period) return [];
+  const k = 2 / (period + 1);
+  const seed = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  const result: number[] = [seed];
+  for (let i = period; i < closes.length; i++) {
+    result.push(closes[i] * k + result[result.length - 1] * (1 - k));
+  }
+  return result;
+}
+
+/** Compute SMA of the last N bars. */
+function computeSMA(closes: number[], period: number): number | null {
+  if (closes.length < period) return null;
+  const sl = closes.slice(-period);
+  return sl.reduce((a, b) => a + b, 0) / sl.length;
+}
+
+/** Compute MACD (12/26/9). Returns { macd, signal, histogram }. */
+function computeMACD(closes: number[]): { macd: number; signal: number; histogram: number } | null {
+  if (closes.length < 36) return null;
+  const ema12 = computeEMA(closes, 12);
+  const ema26 = computeEMA(closes, 26);
+  const minLen = Math.min(ema12.length, ema26.length);
+  if (minLen < 10) return null;
+  const macdLine: number[] = [];
+  for (let i = 0; i < minLen; i++) {
+    macdLine.push(ema12[ema12.length - minLen + i] - ema26[ema26.length - minLen + i]);
+  }
+  const sigArr = computeEMA(macdLine, 9);
+  if (sigArr.length === 0) return null;
+  const macd = macdLine[macdLine.length - 1];
+  const signal = sigArr[sigArr.length - 1];
+  return { macd, signal, histogram: macd - signal };
+}
+
+/** Average True Range over `period` bars. */
+function computeATR(highs: number[], lows: number[], closes: number[], period = 14): number | null {
+  if (closes.length < period + 2) return null;
+  const trs: number[] = [];
+  for (let i = 1; i < closes.length; i++) {
+    trs.push(Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1])));
+  }
+  return trs.slice(-period).reduce((a, b) => a + b, 0) / period;
+}
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface OIAlert {
+  strike: number;
+  optionType: "CE" | "PE";
+  oiChange: number;
+  oiChangePct: number;
+  action: "Writing" | "Unwinding";
+}
+
+interface MasterSignal {
+  segment: string;
+  timeframe: "Intraday" | "Positional";
+  signal: "Strong Buy" | "Buy" | "Neutral" | "Sell" | "Strong Sell";
+  entry: number;
+  sl: number;
+  target: number;
+  target2: number;
+  dataReason: string;
+  indicators: {
+    ema9?: number;
+    vwap?: number;
+    rsi?: number;
+    pcr?: number;
+    dma20?: number;
+    dma50?: number;
+    macdLine?: number;
+    signalLine?: number;
+    macdHistogram?: number;
+    atr?: number;
+  };
+  oiAlerts: OIAlert[];
+  confidence: number; // 1–5
+  fetchedAt: string;
+}
+
+// ── OI Spike Cache (detects >50% OI change in 15 min) ────────────────────────
+
+interface OISnapshot { ts: number; data: Record<string, number>; }
+const OI_SNAPSHOT_STORE = new Map<string, OISnapshot[]>();
+
+function detectOISpikes(
+  strikes: ReturnType<typeof parseUpstoxOptionChain>["strikes"],
+  segment: string
+): OIAlert[] {
+  const key = segment.toUpperCase();
+  const now = Date.now();
+  const current: OISnapshot = { ts: now, data: {} };
+  for (const s of strikes) {
+    if (s.ce.oi != null && s.ce.oi > 0) current.data[`${s.strike}_CE`] = s.ce.oi;
+    if (s.pe.oi != null && s.pe.oi > 0) current.data[`${s.strike}_PE`] = s.pe.oi;
+  }
+
+  const existing = (OI_SNAPSHOT_STORE.get(key) ?? []).filter(s => now - s.ts < 25 * 60_000);
+  existing.push(current);
+  OI_SNAPSHOT_STORE.set(key, existing);
+
+  // Compare against snapshot from ~15 minutes ago (between 10–20 min old)
+  const prev = existing.find(s => now - s.ts >= 10 * 60_000 && now - s.ts <= 20 * 60_000);
+  if (!prev) return [];
+
+  const alerts: OIAlert[] = [];
+  for (const [k, curOI] of Object.entries(current.data)) {
+    const prevOI = prev.data[k] ?? 0;
+    if (prevOI <= 0) continue;
+    const pct = ((curOI - prevOI) / prevOI) * 100;
+    if (Math.abs(pct) < 50) continue;
+    const [strikeStr, optionType] = k.split("_");
+    alerts.push({
+      strike: parseInt(strikeStr, 10),
+      optionType: optionType as "CE" | "PE",
+      oiChange: curOI - prevOI,
+      oiChangePct: parseFloat(pct.toFixed(1)),
+      action: pct > 0 ? "Writing" : "Unwinding",
+    });
+  }
+  return alerts.sort((a, b) => Math.abs(b.oiChangePct) - Math.abs(a.oiChangePct)).slice(0, 6);
+}
+
+// ── Upstox Candle Fetcher ────────────────────────────────────────────────────
+
+interface OHLCVData { opens: number[]; highs: number[]; lows: number[]; closes: number[]; vols: number[]; }
+
+async function fetchUpstoxCandles(
+  instrumentKey: string,
+  timeframe: "intraday" | "daily",
+  token: string
+): Promise<OHLCVData | null> {
+  try {
+    let url: string;
+    if (timeframe === "intraday") {
+      // Upstox v3 — returns today's intraday candles (5-min interval)
+      url = `https://api.upstox.com/v3/historical-candle/intraday/${encodeURIComponent(instrumentKey)}/5minute`;
+    } else {
+      // Upstox v2 — returns daily candles for last 180 calendar days
+      const now = new Date(Date.now() + 5.5 * 3600_000);
+      const toDate = now.toISOString().slice(0, 10);
+      const fromTs = new Date(now.getTime() - 200 * 86_400_000);
+      const fromDate = fromTs.toISOString().slice(0, 10);
+      url = `https://api.upstox.com/v2/historical-candle/${encodeURIComponent(instrumentKey)}/day/${toDate}/${fromDate}`;
+    }
+
+    const r = await fetch(url, {
+      headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!r.ok) {
+      logger.warn({ status: r.status, url }, "[MasterEngine] Candle fetch failed");
+      return null;
+    }
+
+    const json = await r.json() as Record<string, unknown>;
+    // Both v2 and v3 return: { data: { candles: [[ts,o,h,l,c,v,oi], ...] } }
+    const candleArr = (json?.data as Record<string, unknown>)?.candles as unknown[][] | undefined;
+    if (!Array.isArray(candleArr) || candleArr.length < 10) return null;
+
+    // Upstox returns newest-first; reverse to oldest-first
+    const sorted = [...candleArr].reverse();
+    const result: OHLCVData = { opens: [], highs: [], lows: [], closes: [], vols: [] };
+    for (const c of sorted) {
+      if (Array.isArray(c) && c.length >= 6) {
+        const [, o, h, l, cl, v] = c as number[];
+        if (o > 0 && cl > 0) {
+          result.opens.push(o); result.highs.push(h); result.lows.push(l);
+          result.closes.push(cl); result.vols.push(v ?? 0);
+        }
+      }
+    }
+    return result.closes.length >= 10 ? result : null;
+  } catch (err) {
+    logger.warn({ err }, "[MasterEngine] Candle fetch threw");
+    return null;
+  }
+}
+
+// ── Intraday Signal (9 EMA + VWAP + RSI + PCR) ──────────────────────────────
+
+function computeIntradayMasterSignal(
+  candles: OHLCVData,
+  pcr: number | null,
+  segment: string
+): MasterSignal {
+  const { highs, lows, closes, vols } = candles;
+  const cmp = closes[closes.length - 1];
+  const prevClose = closes[closes.length - 2] ?? cmp;
+
+  const ema9Arr = computeEMA(closes, 9);
+  const ema9 = ema9Arr[ema9Arr.length - 1] ?? cmp;
+  const ema9Prev = ema9Arr[ema9Arr.length - 2] ?? ema9;
+
+  const vwap = scannerVWAP(highs, lows, closes, vols);
+  const rsi = scannerRSI(closes, 14);
+  const atr = computeATR(highs, lows, closes, 10) ?? cmp * 0.003;
+
+  // EMA crossover detection (price crossed EMA9 in the last bar)
+  const crossedAboveEMA = prevClose < ema9Prev && cmp > ema9;
+  const crossedBelowEMA = prevClose > ema9Prev && cmp < ema9;
+
+  // Score: each condition adds weight
+  let bullScore = 0, bearScore = 0;
+  if (crossedAboveEMA)  bullScore += 3;
+  else if (cmp > ema9)  bullScore += 1;
+  if (crossedBelowEMA)  bearScore += 3;
+  else if (cmp < ema9)  bearScore += 1;
+  if (cmp > vwap)       bullScore += 2; else bearScore += 2;
+  if (rsi > 70)         bullScore += 3;
+  else if (rsi > 60)    bullScore += 2;
+  else if (rsi > 55)    bullScore += 1;
+  if (rsi < 30)         bearScore += 3;
+  else if (rsi < 40)    bearScore += 2;
+  else if (rsi < 45)    bearScore += 1;
+  if (pcr !== null) {
+    if (pcr >= 1.3)     bullScore += 3;
+    else if (pcr >= 1.1) bullScore += 1;
+    else if (pcr <= 0.7) bearScore += 3;
+    else if (pcr <= 0.9) bearScore += 1;
+  }
+
+  const maxScore = Math.max(bullScore, bearScore);
+  const direction: "buy" | "sell" | null = bullScore > bearScore ? "buy" : bearScore > bullScore ? "sell" : null;
+  const signal: MasterSignal["signal"] =
+    direction === "buy"  ? (maxScore >= 7 ? "Strong Buy"  : "Buy")  :
+    direction === "sell" ? (maxScore >= 7 ? "Strong Sell" : "Sell") : "Neutral";
+
+  const recent5L = Math.min(...lows.slice(-6, -1));
+  const recent5H = Math.max(...highs.slice(-6, -1));
+  const entry = parseFloat(cmp.toFixed(2));
+  let sl: number, target: number, target2: number;
+  if (direction === "buy") {
+    sl      = parseFloat(Math.max(recent5L * 0.9990, cmp - atr * 1.5).toFixed(2));
+    target  = parseFloat((entry + (entry - sl) * 2.0).toFixed(2));
+    target2 = parseFloat((entry + (entry - sl) * 3.0).toFixed(2));
+  } else if (direction === "sell") {
+    sl      = parseFloat(Math.min(recent5H * 1.0010, cmp + atr * 1.5).toFixed(2));
+    target  = parseFloat((entry - (sl - entry) * 2.0).toFixed(2));
+    target2 = parseFloat((entry - (sl - entry) * 3.0).toFixed(2));
+  } else {
+    sl = parseFloat((entry - atr * 1.5).toFixed(2));
+    target = parseFloat((entry + atr * 1.5).toFixed(2));
+    target2 = target;
+  }
+
+  const reasons: string[] = [];
+  if (crossedAboveEMA)      reasons.push("9 EMA Crossover (▲ Bullish)");
+  else if (crossedBelowEMA) reasons.push("9 EMA Crossover (▼ Bearish)");
+  else                      reasons.push(cmp > ema9 ? "Above 9 EMA" : "Below 9 EMA");
+  reasons.push(cmp > vwap ? "Above VWAP" : "Below VWAP");
+  reasons.push(`RSI ${rsi.toFixed(0)}`);
+  if (pcr !== null) reasons.push(`PCR ${pcr.toFixed(2)} (${pcr > 1.2 ? "Bullish" : pcr < 0.8 ? "Bearish" : "Neutral"})`);
+
+  return {
+    segment,
+    timeframe: "Intraday",
+    signal,
+    entry,
+    sl,
+    target,
+    target2,
+    dataReason: reasons.join(" + "),
+    indicators: {
+      ema9: parseFloat(ema9.toFixed(2)),
+      vwap: parseFloat(vwap.toFixed(2)),
+      rsi: parseFloat(rsi.toFixed(1)),
+      pcr: pcr ?? undefined,
+      atr: parseFloat(atr.toFixed(2)),
+    },
+    oiAlerts: [],
+    confidence: Math.min(5, Math.round(maxScore / 2)),
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+// ── Positional Signal (20/50 DMA + MACD + Monthly PCR) ──────────────────────
+
+function computePositionalMasterSignal(
+  candles: OHLCVData,
+  monthlyPcr: number | null,
+  segment: string
+): MasterSignal | null {
+  const { highs, lows, closes } = candles;
+  if (closes.length < 52) return null;
+  const cmp = closes[closes.length - 1];
+
+  const dma20 = computeSMA(closes, 20);
+  const dma50 = computeSMA(closes, 50);
+  if (!dma20 || !dma50) return null;
+
+  // Previous-day values for crossover detection
+  const dma20Prev = computeSMA(closes.slice(0, -1), 20);
+  const dma50Prev = computeSMA(closes.slice(0, -1), 50);
+  const goldenCross = dma20Prev !== null && dma50Prev !== null && dma20Prev < dma50Prev && dma20 >= dma50;
+  const deathCross  = dma20Prev !== null && dma50Prev !== null && dma20Prev > dma50Prev && dma20 <= dma50;
+
+  const macd = computeMACD(closes);
+  const atr  = computeATR(highs, lows, closes, 14) ?? cmp * 0.01;
+
+  let bullScore = 0, bearScore = 0;
+  if (goldenCross)       bullScore += 4;
+  else if (dma20 > dma50) bullScore += 2;
+  if (deathCross)        bearScore += 4;
+  else if (dma20 < dma50) bearScore += 2;
+  if (macd) {
+    if (macd.histogram > 0 && macd.macd > 0) bullScore += 3;
+    else if (macd.histogram > 0)             bullScore += 1;
+    if (macd.histogram < 0 && macd.macd < 0) bearScore += 3;
+    else if (macd.histogram < 0)             bearScore += 1;
+    // MACD crossover (histogram flipped from negative to positive)
+    const macdCrossUp = macd.macd > macd.signal && macd.histogram > 0 && macd.histogram < Math.abs(macd.signal) * 0.3;
+    if (macdCrossUp) bullScore += 2;
+  }
+  if (monthlyPcr !== null) {
+    if (monthlyPcr >= 1.3)     bullScore += 3;
+    else if (monthlyPcr >= 1.1) bullScore += 1;
+    else if (monthlyPcr <= 0.7) bearScore += 3;
+    else if (monthlyPcr <= 0.9) bearScore += 1;
+  }
+  if (cmp > dma20) bullScore += 1; else bearScore += 1;
+
+  const maxScore = Math.max(bullScore, bearScore);
+  const direction: "buy" | "sell" | null = bullScore > bearScore ? "buy" : bearScore > bullScore ? "sell" : null;
+  const signal: MasterSignal["signal"] =
+    direction === "buy"  ? (maxScore >= 7 ? "Strong Buy"  : "Buy")  :
+    direction === "sell" ? (maxScore >= 7 ? "Strong Sell" : "Sell") : "Neutral";
+
+  const entry = parseFloat(cmp.toFixed(2));
+  let sl: number, target: number, target2: number;
+  if (direction === "buy") {
+    sl      = parseFloat(Math.min(dma20 * 0.995, cmp - atr * 2).toFixed(2));
+    target  = parseFloat((entry + atr * 5).toFixed(2));
+    target2 = parseFloat((entry + atr * 9).toFixed(2));
+  } else if (direction === "sell") {
+    sl      = parseFloat(Math.max(dma20 * 1.005, cmp + atr * 2).toFixed(2));
+    target  = parseFloat((entry - atr * 5).toFixed(2));
+    target2 = parseFloat((entry - atr * 9).toFixed(2));
+  } else {
+    sl = parseFloat((cmp - atr * 2).toFixed(2));
+    target = parseFloat((cmp + atr * 2).toFixed(2));
+    target2 = target;
+  }
+
+  const reasons: string[] = [];
+  if (goldenCross)       reasons.push("Golden Cross (20 DMA crossed above 50 DMA)");
+  else if (deathCross)   reasons.push("Death Cross (20 DMA crossed below 50 DMA)");
+  else reasons.push(`20 DMA ${dma20 > dma50 ? ">" : "<"} 50 DMA (${dma20.toFixed(0)} vs ${dma50.toFixed(0)})`);
+  if (macd) {
+    reasons.push(`MACD Histogram ${macd.histogram > 0 ? "Positive" : "Negative"} (${macd.histogram.toFixed(1)})`);
+  }
+  if (monthlyPcr !== null) reasons.push(`Monthly PCR ${monthlyPcr.toFixed(2)}`);
+
+  return {
+    segment,
+    timeframe: "Positional",
+    signal,
+    entry,
+    sl,
+    target,
+    target2,
+    dataReason: reasons.join(" + "),
+    indicators: {
+      dma20: parseFloat(dma20.toFixed(2)),
+      dma50: parseFloat(dma50.toFixed(2)),
+      macdLine:      macd ? parseFloat(macd.macd.toFixed(2)) : undefined,
+      signalLine:    macd ? parseFloat(macd.signal.toFixed(2)) : undefined,
+      macdHistogram: macd ? parseFloat(macd.histogram.toFixed(2)) : undefined,
+      pcr: monthlyPcr ?? undefined,
+      atr: parseFloat(atr.toFixed(2)),
+    },
+    oiAlerts: [],
+    confidence: Math.min(5, Math.round(maxScore / 2)),
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+// ── Master Signals Route ─────────────────────────────────────────────────────
+
+const MASTER_SIGNALS_CACHE: { data: MasterSignal[] | null; ts: number } = { data: null, ts: 0 };
+const MASTER_SIGNALS_TTL = 3 * 60_000; // 3-minute cache (matches option chain polling interval)
+
+router.get("/trademaster/master-signals", async (req: Request, res: Response): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+
+  // Serve cache if fresh enough
+  if (MASTER_SIGNALS_CACHE.data && Date.now() - MASTER_SIGNALS_CACHE.ts < MASTER_SIGNALS_TTL) {
+    res.json({ signals: MASTER_SIGNALS_CACHE.data, cached: true, fetchedAt: new Date(MASTER_SIGNALS_CACHE.ts).toISOString() });
+    return;
+  }
+
+  const token = process.env.UPSTOX_ACCESS_TOKEN;
+  if (!token) {
+    res.status(400).json({ error: "UPSTOX_ACCESS_TOKEN not configured — required for candle data", signals: [] });
+    return;
+  }
+
+  const results: MasterSignal[] = [];
+
+  const SEGMENTS = [
+    { seg: "NIFTY",     displayName: "Nifty 50",   instrument: UPSTOX_INSTRUMENT_MAP.NIFTY },
+    { seg: "BANKNIFTY", displayName: "Bank Nifty",  instrument: UPSTOX_INSTRUMENT_MAP.BANKNIFTY },
+  ];
+
+  await Promise.all(SEGMENTS.map(async ({ seg, displayName, instrument }) => {
+    const weeklyExpiry  = nextWeeklyExpiry(seg);
+    const monthlyExpiry = nextIndexMonthlyExpiry(seg);
+
+    const [intradayResult, dailyResult, weeklyRaw, monthlyRaw] = await Promise.allSettled([
+      fetchUpstoxCandles(instrument, "intraday", token),
+      fetchUpstoxCandles(instrument, "daily",    token),
+      fetch(`https://api.upstox.com/v2/option/chain?instrument_key=${encodeURIComponent(instrument)}&expiry_date=${weeklyExpiry}`, {
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+        signal: AbortSignal.timeout(10_000),
+      }).then(r => r.ok ? r.json() as Promise<Record<string, unknown>> : null).catch(() => null),
+      fetch(`https://api.upstox.com/v2/option/chain?instrument_key=${encodeURIComponent(instrument)}&expiry_date=${monthlyExpiry}`, {
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+        signal: AbortSignal.timeout(10_000),
+      }).then(r => r.ok ? r.json() as Promise<Record<string, unknown>> : null).catch(() => null),
+    ]);
+
+    const intradayCandles  = intradayResult.status  === "fulfilled" ? intradayResult.value  : null;
+    const dailyCandles     = dailyResult.status     === "fulfilled" ? dailyResult.value     : null;
+    const weeklyChainRaw   = weeklyRaw.status       === "fulfilled" ? weeklyRaw.value       : null;
+    const monthlyChainRaw  = monthlyRaw.status      === "fulfilled" ? monthlyRaw.value      : null;
+
+    const weeklyChain  = weeklyChainRaw  ? parseUpstoxOptionChain(weeklyChainRaw,  seg, weeklyExpiry)  : null;
+    const monthlyChain = monthlyChainRaw ? parseUpstoxOptionChain(monthlyChainRaw, seg, monthlyExpiry) : null;
+    const oiAlerts     = weeklyChain ? detectOISpikes(weeklyChain.strikes, seg) : [];
+
+    // ── Intraday Signal ──
+    if (intradayCandles) {
+      const sig = computeIntradayMasterSignal(intradayCandles, weeklyChain?.pcr ?? null, displayName);
+      sig.oiAlerts = oiAlerts;
+      if (oiAlerts.length > 0) {
+        const alertStr = oiAlerts.slice(0, 2).map(a => `${a.action} at ${a.strike} ${a.optionType} (${a.oiChangePct > 0 ? "+" : ""}${a.oiChangePct}%)`).join(", ");
+        sig.dataReason += ` + ${alertStr}`;
+      }
+      results.push(sig);
+    }
+
+    // ── Positional Signal ──
+    if (dailyCandles) {
+      const sig = computePositionalMasterSignal(dailyCandles, monthlyChain?.pcr ?? null, displayName);
+      if (sig) {
+        sig.oiAlerts = oiAlerts;
+        results.push(sig);
+      }
+    }
+  }));
+
+  // Sort: intraday first, then positional; within each group by confidence desc
+  results.sort((a, b) => {
+    if (a.timeframe !== b.timeframe) return a.timeframe === "Intraday" ? -1 : 1;
+    return b.confidence - a.confidence;
+  });
+
+  MASTER_SIGNALS_CACHE.data = results;
+  MASTER_SIGNALS_CACHE.ts   = Date.now();
+
+  res.json({ signals: results, cached: false, fetchedAt: new Date().toISOString() });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 router.get("/trademaster/scanner", async (req: Request, res: Response): Promise<void> => {
   try {
     const { session_id, segment = "equity", interval = "5m" } = req.query;

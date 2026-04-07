@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchSignals, createSignal, updateSignal, deleteSignal, fetchSubscriptions, updateSubscription, fetchUpstoxStatus, fetchUpstoxOptionChain, generateDailyTips, type Signal, type Subscription, type UpstoxStatus, type UpstoxOptionChain, type ChainSignal } from "@/lib/api";
+import { fetchSignals, createSignal, updateSignal, deleteSignal, fetchSubscriptions, updateSubscription, fetchUpstoxStatus, fetchUpstoxOptionChain, generateDailyTips, fetchMasterSignals, type Signal, type Subscription, type UpstoxStatus, type UpstoxOptionChain, type ChainSignal, type MasterSignal, type OIAlert } from "@/lib/api";
 import { useAdmin } from "@/hooks/use-admin";
 
 const SEGMENTS = ["nifty", "banknifty", "options", "futures", "equity", "intraday", "commodity", "currency"] as const;
@@ -471,7 +471,233 @@ const EMPTY_FORM: FormData = {
   iv: "", pcr: "", notes: "", isPremium: false,
 };
 
-type AdminTab = "signals" | "subscriptions" | "upstox";
+type AdminTab = "signals" | "subscriptions" | "upstox" | "master";
+
+// ─── Master Signal Panel ───────────────────────────────────────────────────────
+
+const SIGNAL_COLORS: Record<string, { border: string; badge: string; text: string; dot: string }> = {
+  "Strong Buy":  { border: "border-green-500/60",  badge: "bg-green-500/20 text-green-300",  text: "text-green-400",  dot: "bg-green-500"  },
+  "Buy":         { border: "border-green-400/40",  badge: "bg-green-500/10 text-green-400",  text: "text-green-300",  dot: "bg-green-400"  },
+  "Neutral":     { border: "border-gray-500/30",   badge: "bg-gray-500/20  text-gray-400",   text: "text-gray-400",   dot: "bg-gray-500"   },
+  "Sell":        { border: "border-red-400/40",    badge: "bg-red-500/10   text-red-400",    text: "text-red-300",    dot: "bg-red-400"    },
+  "Strong Sell": { border: "border-red-500/60",    badge: "bg-red-500/20   text-red-300",    text: "text-red-400",    dot: "bg-red-500"    },
+};
+
+function ConfidenceDots({ n }: { n: number }) {
+  return (
+    <div className="flex gap-1 items-center">
+      {[1, 2, 3, 4, 5].map(i => (
+        <span key={i} className={`w-2 h-2 rounded-full ${i <= n ? "bg-yellow-400" : "bg-gray-700"}`} />
+      ))}
+    </div>
+  );
+}
+
+function OIAlertChips({ alerts }: { alerts: OIAlert[] }) {
+  if (!alerts.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      {alerts.map((a, i) => (
+        <span key={i} className={`text-xs px-2 py-0.5 rounded-full font-medium ${a.action === "Writing" ? "bg-orange-500/20 text-orange-300 border border-orange-500/30" : "bg-purple-500/20 text-purple-300 border border-purple-500/30"}`}>
+          {a.action} {a.strike} {a.optionType} ({a.oiChangePct > 0 ? "+" : ""}{a.oiChangePct}%)
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function IndicatorRow({ label, value }: { label: string; value: string | number | undefined }) {
+  if (value == null || value === undefined) return null;
+  return (
+    <div className="flex justify-between items-center py-1 border-b border-[hsl(220,13%,20%)] last:border-0">
+      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-xs text-gray-200 font-mono">{typeof value === "number" ? value.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : value}</span>
+    </div>
+  );
+}
+
+function MasterSignalCard({ sig }: { sig: MasterSignal }) {
+  const c = SIGNAL_COLORS[sig.signal] ?? SIGNAL_COLORS["Neutral"];
+  const ind = sig.indicators;
+  const isIntraday = sig.timeframe === "Intraday";
+  const rr = sig.sl !== sig.entry ? Math.abs((sig.target - sig.entry) / (sig.sl - sig.entry)).toFixed(1) : "–";
+  return (
+    <div className={`bg-[hsl(220,13%,13%)] border ${c.border} rounded-xl p-4`}>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${c.dot}`} />
+            <span className="text-white font-bold text-sm">{sig.segment}</span>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-[hsl(220,13%,20%)] text-gray-400">{isIntraday ? "⚡ Intraday (5m)" : "📈 Positional (Daily)"}</span>
+          </div>
+          <div className="mt-1.5 flex items-center gap-2">
+            <span className={`text-sm font-bold px-2 py-0.5 rounded ${c.badge}`}>{sig.signal}</span>
+            <ConfidenceDots n={sig.confidence} />
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs text-gray-500">RR Ratio</div>
+          <div className="text-white font-bold text-lg">{rr}:1</div>
+        </div>
+      </div>
+
+      {/* Entry / SL / Targets */}
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        {[
+          { label: "Entry", value: sig.entry, cls: "text-blue-400" },
+          { label: "SL",    value: sig.sl,    cls: "text-red-400"  },
+          { label: "T1",    value: sig.target, cls: "text-green-400" },
+          { label: "T2",    value: sig.target2, cls: "text-emerald-400" },
+        ].map(({ label, value, cls }) => (
+          <div key={label} className="bg-[hsl(220,13%,18%)] rounded-lg p-2 text-center">
+            <div className="text-xs text-gray-500 mb-0.5">{label}</div>
+            <div className={`text-sm font-bold ${cls}`}>₹{value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Data Reason */}
+      <div className="bg-[hsl(220,13%,10%)] rounded-lg p-2.5 mb-3">
+        <div className="text-xs text-gray-500 mb-1">Signal Basis</div>
+        <div className="text-xs text-gray-300 leading-relaxed">{sig.dataReason}</div>
+      </div>
+
+      {/* Indicators */}
+      <div className="grid grid-cols-2 gap-x-4 mb-2">
+        {isIntraday ? (
+          <>
+            <IndicatorRow label="9 EMA" value={ind.ema9} />
+            <IndicatorRow label="VWAP" value={ind.vwap} />
+            <IndicatorRow label="RSI (14)" value={ind.rsi} />
+            <IndicatorRow label="PCR" value={ind.pcr} />
+            <IndicatorRow label="ATR" value={ind.atr} />
+          </>
+        ) : (
+          <>
+            <IndicatorRow label="20 DMA" value={ind.dma20} />
+            <IndicatorRow label="50 DMA" value={ind.dma50} />
+            <IndicatorRow label="MACD" value={ind.macdLine} />
+            <IndicatorRow label="Signal" value={ind.signalLine} />
+            <IndicatorRow label="Histogram" value={ind.macdHistogram} />
+            <IndicatorRow label="Monthly PCR" value={ind.pcr} />
+            <IndicatorRow label="ATR" value={ind.atr} />
+          </>
+        )}
+      </div>
+
+      {/* OI Alerts */}
+      <OIAlertChips alerts={sig.oiAlerts} />
+
+      <div className="mt-2 text-right">
+        <span className="text-xs text-gray-600">{new Date(sig.fetchedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+      </div>
+    </div>
+  );
+}
+
+function MasterSignalsPanel({ adminToken }: { adminToken: string }) {
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
+    queryKey: ["master-signals", adminToken],
+    queryFn: () => fetchMasterSignals(adminToken),
+    staleTime: 3 * 60_000,
+    refetchInterval: 3 * 60_000,
+    retry: 1,
+  });
+
+  const signals = data?.signals ?? [];
+  const intraday   = signals.filter(s => s.timeframe === "Intraday");
+  const positional = signals.filter(s => s.timeframe === "Positional");
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/20 rounded-xl p-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-white font-bold text-base">📡 Master Signal Engine</h2>
+          <p className="text-gray-400 text-xs mt-1 leading-relaxed">
+            Live quantitative analysis — Upstox 5-min intraday candles (9 EMA + VWAP + RSI + PCR) and daily candles (20/50 DMA + MACD + Monthly PCR) for Nifty 50 and Bank Nifty. OI spike alerts triggered on ≥50% open interest change in 15 min. Refreshes every 3 minutes.
+          </p>
+          {data?.fetchedAt && (
+            <p className="text-gray-600 text-xs mt-1">
+              Last updated: {new Date(data.fetchedAt).toLocaleTimeString("en-IN")}
+              {data.cached ? " (cached)" : " (live)"}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white text-xs font-semibold rounded-lg transition-colors"
+        >
+          <span className={isFetching ? "animate-spin" : ""}>⟳</span>
+          {isFetching ? "Fetching…" : "Refresh"}
+        </button>
+      </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="text-center py-12 text-gray-500">
+          <div className="text-4xl mb-3 animate-pulse">📡</div>
+          <p className="text-sm">Fetching Upstox candles + option chains…</p>
+          <p className="text-xs mt-1 text-gray-600">This may take 10–15 seconds on first load</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {isError && (
+        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-5 text-center">
+          <div className="text-red-400 font-semibold text-sm mb-1">⚠ Failed to fetch master signals</div>
+          <div className="text-red-400/70 text-xs">{error instanceof Error ? error.message : "Unknown error"}</div>
+          <div className="text-gray-500 text-xs mt-2">Make sure UPSTOX_ACCESS_TOKEN is set and valid.</div>
+        </div>
+      )}
+
+      {/* No Data (market may be closed or data unavailable) */}
+      {!isLoading && !isError && signals.length === 0 && (
+        <div className="text-center py-10 text-gray-500">
+          <div className="text-4xl mb-3">🌙</div>
+          <p className="text-sm">No signals generated yet.</p>
+          <p className="text-xs mt-1">Market may be closed or Upstox token may need renewal. Try refreshing after 9:15 AM IST.</p>
+        </div>
+      )}
+
+      {/* Intraday Signals */}
+      {intraday.length > 0 && (
+        <div>
+          <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-3">⚡ Intraday Scalper (5-min)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {intraday.map((s, i) => <MasterSignalCard key={i} sig={s} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Positional Signals */}
+      {positional.length > 0 && (
+        <div>
+          <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-3">📈 Positional Trend Follower (Daily)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {positional.map((s, i) => <MasterSignalCard key={i} sig={s} />)}
+          </div>
+        </div>
+      )}
+
+      {/* Legend */}
+      {signals.length > 0 && (
+        <div className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl p-4 text-xs text-gray-500 space-y-1">
+          <p className="font-semibold text-gray-400 mb-2">📌 How to Read</p>
+          <p>• <span className="text-gray-300">Confidence dots</span> (⭐): 1–5 based on number of confirming conditions</p>
+          <p>• <span className="text-gray-300">OI Spike alerts</span>: Orange = Writing (≥50% OI surge = strong selling interest); Purple = Unwinding (≥50% OI fall = exit)</p>
+          <p>• <span className="text-gray-300">Intraday SL</span>: Below 5-bar swing low / Above 5-bar swing high (whichever is tighter than 1.5×ATR)</p>
+          <p>• <span className="text-gray-300">Positional SL</span>: Below 20 DMA ×0.995 (or above ×1.005 for SELL)</p>
+          <p>• Signals refresh every 3 minutes during market hours. OI spike detection needs at least 15 min of data.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function Admin({ onBack }: AdminProps) {
   const { isAdmin, adminToken, login, logout } = useAdmin();
@@ -642,7 +868,7 @@ export default function Admin({ onBack }: AdminProps) {
         </div>
 
         <div className="flex gap-2 mb-6 flex-wrap">
-          {(["signals", "subscriptions", "upstox"] as AdminTab[]).map((tab) => (
+          {(["signals", "master", "upstox", "subscriptions"] as AdminTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -650,7 +876,9 @@ export default function Admin({ onBack }: AdminProps) {
                 activeTab === tab ? "bg-green-600 text-white" : "bg-[hsl(220,13%,16%)] text-gray-400 hover:text-white"
               }`}
             >
-              {tab === "signals" ? `📊 Signals (${signals.length})` : tab === "subscriptions" ? `💳 Subscriptions` : `🔗 Upstox Live`}
+              {tab === "signals" ? `📊 Signals (${signals.length})` :
+               tab === "master" ? "📡 Master Signals" :
+               tab === "subscriptions" ? `💳 Subscriptions` : `🔗 Upstox Live`}
             </button>
           ))}
         </div>
@@ -790,6 +1018,10 @@ export default function Admin({ onBack }: AdminProps) {
               )}
             </div>
           </>
+        )}
+
+        {activeTab === "master" && adminToken && (
+          <MasterSignalsPanel adminToken={adminToken} />
         )}
 
         {activeTab === "upstox" && adminToken && (
