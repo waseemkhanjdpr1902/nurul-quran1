@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { postToTelegram, type Signal } from "@/lib/api";
-import { useSignalQuote, getActionableTip } from "@/hooks/useSignalQuote";
 
 export type { Signal };
 
@@ -11,299 +10,89 @@ type SignalCardProps = {
   onStatusUpdate?: (id: number, status: string) => void;
 };
 
-const SEGMENT_LABELS: Record<string, string> = {
-  intraday: "⚡ Intraday",
-  nifty: "📈 Nifty 50",
-  banknifty: "🏦 BankNifty",
-  options: "🔄 Options",
-  futures: "📊 Futures",
-  fno: "🔄 F&O",
-  equity: "🏢 Stocks",
-  stocks: "🏢 Stocks",
-  commodity: "🥇 Commodity",
-  currency: "💱 Currency",
-};
-
-// NSE F&O lot sizes (as of Apr 2026)
-const LOT_SIZES: Record<string, number> = {
-  NIFTY: 75,
-  BANKNIFTY: 30,
-  FINNIFTY: 65,
-  MIDCPNIFTY: 75,
-  "HDFC BANK": 550,
-  HDFCBANK: 550,
-  RELIANCE: 250,
-  "ICICI BANK": 700,
-  ICICIBANK: 700,
-  INFOSYS: 400,
-  TCS: 150,
-  "AXIS BANK": 1200,
-  AXISBANK: 1200,
-  "BAJAJ FINANCE": 125,
-  BAJAJFINANCE: 125,
-  MARUTI: 30,
-  TATAMOTORS: 1400,
-  WIPRO: 3000,
-  HCLTECH: 700,
-};
-
-function getLotSize(assetName: string): number | null {
-  const upper = assetName.toUpperCase();
-  for (const [key, size] of Object.entries(LOT_SIZES)) {
-    if (upper.startsWith(key)) return size;
-  }
-  return null;
-}
-
-/** Extract expiry date part like "APR09", "APR13", "APR30" from asset name */
-function extractExpiry(assetName: string): string | null {
-  const m = assetName.match(/\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\d{2}\b/i);
-  return m ? m[0].toUpperCase() : null;
-}
-
-/** Detect if the option is CE (Call) or PE (Put) */
 function extractOptionType(assetName: string): "CE" | "PE" | null {
   if (/\bCE\b/i.test(assetName)) return "CE";
   if (/\bPE\b/i.test(assetName)) return "PE";
   return null;
 }
 
-function isOptionsSignal(signal: Signal): boolean {
-  return signal.segment === "options" || signal.segment === "fno";
+function extractExpiry(assetName: string): string | null {
+  const m = assetName.match(/\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\d{2}\b/i);
+  return m ? m[0].toUpperCase() : null;
 }
 
-function formatTelegramMessage(signal: Signal): string {
-  const emoji = signal.signalType === "buy" ? "🟢" : "🔴";
+function pctGain(entry: string, target: string): string {
+  const e = parseFloat(entry);
+  const t = parseFloat(target);
+  if (!e || !t) return "";
+  return `+${(((t - e) / e) * 100).toFixed(1)}%`;
+}
+
+function formatShareText(signal: Signal): string {
   const optType = extractOptionType(signal.assetName);
   const expiry = extractExpiry(signal.assetName);
-  const lotSize = getLotSize(signal.assetName);
-  const entry = parseFloat(signal.entryPrice);
-  const sl = parseFloat(signal.stopLoss);
-
   const lines = [
-    `${emoji} <b>TradeMaster Pro — ${signal.signalType.toUpperCase()}</b>`,
+    `📊 *TradeMaster Pro Signal*`,
     ``,
-    `📊 <b>${signal.assetName}</b> [${(SEGMENT_LABELS[signal.segment] ?? signal.segment).toUpperCase()}]`,
-  ];
-
-  if (optType || expiry || lotSize) {
-    const meta: string[] = [];
-    if (optType) meta.push(`Type: <b>${optType === "CE" ? "📈 CALL" : "📉 PUT"}</b>`);
-    if (expiry) meta.push(`Expiry: <b>${expiry}</b>`);
-    if (lotSize) meta.push(`Lot: <b>${lotSize}</b>`);
-    if (meta.length) lines.push(meta.join(" | "));
-  }
-
-  lines.push(``);
-  lines.push(`📌 Entry: <b>₹${signal.entryPrice}</b>`);
-  lines.push(`🛑 Stop Loss: <b>₹${signal.stopLoss}</b>`);
-  lines.push(`🎯 Target 1: <b>₹${signal.target1}</b>`);
-  if (signal.target2) lines.push(`🎯 Target 2: <b>₹${signal.target2}</b>`);
-  if (signal.riskReward) lines.push(`⚖️ Risk:Reward = <b>1:${signal.riskReward}</b>`);
-
-  if (isOptionsSignal(signal) && lotSize && !isNaN(entry) && !isNaN(sl)) {
-    const lotCost = (entry * lotSize).toLocaleString("en-IN");
-    const maxLoss = ((entry - sl) * lotSize).toLocaleString("en-IN");
-    lines.push(``);
-    lines.push(`💰 1 Lot Cost: <b>₹${lotCost}</b> | Max Loss: <b>₹${maxLoss}</b>`);
-  }
-
-  if (signal.iv) lines.push(`📈 IV: ${signal.iv}`);
-  if (signal.pcr) lines.push(`📊 PCR: ${signal.pcr}`);
-  if (signal.notes) lines.push(``, `🧠 <i>${signal.notes}</i>`);
-  lines.push(``, `⚠️ Educational only. Not SEBI-registered investment advice.`);
+    `*${signal.assetName}*`,
+    `Action: *${signal.signalType.toUpperCase()}*${optType ? ` — *${optType === "CE" ? "CALL" : "PUT"}*` : ""}`,
+    expiry ? `Expiry: *${expiry}*` : "",
+    ``,
+    `📌 Entry: *₹${signal.entryPrice}*`,
+    `🎯 Target: *₹${signal.target1}* (${pctGain(signal.entryPrice, signal.target1)})`,
+    signal.target2 ? `🎯 T2: *₹${signal.target2}* (${pctGain(signal.entryPrice, signal.target2)})` : "",
+    ``,
+    `⚠️ Educational only. Not SEBI investment advice.`,
+    `— _TradeMaster Pro_`,
+  ].filter(Boolean);
   return lines.join("\n");
 }
 
-function formatShareMessage(signal: Signal): string {
-  const optType = extractOptionType(signal.assetName);
-  const expiry = extractExpiry(signal.assetName);
-  const lotSize = getLotSize(signal.assetName);
-  const entry = parseFloat(signal.entryPrice);
-  const sl = parseFloat(signal.stopLoss);
-  const t1 = parseFloat(signal.target1);
-
-  const isOptions = isOptionsSignal(signal);
-  const headerEmoji = isOptions ? (optType === "CE" ? "📈" : optType === "PE" ? "📉" : "🔄") : (signal.signalType === "buy" ? "🟢" : "🔴");
-
-  const lines: string[] = [];
-
-  if (isOptions) {
-    lines.push(`${headerEmoji} *TradeMaster Pro — Option Chain Signal*`);
-    lines.push(``);
-    lines.push(`📊 *${signal.assetName}*`);
-
-    const meta: string[] = [];
-    if (optType) meta.push(`Type: *${optType === "CE" ? "CALL ☎️" : "PUT 🛡️"}*`);
-    if (expiry) meta.push(`Expiry: *${expiry}*`);
-    if (lotSize) meta.push(`Lot: *${lotSize}*`);
-    if (meta.length) lines.push(meta.join(" | "));
-  } else {
-    lines.push(`*TradeMaster Pro Signal*`);
-    lines.push(``);
-    lines.push(`*${signal.assetName}* [${(SEGMENT_LABELS[signal.segment] ?? signal.segment).toUpperCase()}]`);
-    lines.push(`Signal: *${signal.signalType.toUpperCase()}*`);
-  }
-
-  lines.push(``);
-  lines.push(`📌 Entry: *₹${signal.entryPrice}*`);
-
-  if (!isNaN(entry) && !isNaN(sl)) {
-    const slPct = (((entry - sl) / entry) * 100).toFixed(1);
-    lines.push(`🛑 SL: *₹${signal.stopLoss}* (−${slPct}%)`);
-  } else {
-    lines.push(`🛑 SL: *₹${signal.stopLoss}*`);
-  }
-
-  if (!isNaN(entry) && !isNaN(t1)) {
-    const t1Pct = (((t1 - entry) / entry) * 100).toFixed(1);
-    lines.push(`🎯 T1: *₹${signal.target1}* (+${t1Pct}%)`);
-  } else {
-    lines.push(`🎯 T1: *₹${signal.target1}*`);
-  }
-
-  if (signal.target2) {
-    const t2 = parseFloat(signal.target2);
-    if (!isNaN(entry) && !isNaN(t2)) {
-      const t2Pct = (((t2 - entry) / entry) * 100).toFixed(1);
-      lines.push(`🎯 T2: *₹${signal.target2}* (+${t2Pct}%)`);
-    } else {
-      lines.push(`🎯 T2: *₹${signal.target2}*`);
-    }
-  }
-
-  if (signal.riskReward) lines.push(`⚖️ R:R — *1:${signal.riskReward}*`);
-
-  if (isOptions && lotSize && !isNaN(entry) && !isNaN(sl)) {
-    const lotCost = (entry * lotSize).toLocaleString("en-IN");
-    const maxLoss = Math.round((entry - sl) * lotSize).toLocaleString("en-IN");
-    lines.push(``);
-    lines.push(`💰 1 Lot Cost: *₹${lotCost}*`);
-    lines.push(`📉 Max Loss/Lot: *₹${maxLoss}*`);
-  }
-
-  if (signal.iv || signal.pcr) {
-    const ivPcr: string[] = [];
-    if (signal.iv) ivPcr.push(`IV: ${signal.iv}`);
-    if (signal.pcr) ivPcr.push(`PCR: ${signal.pcr}`);
-    lines.push(`📈 ${ivPcr.join(" | ")}`);
-  }
-
-  if (signal.notes) lines.push(``, `💡 _${signal.notes}_`);
-  lines.push(``);
-  lines.push(`⚠️ Educational only. Not SEBI investment advice.`);
-  lines.push(`— _TradeMaster Pro_`);
-  return lines.join("\n");
-}
-
-const STATUS_CONFIG: Record<Signal["status"], { label: string; color: string }> = {
-  active: { label: "LIVE", color: "bg-blue-500/20 text-blue-300 border-blue-400/50" },
-  target_hit: { label: "✅ TARGET HIT", color: "bg-green-500/20 text-green-300 border-green-400/50" },
-  sl_hit: { label: "❌ SL HIT", color: "bg-red-500/20 text-red-300 border-red-400/50" },
+const STATUS_STYLES: Record<Signal["status"], string> = {
+  active:     "bg-blue-500/20 text-blue-300 border-blue-400/40",
+  target_hit: "bg-green-500/20 text-green-300 border-green-400/40",
+  sl_hit:     "bg-red-500/20 text-red-300 border-red-400/40",
 };
 
-const URGENCY_STYLES = {
-  high: "bg-emerald-950/70 border-emerald-400/50 text-emerald-300",
-  medium: "bg-blue-950/60 border-blue-400/40 text-blue-300",
-  low: "bg-amber-950/50 border-amber-500/30 text-amber-300",
-  info: "bg-[hsl(220,13%,15%)] border-[hsl(220,13%,22%)] text-gray-400",
+const STATUS_LABELS: Record<Signal["status"], string> = {
+  active:     "● LIVE",
+  target_hit: "✅ TARGET HIT",
+  sl_hit:     "❌ SL HIT",
 };
 
-function fmtPrice(n: number) {
-  return n.toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
-}
-
-function pctTo(from: number, to: number) {
-  if (!from || !to) return null;
-  return (((to - from) / from) * 100).toFixed(1);
-}
-
-export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }: SignalCardProps) {
-  const [telegramLoading, setTelegramLoading] = useState(false);
-  const [telegramMsg, setTelegramMsg] = useState("");
+export function SignalCard({ signal, isPremiumUser: _isPremiumUser, adminToken, onStatusUpdate }: SignalCardProps) {
   const [copied, setCopied] = useState(false);
-  // TESTING MODE: lock disabled — re-enable after accuracy testing
-  const isLocked = false;
-  const isBuy = signal.signalType === "buy";
-  const status = STATUS_CONFIG[signal.status];
+  const [telegramMsg, setTelegramMsg] = useState("");
+  const [telegramLoading, setTelegramLoading] = useState(false);
 
   const optType = extractOptionType(signal.assetName);
-  const expiry = extractExpiry(signal.assetName);
-  const lotSize = getLotSize(signal.assetName);
-  const isOptions = isOptionsSignal(signal);
+  const expiry  = extractExpiry(signal.assetName);
+  const isBuy   = signal.signalType === "buy";
+  const isActive = signal.status === "active";
 
-  const { quote, loading: quoteLoading, lastUpdated, info } = useSignalQuote(signal.assetName, signal.segment);
-  const livePrice = quote?.price ?? null;
-
-  const tip = livePrice != null && signal.status === "active"
-    ? getActionableTip(signal.signalType, signal.entryPrice, signal.stopLoss, signal.target1, livePrice)
-    : null;
-
-  const pctToEntry = livePrice != null && !isNaN(parseFloat(signal.entryPrice))
-    ? pctTo(livePrice, parseFloat(signal.entryPrice))
-    : null;
-  const pctToT1 = livePrice != null && !isNaN(parseFloat(signal.target1))
-    ? pctTo(livePrice, parseFloat(signal.target1))
-    : null;
-
-  const changePos = (quote?.changePercent ?? 0) >= 0;
-
-  const entryNum = parseFloat(signal.entryPrice);
-  const slNum = parseFloat(signal.stopLoss);
-  const lotCostStr = lotSize && !isNaN(entryNum)
-    ? Math.round(entryNum * lotSize).toLocaleString("en-IN")
-    : null;
-  const maxLossStr = lotSize && !isNaN(entryNum) && !isNaN(slNum)
-    ? Math.round((entryNum - slNum) * lotSize).toLocaleString("en-IN")
-    : null;
-
-  const shareViaApp = (nativeScheme: string, webFallback: string) => {
-    let appOpened = false;
-    const cleanup = () => {
-      window.removeEventListener("blur", onBlur);
-      clearTimeout(timer);
-    };
-    const onBlur = () => {
-      appOpened = true;
-      cleanup();
-    };
-    window.addEventListener("blur", onBlur);
-    const timer = setTimeout(() => {
-      cleanup();
-      if (!appOpened) window.open(webFallback, "_blank");
-    }, 1500);
-    window.location.href = nativeScheme;
-  };
+  const gain = pctGain(signal.entryPrice, signal.target1);
+  const gain2 = signal.target2 ? pctGain(signal.entryPrice, signal.target2) : null;
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent(formatShareMessage(signal));
-    shareViaApp(`whatsapp://send?text=${text}`, `https://wa.me/?text=${text}`);
+    const text = encodeURIComponent(formatShareText(signal));
+    window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
-  const handleCopyText = async () => {
-    try {
-      await navigator.clipboard.writeText(formatShareMessage(signal));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // fallback
-    }
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(formatShareText(signal)).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleTelegramShare = () => {
-    const text = encodeURIComponent(formatShareMessage(signal));
-    const appUrl = encodeURIComponent(`${window.location.origin}${window.location.pathname}`);
-    shareViaApp(`tg://msg?text=${text}`, `https://t.me/share/url?url=${appUrl}&text=${text}`);
-  };
-
-  const handlePostToChannel = async () => {
+  const handleTelegram = async () => {
     if (!adminToken) return;
     setTelegramLoading(true);
     try {
-      await postToTelegram(formatTelegramMessage(signal), adminToken);
+      const html = formatShareText(signal).replace(/\*/g, "<b>").replace(/_/g, "<i>");
+      await postToTelegram(html, adminToken);
       setTelegramMsg("Posted!");
-    } catch (err: unknown) {
-      setTelegramMsg(err instanceof Error ? err.message : "Failed");
+    } catch {
+      setTelegramMsg("Failed");
     } finally {
       setTelegramLoading(false);
       setTimeout(() => setTelegramMsg(""), 3000);
@@ -311,318 +100,147 @@ export function SignalCard({ signal, isPremiumUser, adminToken, onStatusUpdate }
   };
 
   return (
-    <div className={`signal-card rounded-xl p-4 relative overflow-hidden border ${
-      signal.status !== "active" ? "opacity-70" : ""
-    } ${isBuy ? "border-green-900/40" : "border-red-900/40"} bg-[hsl(220,13%,11%)]`}>
+    <div className={`rounded-2xl border overflow-hidden transition-all ${
+      isActive
+        ? isBuy
+          ? "border-green-500/40 bg-gradient-to-br from-green-950/30 to-[hsl(220,13%,10%)]"
+          : "border-red-500/40 bg-gradient-to-br from-red-950/30 to-[hsl(220,13%,10%)]"
+        : "border-[hsl(220,13%,20%)] bg-[hsl(220,13%,11%)] opacity-70"
+    }`}>
 
-      {isLocked && (
-        <div className="absolute inset-0 bg-black/75 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center z-10 gap-2">
-          <div className="text-4xl">🔒</div>
-          <div className="text-sm font-bold text-white">Pro Educator Content</div>
-          <div className="text-xs text-gray-400 text-center px-4">Subscribe to unlock full S&amp;R levels and price objectives</div>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className={`text-xs font-black px-2 py-0.5 rounded border tracking-wide ${
-              isBuy ? "bg-green-500/20 text-green-400 border-green-500/40" : "bg-red-500/20 text-red-400 border-red-500/40"
-            }`}>
-              {isBuy ? "▲ Bullish Setup" : "▼ Bearish Setup"}
-            </span>
-            <span className="text-xs text-gray-500 bg-[hsl(220,13%,18%)] px-2 py-0.5 rounded">
-              {SEGMENT_LABELS[signal.segment] ?? signal.segment.toUpperCase()}
-            </span>
-            {/* Option type badge */}
-            {optType && (
-              <span className={`text-xs font-black px-2 py-0.5 rounded border tracking-widest ${
-                optType === "CE"
-                  ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-                  : "bg-orange-500/20 text-orange-300 border-orange-500/40"
-              }`}>
-                {optType === "CE" ? "☎️ CALL" : "🛡️ PUT"}
-              </span>
-            )}
-            {expiry && (
-              <span className="text-xs font-mono text-amber-400 bg-amber-900/20 border border-amber-700/30 px-2 py-0.5 rounded">
-                ⏰ {expiry}
-              </span>
-            )}
-            {signal.isPremium && (
-              <span className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded font-bold">PRO</span>
-            )}
-            {signal.createdBy === "auto-engine" && (
-              <span className="text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded">🤖 Auto</span>
-            )}
-          </div>
-          <h3 className="text-white font-black text-base leading-tight truncate">{signal.assetName}</h3>
-        </div>
-        <div className="flex flex-col items-end gap-1 ml-2 shrink-0">
-          <span className={`text-xs px-2 py-0.5 rounded border font-bold ${status.color}`}>{status.label}</span>
-          {signal.riskReward && (
-            <span className="text-xs text-gray-500 font-mono">1:{signal.riskReward}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Live Price Band */}
-      <div className={`rounded-lg px-3 py-2.5 mb-3 border ${
-        quoteLoading && !livePrice
-          ? "bg-[hsl(220,13%,16%)] border-[hsl(220,13%,22%)]"
-          : livePrice
-            ? changePos
-              ? "bg-green-950/30 border-green-900/40"
-              : "bg-red-950/30 border-red-900/40"
-            : "bg-[hsl(220,13%,16%)] border-[hsl(220,13%,22%)] opacity-60"
-      }`}>
-        {info.isFnO && (
-          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-            <span className="text-xs text-gray-500">Contract:</span>
-            <span className="text-xs font-mono font-bold text-amber-300 bg-amber-900/25 border border-amber-700/30 px-2 py-0.5 rounded">
-              {signal.assetName}
-            </span>
-          </div>
-        )}
-
-        {quoteLoading && !livePrice ? (
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-            <span className="text-xs text-gray-500">Fetching live price…</span>
-          </div>
-        ) : livePrice ? (
-          <div className="flex items-center justify-between flex-wrap gap-1">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full animate-pulse ${changePos ? "bg-green-400" : "bg-red-400"}`} />
-              <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">{info.spotLabel}</span>
-              <span className={`font-black font-mono text-sm ${changePos ? "text-green-300" : "text-red-300"}`}>
-                ₹{fmtPrice(livePrice)}
-              </span>
-              {quote?.changePercent != null && (
-                <span className={`text-xs font-mono ${changePos ? "text-green-400" : "text-red-400"}`}>
-                  {changePos ? "▲" : "▼"} {Math.abs(quote.changePercent).toFixed(2)}%
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 text-xs font-mono">
-              {pctToEntry !== null && signal.entryPrice !== "—" && (
-                <span className="text-gray-500">
-                  Entry: <span className={parseFloat(pctToEntry) < 0 ? "text-red-400" : "text-amber-400"}>
-                    {parseFloat(pctToEntry) >= 0 ? "+" : ""}{pctToEntry}%
-                  </span>
-                </span>
-              )}
-              {pctToT1 !== null && signal.target1 !== "—" && (
-                <span className="text-gray-500">
-                  T1: <span className="text-emerald-400">
-                    {parseFloat(pctToT1) >= 0 ? "+" : ""}{pctToT1}%
-                  </span>
-                </span>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600">Live data unavailable — market may be closed</span>
-          </div>
-        )}
-        {lastUpdated && livePrice && (
-          <div className="text-xs text-gray-600 mt-1 font-mono">
-            Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-          </div>
-        )}
-      </div>
-
-      {/* Support / Resistance / Target Grid */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="bg-[hsl(220,13%,16%)] rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">{signal.segment === "options" ? "LTP (at signal)" : "Entry"}</div>
-          <div className="text-white font-black font-mono text-sm">
-            {signal.entryPrice === "—" ? <span className="text-gray-600">—</span> : `₹${signal.entryPrice}`}
-          </div>
-        </div>
-        <div className="bg-red-950/40 border border-red-900/30 rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">Stop Loss</div>
-          <div className="text-red-400 font-black font-mono text-sm">
-            {signal.stopLoss === "—" ? <span className="text-gray-600">—</span> : `₹${signal.stopLoss}`}
-          </div>
-        </div>
-        <div className="bg-green-950/40 border border-green-900/30 rounded-lg p-2.5">
-          <div className="text-xs text-gray-500 mb-0.5">
-            Target 1
-            {livePrice && signal.target1 !== "—" && pctToT1 && (
-              <span className="ml-1 text-emerald-500">({parseFloat(pctToT1) >= 0 ? "+" : ""}{pctToT1}%)</span>
-            )}
-          </div>
-          <div className="text-green-400 font-black font-mono text-sm">
-            {signal.target1 === "—" ? <span className="text-gray-600">—</span> : `₹${signal.target1}`}
-          </div>
-        </div>
-        {signal.target2 ? (
-          <div className="bg-emerald-950/40 border border-emerald-900/30 rounded-lg p-2.5">
-            <div className="text-xs text-gray-500 mb-0.5">
-              Target 2
-              {livePrice && signal.target2 !== "—" && (
-                <span className="ml-1 text-emerald-500">
-                  ({(() => {
-                    const p = pctTo(livePrice, parseFloat(signal.target2 ?? "0"));
-                    return p ? `${parseFloat(p) >= 0 ? "+" : ""}${p}%` : "";
-                  })()})
-                </span>
-              )}
-            </div>
-            <div className="text-emerald-400 font-black font-mono text-sm">{`₹${signal.target2}`}</div>
-          </div>
-        ) : (
-          <div className="bg-[hsl(220,13%,16%)] rounded-lg p-2.5 opacity-40">
-            <div className="text-xs text-gray-500 mb-0.5">Target 2</div>
-            <div className="text-gray-600 font-mono text-sm">—</div>
-          </div>
-        )}
-      </div>
-
-      {/* Lot Size / Max Loss strip (options only) */}
-      {isOptions && (lotCostStr || maxLossStr) && (
-        <div className="flex gap-2 mb-3">
-          {lotSize && (
-            <div className="bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,22%)] rounded-lg px-3 py-1.5 flex-1">
-              <span className="text-xs text-gray-500 mr-1">📦 Lot</span>
-              <span className="text-xs font-mono font-bold text-amber-300">{lotSize} shares</span>
-            </div>
-          )}
-          {lotCostStr && (
-            <div className="bg-blue-950/25 border border-blue-900/30 rounded-lg px-3 py-1.5 flex-1">
-              <span className="text-xs text-gray-500 mr-1">💰 1-Lot</span>
-              <span className="text-xs font-mono font-bold text-blue-300">₹{lotCostStr}</span>
-            </div>
-          )}
-          {maxLossStr && (
-            <div className="bg-red-950/25 border border-red-900/30 rounded-lg px-3 py-1.5 flex-1">
-              <span className="text-xs text-gray-500 mr-1">📉 Max Loss</span>
-              <span className="text-xs font-mono font-bold text-red-400">₹{maxLossStr}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Day High / Low from live data */}
-      {livePrice && (quote?.high || quote?.low) && (
-        <div className="flex gap-2 mb-3">
-          {quote?.high && (
-            <div className="bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,22%)] rounded-lg px-3 py-1.5 flex-1">
-              <span className="text-xs text-gray-500 mr-1">Day H</span>
-              <span className="text-xs font-mono font-bold text-gray-300">₹{fmtPrice(quote.high)}</span>
-            </div>
-          )}
-          {quote?.low && (
-            <div className="bg-[hsl(220,13%,16%)] border border-[hsl(220,13%,22%)] rounded-lg px-3 py-1.5 flex-1">
-              <span className="text-xs text-gray-500 mr-1">Day L</span>
-              <span className="text-xs font-mono font-bold text-gray-300">₹{fmtPrice(quote.low)}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* IV / PCR */}
-      {(signal.iv || signal.pcr) && (
-        <div className="flex gap-2 mb-3">
-          {signal.iv && (
-            <div className="bg-purple-900/20 border border-purple-500/20 rounded-lg px-3 py-1.5">
-              <span className="text-xs text-gray-500 mr-1.5">IV</span>
-              <span className="text-xs font-mono font-bold text-purple-400">{signal.iv}</span>
-            </div>
-          )}
-          {signal.pcr && (
-            <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg px-3 py-1.5">
-              <span className="text-xs text-gray-500 mr-1.5">PCR</span>
-              <span className="text-xs font-mono font-bold text-blue-400">{signal.pcr}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Actionable Trading Tip */}
-      {tip && (
-        <div className={`rounded-lg px-3 py-2 mb-3 border ${URGENCY_STYLES[tip.urgency]}`}>
-          <div className="text-xs leading-relaxed">
-            <span className="font-semibold mr-1.5">{tip.emoji} Trading Tip:</span>
-            {tip.text}
-          </div>
-        </div>
-      )}
-
-      {/* Analyst Notes */}
-      {signal.notes && (
-        <div className="bg-[hsl(220,13%,15%)] border border-[hsl(220,13%,22%)] rounded-lg px-3 py-2 mb-3">
-          <div className="text-xs text-gray-400 leading-relaxed">
-            <span className="text-gray-600 font-semibold mr-1">🧠 Analyst:</span>
-            {signal.notes}
-          </div>
-        </div>
-      )}
-
-      {/* Share Buttons */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <button
-          onClick={handleWhatsApp}
-          className="flex items-center gap-1 text-xs bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/25 px-2.5 py-1.5 rounded-lg transition-colors"
-        >
-          📱 WhatsApp
-        </button>
-        <button
-          onClick={handleCopyText}
-          className={`flex items-center gap-1 text-xs border px-2.5 py-1.5 rounded-lg transition-colors ${
-            copied
-              ? "bg-green-500/20 text-green-300 border-green-500/30"
-              : "bg-[hsl(220,13%,18%)] hover:bg-[hsl(220,13%,22%)] text-gray-400 hover:text-gray-200 border-[hsl(220,13%,25%)]"
-          }`}
-        >
-          {copied ? "✅ Copied!" : "📋 Copy"}
-        </button>
-        <button
-          onClick={handleTelegramShare}
-          className="flex items-center gap-1 text-xs bg-[#229ED9]/10 hover:bg-[#229ED9]/20 text-[#229ED9] border border-[#229ED9]/25 px-2.5 py-1.5 rounded-lg transition-colors"
-        >
-          ✈️ Telegram
-        </button>
-        {adminToken && (
-          <button
-            onClick={handlePostToChannel}
-            disabled={telegramLoading}
-            className="flex items-center gap-1 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/25 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-          >
-            📢 {telegramLoading ? "…" : telegramMsg || "Post to Channel"}
-          </button>
-        )}
-        {adminToken && onStatusUpdate && signal.status === "active" && (
-          <>
-            <button
-              onClick={() => onStatusUpdate(signal.id, "target_hit")}
-              className="text-xs text-green-400 hover:text-green-300 px-2.5 py-1.5 bg-green-500/10 rounded-lg border border-green-500/25 transition-colors"
-            >
-              ✅ Hit
-            </button>
-            <button
-              onClick={() => onStatusUpdate(signal.id, "sl_hit")}
-              className="text-xs text-red-400 hover:text-red-300 px-2.5 py-1.5 bg-red-500/10 rounded-lg border border-red-500/25 transition-colors"
-            >
-              ❌ SL
-            </button>
-          </>
-        )}
-      </div>
-
-      <div className="mt-3 pt-2.5 border-t border-[hsl(220,13%,18%)]">
-        <span className="text-xs text-gray-600 font-mono">
-          {new Date(signal.createdAt).toLocaleString("en-IN", {
-            day: "2-digit", month: "2-digit", year: "numeric",
-            hour: "2-digit", minute: "2-digit",
-            hour12: true,
-            timeZone: "Asia/Kolkata",
-          })}
+      {/* ── Top bar: asset name + status ─────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2 gap-2">
+        <h3 className="text-white font-black text-base leading-tight truncate flex-1">
+          {signal.assetName}
+        </h3>
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${STATUS_STYLES[signal.status]}`}>
+          {STATUS_LABELS[signal.status]}
         </span>
       </div>
+
+      {/* ── Badge row: BUY/SELL · CE/PE · Expiry ─────────────────────── */}
+      <div className="flex items-center gap-2 px-4 pb-3 flex-wrap">
+        <span className={`text-xs font-black px-3 py-1 rounded-full tracking-widest ${
+          isBuy
+            ? "bg-green-500 text-black"
+            : "bg-red-500 text-white"
+        }`}>
+          {isBuy ? "▲ BUY" : "▼ SELL"}
+        </span>
+
+        {optType && (
+          <span className={`text-xs font-black px-3 py-1 rounded-full border tracking-widest ${
+            optType === "CE"
+              ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+              : "bg-orange-500/20 text-orange-300 border-orange-500/40"
+          }`}>
+            {optType === "CE" ? "CALL (CE)" : "PUT (PE)"}
+          </span>
+        )}
+
+        {expiry && (
+          <span className="text-xs font-mono text-amber-400 bg-amber-900/20 border border-amber-700/30 px-2.5 py-1 rounded-full">
+            {expiry}
+          </span>
+        )}
+
+        {signal.createdBy === "auto-engine" && (
+          <span className="text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-full">
+            🤖 Auto
+          </span>
+        )}
+      </div>
+
+      {/* ── Price row ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 px-4 pb-4">
+        {/* Entry */}
+        <div className="bg-black/30 rounded-xl p-3 border border-white/5">
+          <div className="text-xs text-gray-500 uppercase tracking-widest mb-1 font-semibold">Entry</div>
+          <div className="text-white font-black font-mono text-xl">
+            ₹{parseFloat(signal.entryPrice).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        {/* Target */}
+        <div className="bg-green-950/40 rounded-xl p-3 border border-green-700/30">
+          <div className="text-xs text-gray-500 uppercase tracking-widest mb-1 font-semibold flex items-center gap-1">
+            Target
+            {gain && <span className="text-green-400 font-mono">{gain}</span>}
+          </div>
+          <div className="text-green-400 font-black font-mono text-xl">
+            ₹{parseFloat(signal.target1).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+          </div>
+          {gain2 && signal.target2 && (
+            <div className="text-emerald-400 font-mono text-xs mt-1">
+              T2: ₹{parseFloat(signal.target2).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} <span className="text-emerald-500">{gain2}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Closed signal result ──────────────────────────────────────── */}
+      {!isActive && signal.exitPrice && (
+        <div className={`mx-4 mb-3 rounded-xl px-3 py-2 text-sm font-mono font-bold ${
+          signal.status === "target_hit"
+            ? "bg-green-950/50 border border-green-700/30 text-green-400"
+            : "bg-red-950/50 border border-red-700/30 text-red-400"
+        }`}>
+          Exit: ₹{parseFloat(signal.exitPrice).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+          {signal.closedAt && (
+            <span className="text-gray-500 font-normal text-xs ml-2">
+              {new Date(signal.closedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })} IST
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── Share bar ─────────────────────────────────────────────────── */}
+      {isActive && (
+        <div className="flex gap-2 px-4 pb-4">
+          <button
+            onClick={handleWhatsApp}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] rounded-xl py-2 text-xs font-bold transition-colors"
+          >
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.875-1.426A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.952 7.952 0 01-4.073-1.114l-.292-.173-3.014.882.838-3.046-.19-.313A7.948 7.948 0 014 12c0-4.418 3.582-8 8-8s8 3.582 8 8-3.582 8-8 8z"/></svg>
+            WhatsApp
+          </button>
+
+          <button
+            onClick={handleCopy}
+            className="flex items-center justify-center gap-1.5 bg-[hsl(220,13%,18%)] hover:bg-[hsl(220,13%,24%)] border border-[hsl(220,13%,26%)] text-gray-300 rounded-xl px-3 py-2 text-xs font-bold transition-colors"
+          >
+            {copied ? "✓ Copied" : "📋 Copy"}
+          </button>
+
+          {adminToken && (
+            <button
+              onClick={() => void handleTelegram()}
+              disabled={telegramLoading}
+              className="flex items-center justify-center gap-1.5 bg-blue-900/20 hover:bg-blue-900/35 border border-blue-700/30 text-blue-400 rounded-xl px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50"
+            >
+              {telegramLoading ? "…" : telegramMsg || "📢 Post"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Admin close buttons ───────────────────────────────────────── */}
+      {adminToken && isActive && onStatusUpdate && (
+        <div className="flex gap-2 px-4 pb-4">
+          <button
+            onClick={() => onStatusUpdate(signal.id, "target_hit")}
+            className="flex-1 bg-green-900/30 hover:bg-green-900/50 border border-green-700/40 text-green-400 rounded-xl py-1.5 text-xs font-bold transition-colors"
+          >
+            ✅ Mark Target Hit
+          </button>
+          <button
+            onClick={() => onStatusUpdate(signal.id, "sl_hit")}
+            className="flex-1 bg-red-900/30 hover:bg-red-900/50 border border-red-700/40 text-red-400 rounded-xl py-1.5 text-xs font-bold transition-colors"
+          >
+            ❌ Mark SL Hit
+          </button>
+        </div>
+      )}
     </div>
   );
 }
