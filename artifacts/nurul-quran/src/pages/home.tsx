@@ -1,11 +1,14 @@
-import { useGetDailyAyah, useGetRecentLectures, useGetFeaturedLectures, useGetCourses, useGetDashboardSummary } from "@workspace/api-client-react";
+import { useGetDailyAyah, useGetRecentLectures, useGetCourses, useGetDashboardSummary } from "@workspace/api-client-react";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Play, Lock, BookOpen, Users, MicVocal, LayoutGrid, Compass, ChevronRight } from "lucide-react";
+import { Play, Lock, BookOpen, Users, MicVocal, LayoutGrid, Compass, ChevronRight, Clock, ScrollText, Star, BookMarked, CalendarDays, Languages } from "lucide-react";
 import { motion } from "framer-motion";
+import { HijriCalendar } from "@/components/hijri-calendar";
+import { PrayerTimesWidget } from "@/components/prayer-times-widget";
+import { useState, useEffect } from "react";
 
 function formatDuration(seconds?: number | null) {
   if (!seconds) return "";
@@ -16,24 +19,101 @@ function formatDuration(seconds?: number | null) {
   return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
 }
 
+interface HadithData {
+  hadithnumber: number;
+  text: string;
+}
+
+function HadithOfDayCard() {
+  const [hadith, setHadith] = useState<HadithData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const randomNum = Math.floor(Math.random() * 500) + 1;
+    fetch(`https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/eng-bukhari/${randomNum}.json`)
+      .then((r) => r.json())
+      .then((j) => { setHadith(j.hadiths?.[0] ?? null); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  if (loading) return <Skeleton className="h-32 rounded-2xl" />;
+
+  if (!hadith) {
+    return (
+      <div className="rounded-2xl p-5 border border-border bg-card flex flex-col items-center gap-3 text-center">
+        <p className="text-sm text-muted-foreground">Unable to load Hadith</p>
+        <Link href="/hadith">
+          <span className="text-xs font-semibold" style={{ color: "#1a472a" }}>
+            Browse Hadiths →
+          </span>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="rounded-2xl p-5 border-2"
+      style={{ borderColor: "#d4af37", background: "linear-gradient(135deg, #1a472a08, #d4af3710)" }}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <ScrollText className="h-4 w-4" style={{ color: "#1a472a" }} />
+        <span className="text-sm font-semibold" style={{ color: "#1a472a" }}>
+          Sahih Bukhari
+        </span>
+        <span className="text-xs text-muted-foreground ml-auto">#{hadith.hadithnumber}</span>
+      </div>
+      <p className="text-sm text-foreground leading-relaxed line-clamp-4">{hadith.text}</p>
+      <div className="mt-3 flex justify-end">
+        <Link href="/hadith">
+          <span className="text-xs font-semibold" style={{ color: "#1a472a" }}>
+            Browse more →
+          </span>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+const FEATURE_TILES = [
+  { href: "/prayer-times", label: "Prayer Times", icon: Clock, desc: "Daily salah timings" },
+  { href: "/hadith", label: "Hadith", icon: ScrollText, desc: "Prophetic traditions" },
+  { href: "/duas", label: "Daily Duas", icon: BookMarked, desc: "Supplications & dhikr" },
+  { href: "/asmaul-husna", label: "99 Names", icon: Star, desc: "Asmaul Husna" },
+  { href: "/calendar", label: "Hijri Calendar", icon: CalendarDays, desc: "Islamic dates & events" },
+  { href: "/learn-arabic", label: "Learn Arabic", icon: Languages, desc: "Alphabet & flashcards" },
+];
+
 export default function Home() {
   const { data: ayah, isLoading: ayahLoading } = useGetDailyAyah();
   const { data: recentLectures, isLoading: recentLoading } = useGetRecentLectures({ limit: 6 });
-  const { data: featuredLectures, isLoading: featuredLoading } = useGetFeaturedLectures();
   const { data: courses, isLoading: coursesLoading } = useGetCourses();
   const { data: summary } = useGetDashboardSummary();
   const { playLecture } = useAudioPlayer();
 
   return (
     <div className="min-h-screen">
-      {/* Hero / Daily Ayah */}
+      {/* Hero */}
       <section className="bg-primary text-primary-foreground py-10 md:py-24 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-4 right-8 text-[200px] font-arabic leading-none select-none">﷽</div>
+        <div className="absolute inset-0 opacity-5 pointer-events-none select-none">
+          <div className="absolute top-4 right-8 text-[200px] font-arabic leading-none">﷽</div>
         </div>
         <div className="container mx-auto max-w-4xl px-4 text-center relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <p className="text-primary-foreground/60 text-xs md:text-sm font-medium uppercase tracking-widest mb-4">Ayah of the Day</p>
+            <p
+              className="text-4xl md:text-5xl mb-3 leading-tight"
+              style={{ fontFamily: "'Amiri', serif", color: "#d4af37" }}
+              dir="rtl"
+              lang="ar"
+            >
+              السَّلَامُ عَلَيْكُمْ
+            </p>
+            <p className="text-primary-foreground/70 text-sm md:text-base font-medium tracking-wide mb-6">
+              Assalamu Alaikum — Welcome to Nurul Quran
+            </p>
+            <p className="text-primary-foreground/60 text-xs md:text-sm font-medium uppercase tracking-widest mb-4">
+              Ayah of the Day
+            </p>
             {ayahLoading ? (
               <div className="space-y-3 max-w-2xl mx-auto">
                 <Skeleton className="h-12 w-3/4 mx-auto bg-primary-foreground/10" />
@@ -42,7 +122,7 @@ export default function Home() {
             ) : ayah ? (
               <>
                 <p
-                  className="text-3xl md:text-6xl mb-4 leading-[1.8] text-primary-foreground/95"
+                  className="text-3xl md:text-5xl mb-4 leading-[1.8] text-primary-foreground/95"
                   dir="rtl"
                   lang="ar"
                   style={{ fontFamily: "'Amiri Quran', 'Scheherazade New', serif" }}
@@ -96,6 +176,67 @@ export default function Home() {
       )}
 
       <div className="container mx-auto max-w-6xl px-4 py-10 space-y-14">
+        {/* Islamic Feature Tiles */}
+        <section>
+          <h2 className="text-2xl font-serif font-bold text-foreground mb-6">Islamic Features</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+            {FEATURE_TILES.map((tile, i) => (
+              <Link key={tile.href} href={tile.href}>
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  className="group flex flex-col items-center gap-2 rounded-2xl border-2 border-border bg-card p-4 text-center hover:shadow-md transition-all cursor-pointer hover:border-[#d4af37]/60"
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors group-hover:scale-110 duration-200"
+                    style={{ background: "#1a472a" }}
+                  >
+                    <tile.icon className="h-6 w-6" style={{ color: "#d4af37" }} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-foreground leading-tight">{tile.label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 hidden sm:block">{tile.desc}</p>
+                  </div>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* Prayer Times Widget */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold font-serif text-foreground">Today's Prayer Times</h2>
+            <Link href="/prayer-times">
+              <span className="text-xs font-semibold text-[#1a472a]">Full details →</span>
+            </Link>
+          </div>
+          <PrayerTimesWidget />
+        </section>
+
+        {/* Hijri Date + Hadith of Day */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold font-serif text-foreground">Hijri Date</h2>
+              <Link href="/calendar">
+                <span className="text-xs font-semibold text-[#1a472a]">Full Calendar →</span>
+              </Link>
+            </div>
+            <HijriCalendar compact />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold font-serif text-foreground">Hadith of the Day</h2>
+              <Link href="/hadith">
+                <span className="text-xs font-semibold text-[#1a472a]">Browse →</span>
+              </Link>
+            </div>
+            <HadithOfDayCard />
+          </div>
+        </section>
+
         {/* Da'wah Banner */}
         <Link href="/discover">
           <div className="group flex items-center gap-5 rounded-2xl bg-gradient-to-r from-[#0D4A3E] to-[#1A6B5A] p-5 md:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.01]">

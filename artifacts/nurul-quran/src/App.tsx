@@ -19,6 +19,12 @@ import HalalStocks from "@/pages/halal-stocks";
 import QuranReader from "@/pages/quran-reader";
 import CourseDetail from "@/pages/course-detail";
 import Discover from "@/pages/discover";
+import PrayerTimes from "@/pages/prayer-times";
+import Hadith from "@/pages/hadith";
+import Duas from "@/pages/duas";
+import AsmaulHusna from "@/pages/asmaul-husna";
+import Calendar from "@/pages/calendar";
+import LearnArabic from "@/pages/learn-arabic";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +44,12 @@ function Router() {
         <Route path="/quran/:surahId" component={QuranReader} />
         <Route path="/courses/:id" component={CourseDetail} />
         <Route path="/discover" component={Discover} />
+        <Route path="/prayer-times" component={PrayerTimes} />
+        <Route path="/hadith" component={Hadith} />
+        <Route path="/duas" component={Duas} />
+        <Route path="/asmaul-husna" component={AsmaulHusna} />
+        <Route path="/calendar" component={Calendar} />
+        <Route path="/learn-arabic" component={LearnArabic} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

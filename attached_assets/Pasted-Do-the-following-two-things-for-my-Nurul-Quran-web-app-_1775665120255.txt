@@ -1,0 +1,152 @@
+Do the following two things for my Nurul Quran web app:
+
+🔐 PART 1 — Add All API Keys & Secret Configuration
+Set up a secure configuration system for all API keys and secrets used in this project.
+1. Create a .env file in the root directory with these keys:
+env# Quran & Islamic APIs (these are free, no key needed but add base URLs)
+QURAN_API_BASE=https://api.alquran.cloud/v1
+HADITH_API_BASE=https://random-hadith-generator.vercel.app
+ALADHAN_API_BASE=https://api.aladhan.com/v1
+
+# OpenWeather API (for location-based prayer times fallback)
+OPENWEATHER_API_KEY=your_openweather_api_key_here
+
+# EmailJS (for contact form if added)
+EMAILJS_SERVICE_ID=your_emailjs_service_id
+EMAILJS_TEMPLATE_ID=your_emailjs_template_id
+EMAILJS_PUBLIC_KEY=your_emailjs_public_key
+
+# Google Maps API (optional, for Qibla direction)
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+
+# Firebase (optional, for user auth and bookmarks sync)
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+FIREBASE_APP_ID=your_firebase_app_id
+2. Create a config.js file to load and export all keys safely:
+js// config.js — Central config for all API keys
+const CONFIG = {
+  quranAPI: "https://api.alquran.cloud/v1",
+  hadithAPI: "https://random-hadith-generator.vercel.app",
+  prayerAPI: "https://api.aladhan.com/v1",
+  openWeatherKey: "YOUR_OPENWEATHER_KEY",
+  googleMapsKey: "YOUR_GOOGLE_MAPS_KEY",
+  emailJS: {
+    serviceId: "YOUR_SERVICE_ID",
+    templateId: "YOUR_TEMPLATE_ID",
+    publicKey: "YOUR_PUBLIC_KEY"
+  },
+  firebase: {
+    apiKey: "YOUR_FIREBASE_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  }
+};
+export default CONFIG;
+3. Add Replit Secrets (Environment Variables) in Replit:
+
+Go to Replit → Secrets (🔒 icon) in the left sidebar
+Add each key from the .env file as a separate secret
+In your server-side code (if using Node/Express), access them via process.env.KEY_NAME
+Never hardcode any API key directly in HTML or JS files
+
+4. Create a .gitignore file to protect secrets:
+.env
+config.js
+node_modules/
+.replit
+replit.nix
+*.log
+.DS_Store
+
+🚀 PART 2 — Deploy to Existing GitHub Repository nurul-quran
+Step 1 — Initialize Git in Replit and connect to GitHub
+Run these commands in the Replit Shell:
+bash# Set your Git identity
+git config --global user.email "your-github-email@gmail.com"
+git config --global user.name "YourGitHubUsername"
+
+# Initialize git if not already done
+git init
+
+# Connect to your existing GitHub repo
+git remote add origin https://github.com/YourGitHubUsername/nurul-quran.git
+
+# Pull existing repo content first to avoid conflicts
+git pull origin main --allow-unrelated-histories
+Step 2 — Stage, Commit and Push all files
+bash# Add all files except secrets
+git add .
+
+# Commit with message
+git commit -m "🕌 Nurul Quran - Full Islamic Education Web App with all features"
+
+# Push to main branch
+git push -u origin main
+Step 3 — Set up GitHub Secrets for CI/CD
+
+Go to your GitHub repo → Settings → Secrets and Variables → Actions
+Click "New repository secret" and add each key:
+
+Secret NameValueOPENWEATHER_API_KEYyour key hereGOOGLE_MAPS_API_KEYyour key hereEMAILJS_PUBLIC_KEYyour key hereFIREBASE_API_KEYyour key here
+Step 4 — Enable GitHub Pages for live deployment
+Create this file: .github/workflows/deploy.yml
+yamlname: Deploy Nurul Quran to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+Step 5 — Activate GitHub Pages
+
+Go to your GitHub repo → Settings → Pages
+Under Source, select Branch: gh-pages → / (root)
+Click Save
+Your site will be live at:
+https://YourGitHubUsername.github.io/nurul-quran
+
+
+✅ Final Checklist — Verify Everything Works
+bash# Confirm .env is ignored
+git status   # .env should NOT appear in the list
+
+# Confirm remote is set correctly
+git remote -v
+
+# Check deployment status
+git log --oneline
+Make sure:
+
+ .env is in .gitignore and never pushed to GitHub
+ All API keys are stored in Replit Secrets and GitHub Secrets
+ config.js loads keys dynamically, not hardcoded
+ GitHub Actions workflow runs successfully on every push
+ GitHub Pages is live and all features work on the deployed URL
+
+
+
+📌 Quick Tips:
+
+Replace YourGitHubUsername with your actual GitHub username everywhere
+Get your free API keys from: OpenWeather, Firebase Console, EmailJS
+The Islamic APIs (Quran, Hadith, Prayer Times) are 100% free — no key needed
+After every change in Replit, just run git add . && git commit -m "update" && git push to redeploy 🚀
