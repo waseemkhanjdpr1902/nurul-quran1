@@ -4,7 +4,7 @@ import { toPng } from "html-to-image";
 import { useAppTheme, THEMES } from "@/contexts/theme-context";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+const API = import.meta.env.VITE_API_URL ?? "";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

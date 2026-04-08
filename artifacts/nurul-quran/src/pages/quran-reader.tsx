@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import {
   Search, BookOpen, Play, Pause, ChevronLeft, ChevronRight,
   Globe, Volume2, ChevronDown, ChevronUp, Star
 } from "lucide-react";
+import { useAudioPlayer } from "@/hooks/use-audio-player";
 
 interface SurahMeta {
   number: number;
@@ -115,10 +117,12 @@ function AyahCard({
   surahNum: number;
   displayLangs: DisplayLang[];
   isPlaying: boolean;
-  onPlay: (globalNum: number) => void;   // pass ayah.number (global 1-6236)
+  onPlay: (globalNum: number) => void;
 }) {
   const [showTafseer, setShowTafseer] = useState(false);
+  const [tafseerExpanded, setTafseerExpanded] = useState(false);
   const { tafseer, loading: tafseerLoading } = useTafseer(surahNum, ayah.numberInSurah, showTafseer);
+  const TAFSEER_PREVIEW = 600;
 
   return (
     <motion.div
@@ -193,7 +197,20 @@ function AyahCard({
                       <Skeleton className="h-4 w-3/5" />
                     </div>
                   ) : tafseer ? (
-                    <p>{tafseer.substring(0, 600)}{tafseer.length > 600 ? "…" : ""}</p>
+                    <>
+                      <p className="leading-relaxed">
+                        {tafseerExpanded ? tafseer : tafseer.substring(0, TAFSEER_PREVIEW)}
+                        {!tafseerExpanded && tafseer.length > TAFSEER_PREVIEW && "…"}
+                      </p>
+                      {tafseer.length > TAFSEER_PREVIEW && (
+                        <button
+                          onClick={() => setTafseerExpanded(v => !v)}
+                          className="mt-2 text-xs font-semibold text-primary hover:text-primary/70 transition-colors"
+                        >
+                          {tafseerExpanded ? "Show less ▲" : "Read more ▼"}
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <p className="text-muted-foreground/60">Tafseer not available for this ayah.</p>
                   )}
@@ -208,6 +225,8 @@ function AyahCard({
 }
 
 export default function QuranReader() {
+  const params = useParams<{ surahId?: string }>();
+  const [, navigate] = useLocation();
   const { surahs, loading: surahsLoading } = useSurahList();
   const [selectedSurah, setSelectedSurah] = useState<SurahMeta | null>(null);
   const [search, setSearch] = useState("");
@@ -222,6 +241,22 @@ export default function QuranReader() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [surahAudioPlaying, setSurahAudioPlaying] = useState(false);
+
+  const { isPlaying: lectureIsPlaying, togglePlayPause } = useAudioPlayer();
+
+  // When URL has a surahId param and surahs have loaded, auto-select that surah
+  useEffect(() => {
+    if (!params.surahId || !surahs.length) return;
+    const num = parseInt(params.surahId, 10);
+    if (isNaN(num)) return;
+    const found = surahs.find(s => s.number === num);
+    if (found) setSelectedSurah(found);
+  }, [surahs, params.surahId]);
+
+  // When URL changes to /quran (no surahId), clear the selected surah
+  useEffect(() => {
+    if (!params.surahId) setSelectedSurah(null);
+  }, [params.surahId]);
 
   const filteredSurahs = surahs.filter(s =>
     !search ||
@@ -244,25 +279,28 @@ export default function QuranReader() {
       audioRef.current.pause();
       setSurahAudioPlaying(false);
     } else {
+      // Pause lecture player if it's playing
+      if (lectureIsPlaying) togglePlayPause();
       audioRef.current.src = url;
       audioRef.current.play().then(() => setSurahAudioPlaying(true)).catch(console.error);
       audioRef.current.onended = () => setSurahAudioPlaying(false);
     }
-  }, [selectedSurah, surahAudioPlaying]);
+  }, [selectedSurah, surahAudioPlaying, lectureIsPlaying, togglePlayPause]);
 
   const playAyahAudio = useCallback((globalAyahNum: number) => {
-    // globalAyahNum is the absolute ayah number (1–6236), from ayah.number in the API response
     const url = `https://cdn.islamic.network/quran/audio/128/${RECITER_ID}/${globalAyahNum}.mp3`;
     if (!audioRef.current) audioRef.current = new Audio();
     if (playingAyah === globalAyahNum) {
       audioRef.current.pause();
       setPlayingAyah(null);
     } else {
+      // Pause lecture player if it's playing
+      if (lectureIsPlaying) togglePlayPause();
       audioRef.current.src = url;
       audioRef.current.play().then(() => setPlayingAyah(globalAyahNum)).catch(console.error);
       audioRef.current.onended = () => setPlayingAyah(null);
     }
-  }, [playingAyah]);
+  }, [playingAyah, lectureIsPlaying, togglePlayPause]);
 
   // Pagination for ayahs
   const totalPages = Math.ceil(ayahs.length / AYAH_LIMIT);
@@ -285,7 +323,7 @@ export default function QuranReader() {
       <div className="container mx-auto max-w-4xl px-4 py-6 pb-40">
         {/* Header */}
         <div className="flex items-start gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => setSelectedSurah(null)} className="mt-1 shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/quran")} className="mt-1 shrink-0">
             <ChevronLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1 min-w-0">
@@ -417,7 +455,7 @@ export default function QuranReader() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.015 }}
-              onClick={() => setSelectedSurah(surah)}
+              onClick={() => navigate(`/quran/${surah.number}`)}
               className="text-left bg-card border border-border rounded-xl p-4 hover:shadow-md hover:border-primary/30 transition-all group"
             >
               <div className="flex items-start justify-between mb-2">

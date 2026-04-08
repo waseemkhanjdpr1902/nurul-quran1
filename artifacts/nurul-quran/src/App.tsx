@@ -36,6 +36,7 @@ function Router() {
         <Route path="/profile" component={Profile} />
         <Route path="/halal-stocks" component={HalalStocks} />
         <Route path="/quran" component={QuranReader} />
+        <Route path="/quran/:surahId" component={QuranReader} />
         <Route path="/courses/:id" component={CourseDetail} />
         <Route path="/discover" component={Discover} />
         <Route path="/engage" component={Engage} />
