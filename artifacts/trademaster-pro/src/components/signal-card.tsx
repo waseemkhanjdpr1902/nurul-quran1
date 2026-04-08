@@ -230,43 +230,52 @@ export function SignalCard({ signal, isPremiumUser: _isPremiumUser, adminToken, 
         </div>
       )}
 
-      {/* ── Price grid ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 divide-x divide-[#1a2535] border-b border-[#1a2535]">
+      {/* ── Price section ─────────────────────────────────────────────────── */}
+      {/* Row 1: Entry vs SL — full width, high contrast */}
+      <div className="grid grid-cols-2 border-b border-[#1a2535]">
         {/* Entry */}
-        <div className="px-3 py-2.5">
-          <div className="text-[9px] text-[#3a5070] uppercase tracking-widest mb-1">Entry</div>
-          <div className="text-white font-black text-sm leading-none">
+        <div className="px-3 py-2.5 border-r border-[#1a2535]">
+          <div className="text-[9px] text-[#3a5070] uppercase tracking-widest mb-1 font-mono">Entry Price</div>
+          <div className="text-white font-black text-base leading-none font-mono">
             ₹{entry.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
           </div>
+          <div className="text-[9px] text-[#3a5070] mt-1 font-mono">{isBuy ? "BUY above" : "SELL below"}</div>
         </div>
-        {/* SL */}
-        <div className="px-3 py-2.5">
-          <div className="text-[9px] text-[#3a5070] uppercase tracking-widest mb-1">Stop Loss</div>
-          <div className="text-[#ff4466] font-black text-sm leading-none">
+        {/* Stop Loss — red highlight so it can't be missed */}
+        <div className="px-3 py-2.5 bg-[#ff4466]/5">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-[9px] text-[#ff4466]/70 uppercase tracking-widest font-mono">Stop Loss</span>
+            <span className="text-[8px] text-[#ff4466]/50 font-mono font-bold border border-[#ff4466]/20 px-1 rounded">SL</span>
+          </div>
+          <div className="text-[#ff4466] font-black text-base leading-none font-mono">
             ₹{sl.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
           </div>
-          <div className="text-[9px] text-[#ff4466]/60 mt-0.5">{slPct.pct}</div>
+          <div className="text-[9px] text-[#ff4466]/60 mt-1 font-mono font-bold">{slPct.pct} risk</div>
         </div>
+      </div>
+
+      {/* Row 2: Targets */}
+      <div className="grid grid-cols-2 border-b border-[#1a2535]">
         {/* T1 */}
-        <div className="px-3 py-2.5 bg-[#00d084]/3">
-          <div className="text-[9px] text-[#3a5070] uppercase tracking-widest mb-1">Target 1</div>
-          <div className="text-[#00d084] font-black text-sm leading-none">
+        <div className="px-3 py-2 border-r border-[#1a2535] bg-[#00d084]/3">
+          <div className="text-[9px] text-[#3a5070] uppercase tracking-widest mb-1 font-mono">Target 1</div>
+          <div className="text-[#00d084] font-black text-sm leading-none font-mono">
             ₹{t1.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
           </div>
-          <div className="text-[9px] text-[#00d084]/60 mt-0.5">{t1pct.pct}</div>
+          <div className="text-[9px] text-[#00d084]/60 mt-0.5 font-mono">{t1pct.pct}</div>
         </div>
         {/* T2 */}
-        <div className="px-3 py-2.5 bg-[#00d084]/2">
-          <div className="text-[9px] text-[#3a5070] uppercase tracking-widest mb-1">Target 2</div>
+        <div className="px-3 py-2 bg-[#00d084]/2">
+          <div className="text-[9px] text-[#3a5070] uppercase tracking-widest mb-1 font-mono">Target 2</div>
           {signal.target2 ? (
             <>
-              <div className="text-emerald-400 font-black text-sm leading-none">
+              <div className="text-emerald-400 font-black text-sm leading-none font-mono">
                 ₹{parseFloat(signal.target2).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
               </div>
-              {t2pct && <div className="text-[9px] text-emerald-400/60 mt-0.5">{t2pct.pct}</div>}
+              {t2pct && <div className="text-[9px] text-emerald-400/60 mt-0.5 font-mono">{t2pct.pct}</div>}
             </>
           ) : (
-            <div className="text-[#2a3545] font-bold text-sm">—</div>
+            <div className="text-[#2a3545] font-bold text-sm font-mono">—</div>
           )}
         </div>
       </div>
