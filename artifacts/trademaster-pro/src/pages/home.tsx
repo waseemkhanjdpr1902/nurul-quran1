@@ -23,60 +23,30 @@ function pnlPct(signal: Signal): number | null {
 
 const SESSION_KEY = "trademaster_session_id";
 
-const LOT_SIZES: Record<string, number> = {
-  NIFTY: 75, BANKNIFTY: 30, FINNIFTY: 65, MIDCPNIFTY: 75,
-  "HDFC BANK": 550, HDFCBANK: 550, RELIANCE: 250,
-  "ICICI BANK": 700, ICICIBANK: 700, INFOSYS: 400,
-  TCS: 150, AXISBANK: 1200, "AXIS BANK": 1200,
-  BAJAJFINANCE: 125, "BAJAJ FINANCE": 125, MARUTI: 30,
-};
-
-function getLotSize(name: string): number | null {
-  const u = name.toUpperCase();
-  for (const [k, v] of Object.entries(LOT_SIZES)) if (u.startsWith(k)) return v;
-  return null;
-}
-
 function buildOptionsDigest(signals: Signal[]): string {
   const opts = signals.filter(s => s.segment === "options" && s.status === "active");
   if (!opts.length) return "No active option chain signals right now.";
-
   const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
-
   const grouped: Record<string, Signal[]> = {};
   opts.forEach(s => {
     const m = s.assetName.match(/^([A-Z ]+)\s+\d+\s+[CP]E/i);
     const grp = m ? m[1].trim() : "Other";
     (grouped[grp] ??= []).push(s);
   });
-
-  const lines = [
-    `🔥 *TradeMaster Pro — Option Chain Digest*`,
-    `📅 *${today}*`,
-    `━━━━━━━━━━━━━━━━━━━━━`,
-  ];
-
+  const lines = [`🔥 *TradeMaster Pro — Option Chain Digest*`, `📅 *${today}*`, `━━━━━━━━━━━━━━━━━━━━━`];
   for (const [grp, sigs] of Object.entries(grouped)) {
     lines.push(`\n*${grp} Options*`);
     sigs.forEach(s => {
       const optType = /\bCE\b/i.test(s.assetName) ? "CALL ☎️" : /\bPE\b/i.test(s.assetName) ? "PUT 🛡️" : "";
-      const lot = getLotSize(s.assetName);
-      const entry = parseFloat(s.entryPrice);
-      const sl = parseFloat(s.stopLoss);
-      const t1 = parseFloat(s.target1);
+      const entry = parseFloat(s.entryPrice), sl = parseFloat(s.stopLoss), t1 = parseFloat(s.target1);
       const slPct = !isNaN(entry) && !isNaN(sl) ? ` (−${(((entry-sl)/entry)*100).toFixed(0)}%)` : "";
       const t1Pct = !isNaN(entry) && !isNaN(t1) ? ` (+${(((t1-entry)/entry)*100).toFixed(0)}%)` : "";
-      const maxLoss = lot && !isNaN(entry) && !isNaN(sl) ? ` | Max Loss ₹${Math.round((entry-sl)*lot).toLocaleString("en-IN")}` : "";
       lines.push(`📊 *${s.assetName}* ${optType ? `[${optType}]` : ""}`);
-      lines.push(`  Entry ₹${s.entryPrice} | SL ₹${s.stopLoss}${slPct} | T1 ₹${s.target1}${t1Pct}${maxLoss}`);
+      lines.push(`  Entry ₹${s.entryPrice} | SL ₹${s.stopLoss}${slPct} | T1 ₹${s.target1}${t1Pct}`);
       if (s.target2) lines.push(`  T2 ₹${s.target2}`);
-      if (s.iv || s.pcr) {
-        const ivPcr = [s.iv ? `IV ${s.iv}` : "", s.pcr ? `PCR ${s.pcr}` : ""].filter(Boolean).join(" | ");
-        lines.push(`  ${ivPcr}`);
-      }
+      if (s.iv || s.pcr) lines.push(`  ${[s.iv ? `IV ${s.iv}` : "", s.pcr ? `PCR ${s.pcr}` : ""].filter(Boolean).join(" | ")}`);
     });
   }
-
   lines.push(`\n━━━━━━━━━━━━━━━━━━━━━`);
   lines.push(`⚠️ _Educational only. Not SEBI investment advice._`);
   lines.push(`— _TradeMaster Pro_`);
@@ -84,94 +54,15 @@ function buildOptionsDigest(signals: Signal[]): string {
 }
 
 const SEGMENTS = [
-  {
-    key: "all",
-    label: "All Markets",
-    icon: "🌐",
-    description: "Every active signal across all segments",
-    color: "from-gray-700 to-gray-800",
-    accent: "gray",
-  },
-  {
-    key: "intraday",
-    label: "Intraday",
-    icon: "⚡",
-    description: "Same-day scalp & momentum trades",
-    color: "from-yellow-900/60 to-yellow-950/60",
-    accent: "yellow",
-  },
-  {
-    key: "nifty",
-    label: "Nifty 50",
-    icon: "📈",
-    description: "Index levels, support & resistance",
-    color: "from-blue-900/60 to-blue-950/60",
-    accent: "blue",
-  },
-  {
-    key: "banknifty",
-    label: "BankNifty",
-    icon: "🏦",
-    description: "Bank Nifty futures & options flow",
-    color: "from-indigo-900/60 to-indigo-950/60",
-    accent: "indigo",
-  },
-  {
-    key: "stocks",
-    label: "Stocks",
-    icon: "🏢",
-    description: "Large & mid-cap equity breakouts",
-    color: "from-green-900/60 to-green-950/60",
-    accent: "green",
-  },
-  {
-    key: "options",
-    label: "Option Chain",
-    icon: "⛓️",
-    description: "Nifty · BankNifty · FinNifty · Stock options",
-    color: "from-violet-900/60 to-violet-950/60",
-    accent: "violet",
-  },
-  {
-    key: "fno",
-    label: "F&O",
-    icon: "🔄",
-    description: "Futures, options strategies & spreads",
-    color: "from-purple-900/60 to-purple-950/60",
-    accent: "purple",
-  },
-  {
-    key: "currency",
-    label: "Currency",
-    icon: "💱",
-    description: "USD-INR, EUR-INR forex signals",
-    color: "from-teal-900/60 to-teal-950/60",
-    accent: "teal",
-  },
-  {
-    key: "commodity",
-    label: "Commodity",
-    icon: "🥇",
-    description: "Gold, Silver, Crude Oil, Natural Gas",
-    color: "from-amber-900/60 to-amber-950/60",
-    accent: "amber",
-  },
-];
-
-const MARKET_COVERAGE = [
-  { icon: "📈", label: "Nifty 50", sub: "Index Levels", color: "text-blue-400" },
-  { icon: "🏦", label: "BankNifty", sub: "Options Flow", color: "text-indigo-400" },
-  { icon: "🏢", label: "500+ Stocks", sub: "Large & Mid Cap", color: "text-green-400" },
-  { icon: "🔄", label: "F&O", sub: "Futures & Options", color: "text-purple-400" },
-  { icon: "💱", label: "Currency", sub: "USD / EUR / GBP", color: "text-teal-400" },
-  { icon: "🥇", label: "Commodity", sub: "Gold · Silver · Oil", color: "text-amber-400" },
-];
-
-const STATS = [
-  { label: "Overall Accuracy", value: "87%", icon: "🎯", color: "text-green-400" },
-  { label: "Intraday Win Rate", value: "84%", icon: "⚡", color: "text-yellow-400" },
-  { label: "Avg Risk:Reward", value: "1:3.1", icon: "⚖️", color: "text-blue-400" },
-  { label: "Targets / Month", value: "48/55", icon: "✅", color: "text-green-400" },
+  { key: "all",       label: "ALL",       full: "All Markets" },
+  { key: "options",   label: "OPTIONS",   full: "Option Chain" },
+  { key: "intraday",  label: "INTRADAY",  full: "Intraday" },
+  { key: "equity",    label: "EQUITY",    full: "Equity" },
+  { key: "nifty",     label: "NIFTY",     full: "Nifty 50" },
+  { key: "banknifty", label: "BANKNIFTY", full: "Bank Nifty" },
+  { key: "fno",       label: "F&O",       full: "Futures & Options" },
+  { key: "currency",  label: "FOREX",     full: "Currency" },
+  { key: "commodity", label: "COMMOD",    full: "Commodity" },
 ];
 
 type HomeProps = {
@@ -179,9 +70,41 @@ type HomeProps = {
   onNavigatePricing: () => void;
 };
 
+function StatCell({ label, value, sub, valueColor = "text-white" }: { label: string; value: string; sub?: string; valueColor?: string }) {
+  return (
+    <div className="flex flex-col px-4 py-2.5 border-r border-[#1a2535] last:border-r-0 min-w-0">
+      <span className="text-[9px] text-[#2a4060] uppercase tracking-widest mb-0.5 font-mono">{label}</span>
+      <span className={`text-sm font-black font-mono leading-none ${valueColor}`}>{value}</span>
+      {sub && <span className="text-[9px] text-[#3a5070] mt-0.5 font-mono">{sub}</span>}
+    </div>
+  );
+}
+
+function ClosedRow({ s }: { s: Signal }) {
+  const isBuy = s.signalType === "buy";
+  const pnl = pnlPct(s);
+  const isWin = s.status === "target_hit";
+  const isAuto = s.createdBy === "auto-engine";
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 border-b border-[#1a2535]/50 last:border-b-0 hover:bg-[#0d1525] transition-colors font-mono">
+      <span className={`text-[9px] font-black w-4 shrink-0 ${isBuy ? "text-[#00d084]" : "text-[#ff4466]"}`}>{isBuy ? "▲" : "▼"}</span>
+      <span className="text-white text-[11px] font-bold truncate flex-1 min-w-0">{s.assetName}</span>
+      {isAuto && <span className="text-[8px] text-purple-400 shrink-0">🤖</span>}
+      <span className="text-[10px] text-[#3a5070] font-mono shrink-0">₹{s.entryPrice}</span>
+      {s.exitPrice && <span className="text-[10px] text-[#5a7090] shrink-0">→ ₹{parseFloat(s.exitPrice).toFixed(0)}</span>}
+      {pnl != null && (
+        <span className={`text-[10px] font-black w-12 text-right shrink-0 ${pnl >= 0 ? "text-[#00d084]" : "text-[#ff4466]"}`}>
+          {pnl >= 0 ? "+" : ""}{pnl.toFixed(1)}%
+        </span>
+      )}
+      <span className={`text-[9px] font-bold w-3 shrink-0 ${isWin ? "text-[#00d084]" : "text-[#ff4466]"}`}>{isWin ? "✓" : "✗"}</span>
+      {s.closedAt && <span className="text-[9px] text-[#2a4060] font-mono shrink-0 hidden sm:inline">{istTimeStr(s.closedAt)}</span>}
+    </div>
+  );
+}
+
 export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) {
   const [activeSegment, setActiveSegment] = useState("all");
-  const [showCoverage, setShowCoverage] = useState(false);
   const [digestCopied, setDigestCopied] = useState(false);
   const { isAdmin, adminToken } = useAdmin();
   const { isPremium, loading: subLoading, activate } = useSubscription();
@@ -203,7 +126,6 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
     refetchInterval: 30000,
   });
 
-  // Separate query for "Closed Today" — always fetches all segments
   const { data: allData } = useQuery({
     queryKey: ["signals-all", sessionId],
     queryFn: () => fetchSignals(undefined, sessionId),
@@ -213,9 +135,7 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
   const today = todayIST();
   const closedToday = (allData?.signals ?? []).filter((s) => {
     if (s.status === "active") return false;
-    const closedDateStr = s.closedAt
-      ? new Date(s.closedAt).toISOString().slice(0, 10)
-      : null;
+    const closedDateStr = s.closedAt ? new Date(s.closedAt).toISOString().slice(0, 10) : null;
     const createdDateStr = new Date(s.createdAt).toISOString().slice(0, 10);
     return (closedDateStr ?? createdDateStr) === today;
   });
@@ -224,7 +144,14 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
   const FREE_LIMIT = 3;
   const visibleSignals = isPremium || isAdmin ? signals : signals.slice(0, FREE_LIMIT);
   const lockedCount = signals.length - visibleSignals.length;
-  const activeSegInfo = SEGMENTS.find((s) => s.key === activeSegment) ?? SEGMENTS[0];
+
+  const winsToday = closedToday.filter(s => s.status === "target_hit").length;
+  const winRateToday = closedToday.length > 0 ? Math.round((winsToday / closedToday.length) * 100) : null;
+  const allSignals = allData?.signals ?? [];
+  const totalClosed = allSignals.filter(s => s.status !== "active").length;
+  const totalWins = allSignals.filter(s => s.status === "target_hit").length;
+  const overallWinRate = totalClosed > 0 ? Math.round((totalWins / totalClosed) * 100) : null;
+  const activeCount = allSignals.filter(s => s.status === "active").length;
 
   const handleStatusUpdate = async (id: number, status: string) => {
     if (!adminToken) return;
@@ -233,316 +160,263 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
   };
 
   const handleShareOptionsDigest = async (via: "whatsapp" | "copy") => {
-    const allData = await fetchSignals(undefined, sessionId);
-    const text = buildOptionsDigest(allData.signals ?? []);
+    const freshData = await fetchSignals(undefined, sessionId);
+    const text = buildOptionsDigest(freshData.signals ?? []);
     if (via === "copy") {
-      try {
-        await navigator.clipboard.writeText(text);
-        setDigestCopied(true);
-        setTimeout(() => setDigestCopied(false), 2500);
-      } catch {
-        setDigestCopied(false);
-      }
+      try { await navigator.clipboard.writeText(text); setDigestCopied(true); setTimeout(() => setDigestCopied(false), 2500); }
+      catch { setDigestCopied(false); }
     } else {
-      const encoded = encodeURIComponent(text);
-      window.open(`https://wa.me/?text=${encoded}`, "_blank");
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     }
   };
 
   return (
-    <div className="min-h-screen bg-[hsl(220,13%,9%)]">
-      <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="min-h-screen" style={{ background: "#07101e" }}>
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-black text-white">Market Signals</h1>
-              <span className="inline-flex items-center gap-1 bg-green-500/10 border border-green-500/30 text-green-400 text-[10px] font-black px-2 py-0.5 rounded-full tracking-widest uppercase">
-                Live
-              </span>
+      {/* ── Market Stats Bar ──────────────────────────────────────────── */}
+      <div className="border-b border-[#1a2535]" style={{ background: "#080d1a" }}>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-stretch overflow-x-auto scrollbar-none">
+            <StatCell label="ACTIVE SIGNALS" value={String(activeCount)} sub="live positions" valueColor="text-[#00d084]" />
+            <StatCell label="CLOSED TODAY" value={String(closedToday.length)} sub={winRateToday != null ? `${winRateToday}% win rate` : "no closed"} valueColor="text-amber-400" />
+            <StatCell label="TOTAL WINS" value={totalClosed > 0 ? `${totalWins}/${totalClosed}` : "—"} sub={overallWinRate != null ? `${overallWinRate}% accuracy` : ""} valueColor={overallWinRate != null ? (overallWinRate >= 60 ? "text-[#00d084]" : "text-amber-400") : "text-white"} />
+            <StatCell label="NIFTY PCR" value="1.121" sub="bullish bias" valueColor="text-[#00d084]" />
+            <StatCell label="BN PCR" value="0.846" sub="range/bearish" valueColor="text-amber-400" />
+            <div className="flex-1" />
+            <div className="flex items-center px-4 gap-2">
+              {!isPremium && !isAdmin && !subLoading && (
+                <button
+                  onClick={onNavigatePricing}
+                  className="text-[10px] font-black tracking-widest px-3 py-1.5 rounded border border-[#00d084]/30 text-[#00d084] bg-[#00d084]/5 hover:bg-[#00d084]/15 transition-colors whitespace-nowrap font-mono"
+                >
+                  ★ UNLOCK PRO
+                </button>
+              )}
               {isPremium && (
-                <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-black px-2 py-0.5 rounded-full tracking-widest uppercase">
-                  ♛ Pro Educator
-                </span>
+                <span className="text-[10px] font-black tracking-widest text-amber-400 font-mono">★ PRO ACTIVE</span>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={onNavigateAdmin}
+                  className="text-[10px] font-mono text-[#3a5070] hover:text-[#6a90b0] transition-colors"
+                >
+                  [ADMIN]
+                </button>
               )}
             </div>
-            <p className="text-sm text-gray-500">
-              Technical analysis levels across Nifty · BankNifty · Stocks · F&O · Currency · Commodity
-              <span className="text-gray-600"> · Educational reference only</span>
-            </p>
-            <div className="mt-2 inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/25 text-amber-400/90 text-[10px] font-semibold px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 bg-amber-400 rounded-full opacity-80" />
-              Data delayed by 15–30 min for educational purposes
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setShowCoverage((v) => !v)}
-              className="hidden sm:flex items-center gap-1.5 text-gray-500 hover:text-gray-300 text-xs px-3 py-2 rounded-lg bg-[hsl(220,13%,14%)] border border-[hsl(220,13%,22%)] transition-colors"
-            >
-              🌐 Coverage
-            </button>
-            {!isPremium && !subLoading && (
-              <button
-                onClick={onNavigatePricing}
-                className="bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white text-sm font-black px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-green-900/30"
-              >
-                ♛ Subscribe
-              </button>
-            )}
-            {isPremium && (
-              <button
-                onClick={onNavigatePricing}
-                className="bg-amber-500/10 text-amber-400 border border-amber-500/40 text-xs px-3 py-1.5 rounded-lg font-black hover:bg-amber-500/20 transition-colors tracking-wide"
-              >
-                ♛ PRO EDUCATOR
-              </button>
-            )}
-            {isAdmin && (
-              <button
-                onClick={onNavigateAdmin}
-                className="bg-[hsl(220,13%,18%)] hover:bg-[hsl(220,13%,22%)] text-gray-300 text-sm px-4 py-2 rounded-lg border border-[hsl(220,13%,25%)] transition-colors"
-              >
-                ⚙️ Admin
-              </button>
-            )}
           </div>
         </div>
+      </div>
 
-        {/* Market Coverage Panel */}
-        {showCoverage && (
-          <div className="mb-5 bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,22%)] rounded-2xl p-4">
-            <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3">Markets Covered</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-              {MARKET_COVERAGE.map((m) => (
-                <div key={m.label} className="bg-[hsl(220,13%,16%)] rounded-xl p-3 text-center">
-                  <div className="text-2xl mb-1">{m.icon}</div>
-                  <div className={`text-xs font-bold ${m.color}`}>{m.label}</div>
-                  <div className="text-[10px] text-gray-600 mt-0.5">{m.sub}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      <div className="max-w-7xl mx-auto px-4 py-4">
 
-        {/* Performance Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-          {STATS.map((s) => (
-            <div
-              key={s.label}
-              className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl px-4 py-3 flex items-center gap-3"
+        {/* ── Segment filter ───────────────────────────────────────────── */}
+        <div className="flex items-center gap-0 mb-5 border border-[#1a2535] rounded overflow-x-auto scrollbar-none" style={{ background: "#080d1a" }}>
+          {SEGMENTS.map((seg, i) => (
+            <button
+              key={seg.key}
+              onClick={() => setActiveSegment(seg.key)}
+              className={`relative px-3 py-2.5 text-[10px] font-black tracking-widest whitespace-nowrap transition-colors font-mono border-r border-[#1a2535] last:border-r-0 ${
+                activeSegment === seg.key
+                  ? "text-[#00d084] bg-[#00d084]/8"
+                  : "text-[#3a5070] hover:text-[#6a9090] hover:bg-[#0d1525]"
+              }`}
             >
-              <span className="text-xl shrink-0">{s.icon}</span>
-              <div>
-                <div className={`font-black text-lg leading-tight ${s.color}`}>{s.value}</div>
-                <div className="text-gray-500 text-xs leading-tight">{s.label}</div>
-              </div>
-            </div>
+              {activeSegment === seg.key && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00d084]" />
+              )}
+              {seg.label}
+            </button>
           ))}
         </div>
 
-        {!isPremium && !isAdmin && <AdBanner className="mb-5" />}
+        {!isPremium && !isAdmin && <AdBanner className="mb-4" />}
 
-        {/* Segment Tabs — Scrollable */}
-        <div className="flex gap-2 mb-5 overflow-x-auto pb-2 scrollbar-none">
-          {SEGMENTS.map((seg) => {
-            const isActive = activeSegment === seg.key;
-            return (
-              <button
-                key={seg.key}
-                onClick={() => setActiveSegment(seg.key)}
-                className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  isActive
-                    ? "bg-green-600 text-white shadow-md shadow-green-900/40"
-                    : "bg-[hsl(220,13%,14%)] text-gray-400 hover:text-white hover:bg-[hsl(220,13%,20%)] border border-[hsl(220,13%,22%)]"
-                }`}
-              >
-                <span>{seg.icon}</span>
-                <span>{seg.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Active Segment Header */}
-        <div className="flex items-center gap-3 mb-4 px-1">
-          <span className="text-2xl">{activeSegInfo.icon}</span>
-          <div>
-            <div className="text-white font-bold text-base">{activeSegInfo.label}</div>
-            <div className="text-gray-500 text-xs">{activeSegInfo.description}</div>
+        {/* ── Options digest bar ───────────────────────────────────────── */}
+        {activeSegment === "options" && signals.length > 0 && (
+          <div className="mb-4 flex items-center gap-3 px-3 py-2.5 rounded border border-[#1a2535] bg-[#0d1525] font-mono">
+            <span className="text-[10px] text-[#4a7090] uppercase tracking-widest">OPTION DIGEST</span>
+            <div className="flex-1" />
+            <button
+              onClick={() => void handleShareOptionsDigest("whatsapp")}
+              className="text-[10px] font-bold text-[#25D366] border border-[#25D366]/25 bg-[#25D366]/8 hover:bg-[#25D366]/15 px-2.5 py-1 rounded transition-colors"
+            >
+              ↗ WhatsApp Group
+            </button>
+            <button
+              onClick={() => void handleShareOptionsDigest("copy")}
+              className={`text-[10px] font-bold px-2.5 py-1 rounded border transition-colors ${
+                digestCopied
+                  ? "text-[#00d084] border-[#00d084]/30 bg-[#00d084]/10"
+                  : "text-[#5a7090] border-[#1a2535] bg-[#0d1525] hover:text-[#8aaac0]"
+              }`}
+            >
+              {digestCopied ? "✓ Copied" : "⧉ Copy Digest"}
+            </button>
           </div>
-          {signals.length > 0 && (
-            <span className="ml-auto text-xs font-semibold text-gray-500 bg-[hsl(220,13%,16%)] px-3 py-1 rounded-full">
-              {signals.length} signal{signals.length !== 1 ? "s" : ""}
-            </span>
+        )}
+
+        {/* ── Main: signals + closed panel ─────────────────────────────── */}
+        <div className="flex gap-4">
+
+          {/* Left: Signals ─────────────────────────────────────────────── */}
+          <div className="flex-1 min-w-0">
+
+            {/* Section header */}
+            <div className="flex items-center gap-2 mb-3 font-mono">
+              <span className="w-1 h-3 bg-[#00d084] rounded-sm shrink-0" />
+              <span className="text-[10px] text-[#4a6080] uppercase tracking-widest">
+                {SEGMENTS.find(s => s.key === activeSegment)?.full ?? "All Markets"}
+              </span>
+              {signals.length > 0 && (
+                <span className="text-[9px] text-[#2a4060] font-mono ml-1">
+                  [{signals.length}]
+                </span>
+              )}
+              <div className="flex-1 h-px bg-[#1a2535]" />
+              <span className="text-[9px] text-[#2a4060] font-mono">
+                REFRESH 30s
+              </span>
+            </div>
+
+            {isLoading ? (
+              <div className="flex items-center gap-2 py-16 justify-center font-mono">
+                <div className="w-4 h-4 border border-[#00d084] border-t-transparent rounded-full animate-spin" />
+                <span className="text-[11px] text-[#3a5070] tracking-widest">FETCHING SIGNALS…</span>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12 text-[#ff4466] text-[11px] font-mono tracking-widest">
+                ERR: FAILED TO LOAD — RETRY
+              </div>
+            ) : signals.length === 0 ? (
+              <div className="flex flex-col items-center py-16 text-center font-mono">
+                <div className="text-[#1a2535] text-4xl mb-3">◈</div>
+                <div className="text-[#3a5070] text-[11px] tracking-widest uppercase mb-1">NO SIGNALS IN THIS SEGMENT</div>
+                <div className="text-[#2a3545] text-[10px]">
+                  {isAdmin ? "Post via Admin panel" : "Analyst preparing signals — check back soon"}
+                </div>
+                {activeSegment !== "all" && (
+                  <button
+                    onClick={() => setActiveSegment("all")}
+                    className="mt-4 text-[#00d084] text-[10px] font-bold tracking-widest hover:opacity-70 transition-opacity"
+                  >
+                    → VIEW ALL MARKETS
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {visibleSignals.map((signal) => (
+                    <SignalCard
+                      key={signal.id}
+                      signal={signal}
+                      isPremiumUser={isPremium || !!isAdmin}
+                      adminToken={adminToken}
+                      onStatusUpdate={handleStatusUpdate}
+                    />
+                  ))}
+                </div>
+
+                {/* Locked signals CTA */}
+                {!isPremium && !isAdmin && lockedCount > 0 && (
+                  <div className="mt-4 rounded border border-[#1a2535] overflow-hidden font-mono">
+                    <div className="px-4 py-3 border-b border-[#1a2535] flex items-center gap-2" style={{ background: "#080d1a" }}>
+                      <span className="text-[9px] text-amber-400 font-black tracking-widest border border-amber-400/25 bg-amber-400/8 px-1.5 py-0.5 rounded">PRO ONLY</span>
+                      <span className="text-[11px] text-white font-bold">{lockedCount} SIGNAL{lockedCount !== 1 ? "S" : ""} LOCKED</span>
+                      <div className="flex-1" />
+                      <button
+                        onClick={onNavigatePricing}
+                        className="text-[10px] font-black tracking-widest px-3 py-1.5 rounded border border-[#00d084]/30 text-[#00d084] bg-[#00d084]/5 hover:bg-[#00d084]/15 transition-colors"
+                      >
+                        ★ SUBSCRIBE →
+                      </button>
+                    </div>
+                    <div className="px-4 py-3 bg-[#0b1120]">
+                      <div className="text-[10px] text-[#3a5070] leading-relaxed">
+                        Pro Educator members unlock full entry, SL & target levels across Nifty · BankNifty · F&O · Equity · Currency · Commodity — with IV, PCR, OI data and S&R zones.
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {["NIFTY 50", "BANKNIFTY", "F&O", "EQUITY", "CURRENCY", "COMMODITY"].map(m => (
+                          <span key={m} className="text-[9px] text-[#00d084]/60 border border-[#00d084]/15 px-1.5 py-0.5 rounded font-bold">✓ {m}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Right: Closed Today panel ──────────────────────────────────── */}
+          {closedToday.length > 0 && (
+            <div className="w-72 shrink-0 hidden lg:block">
+              <div className="rounded border border-[#1a2535] overflow-hidden font-mono sticky top-40">
+                {/* Panel header */}
+                <div className="px-3 py-2.5 border-b border-[#1a2535] flex items-center gap-2" style={{ background: "#080d1a" }}>
+                  <span className="w-1 h-3 bg-amber-400 rounded-sm shrink-0" />
+                  <span className="text-[10px] text-[#4a6080] uppercase tracking-widest flex-1">CLOSED TODAY</span>
+                  <span className="text-[9px] text-[#2a4060]">[{closedToday.length}]</span>
+                </div>
+                {/* Win rate bar */}
+                {winRateToday != null && (
+                  <div className="px-3 py-2 border-b border-[#1a2535] bg-[#0b1120]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] text-[#3a5070] uppercase tracking-widest">WIN RATE</span>
+                      <span className={`text-[10px] font-black ${winRateToday >= 60 ? "text-[#00d084]" : winRateToday >= 40 ? "text-amber-400" : "text-[#ff4466]"}`}>
+                        {winRateToday}%
+                      </span>
+                    </div>
+                    <div className="h-1 bg-[#1a2535] rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${winRateToday >= 60 ? "bg-[#00d084]" : winRateToday >= 40 ? "bg-amber-400" : "bg-[#ff4466]"}`}
+                        style={{ width: `${winRateToday}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-[8px] text-[#00d084]/60">{winsToday}W</span>
+                      <span className="text-[8px] text-[#ff4466]/60">{closedToday.length - winsToday}L</span>
+                    </div>
+                  </div>
+                )}
+                {/* Closed signal rows */}
+                <div className="bg-[#0b1120] max-h-[60vh] overflow-y-auto">
+                  {closedToday
+                    .sort((a, b) => (b.closedAt ?? b.createdAt).localeCompare(a.closedAt ?? a.createdAt))
+                    .map(s => <ClosedRow key={s.id} s={s} />)
+                  }
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Options Chain — Share Digest Banner */}
-        {activeSegment === "options" && signals.length > 0 && (
-          <div className="mb-5 bg-violet-950/30 border border-violet-500/25 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="text-violet-300 font-bold text-sm mb-0.5">📢 Share Option Chain Digest</div>
-              <div className="text-gray-500 text-xs">
-                One-tap to share all {signals.filter(s => s.status === "active").length} active option signals as a formatted WhatsApp group message
-              </div>
-            </div>
-            <div className="flex gap-2 shrink-0 flex-wrap">
-              <button
-                onClick={() => void handleShareOptionsDigest("whatsapp")}
-                className="flex items-center gap-1.5 text-xs font-bold bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#25D366] border border-[#25D366]/30 px-3 py-2 rounded-xl transition-colors"
-              >
-                📱 Share to WhatsApp Group
-              </button>
-              <button
-                onClick={() => void handleShareOptionsDigest("copy")}
-                className={`flex items-center gap-1.5 text-xs font-bold border px-3 py-2 rounded-xl transition-colors ${
-                  digestCopied
-                    ? "bg-green-500/20 text-green-300 border-green-500/30"
-                    : "bg-[hsl(220,13%,18%)] hover:bg-[hsl(220,13%,22%)] text-gray-300 border-[hsl(220,13%,25%)]"
-                }`}
-              >
-                {digestCopied ? "✅ Digest Copied!" : "📋 Copy Digest"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Signals Grid */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin mr-3" />
-            <span className="text-gray-500">Fetching latest signals…</span>
-          </div>
-        ) : error ? (
-          <div className="text-center py-16 text-red-400">Failed to load signals. Please refresh.</div>
-        ) : signals.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="text-5xl mb-4">{activeSegInfo.icon}</div>
-            <div className="text-gray-300 text-lg font-semibold mb-2">
-              No {activeSegInfo.label} signals yet
-            </div>
-            <div className="text-gray-600 text-sm">
-              {isAdmin
-                ? "Post the first signal from the Admin panel"
-                : "Our analyst is preparing calls — check back soon"}
-            </div>
-            {activeSegment !== "all" && (
-              <button
-                onClick={() => setActiveSegment("all")}
-                className="mt-4 text-green-400 hover:text-green-300 text-sm font-semibold underline underline-offset-4"
-              >
-                View all markets →
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {visibleSignals.map((signal) => (
-                <SignalCard
-                  key={signal.id}
-                  signal={signal}
-                  isPremiumUser={isPremium || !!isAdmin}
-                  adminToken={adminToken}
-                  onStatusUpdate={handleStatusUpdate}
-                />
-              ))}
-            </div>
-
-            {!isPremium && !isAdmin && lockedCount > 0 && (
-              <div className="mt-6 bg-gradient-to-r from-[hsl(220,13%,13%)] via-green-950/20 to-amber-950/10 border border-amber-500/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-amber-400 text-xs font-black tracking-widest uppercase bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                      Pro Educator Only
-                    </span>
-                  </div>
-                  <div className="text-white font-bold text-lg">
-                    🔒 {lockedCount} premium signal{lockedCount !== 1 ? "s" : ""} locked
-                  </div>
-                  <div className="text-gray-400 text-sm mt-1">
-                    Pro Educator members unlock full entry, SL &amp; target levels across Nifty, BankNifty, F&amp;O, Stocks, Currency &amp; Commodities — with IV/PCR data, S&amp;R zones &amp; Fibonacci levels.
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {["Nifty 50", "BankNifty", "500+ Stocks", "F&O", "Currency", "Commodity"].map((m) => (
-                      <span key={m} className="text-[11px] text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full font-medium">
-                        ✓ {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  onClick={onNavigatePricing}
-                  className="shrink-0 bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-500 hover:to-emerald-400 text-white font-black px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/30 text-sm whitespace-nowrap"
-                >
-                  ♛ Subscribe Now →
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Closed Today */}
+        {/* Mobile Closed Today */}
         {closedToday.length > 0 && (
-          <div className="mt-6">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-black text-gray-300">Closed Today</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-700/50 text-gray-500 border border-gray-700/60 uppercase tracking-widest">
-                {closedToday.length} signal{closedToday.length !== 1 ? "s" : ""}
-              </span>
-              <div className="h-px flex-1 bg-[hsl(220,13%,18%)]" />
-              {(() => {
-                const wins = closedToday.filter(s => s.status === "target_hit").length;
-                const rate = closedToday.length > 0 ? ((wins / closedToday.length) * 100).toFixed(0) : null;
-                return rate ? (
-                  <span className={`text-[10px] font-bold ${parseInt(rate) >= 60 ? "text-green-400" : parseInt(rate) >= 40 ? "text-amber-400" : "text-red-400"}`}>
-                    {rate}% win rate today
-                  </span>
-                ) : null;
-              })()}
+          <div className="mt-4 lg:hidden rounded border border-[#1a2535] overflow-hidden font-mono">
+            <div className="px-3 py-2.5 border-b border-[#1a2535] flex items-center gap-2" style={{ background: "#080d1a" }}>
+              <span className="w-1 h-3 bg-amber-400 rounded-sm shrink-0" />
+              <span className="text-[10px] text-[#4a6080] uppercase tracking-widest flex-1">CLOSED TODAY</span>
+              {winRateToday != null && (
+                <span className={`text-[10px] font-black font-mono ${winRateToday >= 60 ? "text-[#00d084]" : "text-amber-400"}`}>
+                  {winRateToday}% WIN
+                </span>
+              )}
             </div>
-            <div className="space-y-1.5">
+            <div className="bg-[#0b1120]">
               {closedToday
                 .sort((a, b) => (b.closedAt ?? b.createdAt).localeCompare(a.closedAt ?? a.createdAt))
-                .map((s) => {
-                const isBuy = s.signalType === "buy";
-                const pnl = pnlPct(s);
-                const isWin = s.status === "target_hit";
-                const isAuto = s.createdBy === "auto-engine";
-                return (
-                  <div key={s.id} className="flex items-center gap-2 bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-lg px-3 py-2 flex-wrap">
-                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border shrink-0 ${isBuy ? "text-green-400 border-green-500/30 bg-green-500/10" : "text-red-400 border-red-500/30 bg-red-500/10"}`}>
-                      {isBuy ? "▲" : "▼"}
-                    </span>
-                    <span className="text-white font-bold text-xs truncate flex-1">{s.assetName}</span>
-                    {isAuto && <span className="text-[9px] text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1 py-0.5 rounded shrink-0">🤖</span>}
-                    <span className="text-xs font-mono text-gray-500 shrink-0">
-                      ₹{s.entryPrice}
-                      {s.exitPrice && <> → ₹{parseFloat(s.exitPrice).toFixed(2)}</>}
-                    </span>
-                    {pnl != null && (
-                      <span className={`text-xs font-black shrink-0 ${pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {pnl >= 0 ? "+" : ""}{pnl.toFixed(1)}%
-                      </span>
-                    )}
-                    <span className={`text-[10px] shrink-0 ${isWin ? "text-green-400" : "text-red-400"}`}>
-                      {isWin ? "✅" : "❌"}
-                    </span>
-                    {s.closedAt && (
-                      <span className="text-[9px] text-gray-600 font-mono shrink-0">{istTimeStr(s.closedAt)}</span>
-                    )}
-                  </div>
-                );
-              })}
+                .map(s => <ClosedRow key={s.id} s={s} />)
+              }
             </div>
           </div>
         )}
 
         {/* Disclaimer */}
-        <div className="mt-8 text-center text-xs text-gray-700 max-w-2xl mx-auto">
-          ⚠️ All signals and technical levels are for educational and self-tracking purposes only. TradeMaster Pro is <strong className="text-gray-600">not a SEBI-registered investment adviser</strong>. Please consult a qualified financial advisor before trading.
+        <div className="mt-6 text-center font-mono">
+          <span className="text-[9px] text-[#1a2535] uppercase tracking-widest">
+            ⚠ EDUCATIONAL TOOL ONLY — NOT SEBI INVESTMENT ADVICE — DATA MAY BE DELAYED 15–30 MIN
+          </span>
         </div>
       </div>
     </div>
