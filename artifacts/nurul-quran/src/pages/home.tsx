@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Play, Lock, BookOpen, Users, MicVocal, LayoutGrid, Compass, ChevronRight, Sparkles } from "lucide-react";
+import { Play, Lock, BookOpen, Users, MicVocal, LayoutGrid, Compass, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 function formatDuration(seconds?: number | null) {
@@ -106,22 +106,6 @@ export default function Home() {
               <p className="font-bold text-white text-lg">New to Islam? Welcome!</p>
               <p className="text-white/75 text-sm mt-0.5 leading-relaxed">
                 Discover what Islam is, the 5 Pillars, common questions answered, and how to take the Shahada.
-              </p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-white/60 flex-shrink-0 transition-transform group-hover:translate-x-1" />
-          </div>
-        </Link>
-
-        {/* Reflect & Engage Banner */}
-        <Link href="/engage">
-          <div className="group flex items-center gap-5 rounded-2xl bg-gradient-to-r from-violet-700 to-purple-600 p-5 md:p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-[1.01]">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-white/15 shadow-inner">
-              <Sparkles className="h-7 w-7 text-white" />
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-white text-lg">Reflect & Engage</p>
-              <p className="text-white/75 text-sm mt-0.5 leading-relaxed">
-                Mood-based Quran verses · Deen Focus Timer · Community Ummah Goal
               </p>
             </div>
             <ChevronRight className="h-5 w-5 text-white/60 flex-shrink-0 transition-transform group-hover:translate-x-1" />
