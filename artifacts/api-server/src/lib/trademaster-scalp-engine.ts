@@ -127,6 +127,16 @@ export interface LiveData {
   putOiVelocityNifty:      number;
   callOiVelocityBankNifty: number;
   putOiVelocityBankNifty:  number;
+  // OI Velocity Sniper (60s absolute delta)
+  callOiDelta60sNifty:     number;
+  putOiDelta60sNifty:      number;
+  callOiDelta60sBankNifty: number;
+  putOiDelta60sBankNifty:  number;
+  // Volume Surge ratio (currentVol / avg5mVol)
+  volSurgeNifty:     number;
+  volSurgeBankNifty: number;
+  // Momentum Score (0–100)
+  momentumScore: number;
   pcrNifty:     number;
   pcrBankNifty: number;
   // Sentiment
@@ -154,6 +164,8 @@ export interface LiveData {
   cond2BankNifty: boolean;
   cond3BankNifty: boolean;
   cond4BankNifty: boolean;
+  // Sniper pause (ms timestamp until sniper is paused per index)
+  sniperPauseUntil: Record<string, number>;
   // Meta
   isMarketOpen:   boolean;
   isPrimeWindow:  boolean;
@@ -211,7 +223,8 @@ const state = {
   signals:   [] as ScalpSignal[],
   avoided:   [] as AvoidedSignal[],
   absorptionAlerts: [] as AbsorptionAlert[],
-  lastSignalAt: { NIFTY: 0, BANKNIFTY: 0 } as Record<string, number>,
+  lastSignalAt:    { NIFTY: 0, BANKNIFTY: 0 } as Record<string, number>,
+  sniperPauseUntil: { NIFTY: 0, BANKNIFTY: 0 } as Record<string, number>,
   dayOpen:   { nifty: 0, banknifty: 0 },
   // Dynamic OI Z-Score threshold (auto-adjusts based on SL rate)
   autoOIThreshold: 2.0,
@@ -314,7 +327,7 @@ function isVol3x(candles: Candle[], currentVol: number): boolean {
   return avg > 0 && currentVol > 3 * avg;
 }
 
-// Volume OI velocity from snapshots
+// Volume OI velocity from snapshots (per-minute rate)
 function getOIVelocity(snapshots: OISnapshot[], type: "call" | "put"): number {
   if (snapshots.length < 2) return 0;
   const recent = snapshots[snapshots.length - 1];
@@ -325,6 +338,35 @@ function getOIVelocity(snapshots: OISnapshot[], type: "call" | "put"): number {
     ? recent.callOi - ago.callOi
     : recent.putOi  - ago.putOi;
   return delta / dtMins;
+}
+
+// OI Velocity Sniper: absolute 60s delta (last snapshot vs previous snapshot)
+function getOIDelta60s(snapshots: OISnapshot[], type: "call" | "put"): number {
+  if (snapshots.length < 2) return 0;
+  const recent = snapshots[snapshots.length - 1];
+  const prev   = snapshots[snapshots.length - 2];
+  return type === "call" ? recent.callOi - prev.callOi : recent.putOi - prev.putOi;
+}
+
+// Volume Surge ratio: current partial 1m volume / avg of last 5 complete 1m candles
+function calcVolSurge(candles1m: Candle[], partVol: number): number {
+  if (candles1m.length < 5) return 0;
+  const last5 = candles1m.slice(-5);
+  const avg   = last5.reduce((a, c) => a + c.v, 0) / last5.length;
+  return avg > 0 ? partVol / avg : 0;
+}
+
+// Momentum Score (0–100): how much OI is moving right now
+// Scaled to 50K OI change per 60s = score 100
+function calcMomentumScore(
+  callDelta60sN: number, putDelta60sN: number,
+  callDelta60sBN: number, putDelta60sBN: number,
+): number {
+  const maxAbs = Math.max(
+    Math.abs(callDelta60sN),   Math.abs(putDelta60sN),
+    Math.abs(callDelta60sBN),  Math.abs(putDelta60sBN),
+  );
+  return Math.min(100, Math.round((maxAbs / 50000) * 100));
 }
 
 // 5-min High from last two 5-min buckets of 1-min candles
@@ -420,6 +462,107 @@ function calcLivePointsCaptured(): number {
     total += pts;
   }
   return parseFloat(total.toFixed(2));
+}
+
+// ── OI Velocity Sniper Signal ─────────────────────────────────────────────────
+// Fires on short covering (Call OI drops) or long unwinding (Put OI drops)
+// Uses tighter ATR-based exits (0.5× ATR14) for scalp precision
+
+const SNIPER_OI_THRESHOLD  = -20000;   // Call/Put OI must drop by 20K in 60s
+const SNIPER_VOL_THRESHOLD = 2.5;      // Volume must be 2.5× avg 5m vol
+const SNIPER_PAUSE_MS      = 30000;    // 30s pause after any sniper trade closes
+
+function tryGenerateSniperSignal(
+  index:  "NIFTY" | "BANKNIFTY",
+  s:      ReturnType<typeof mkState>,
+  price:  number,
+): ScalpSignal | null {
+  if (!isMarketOpen()) return null;
+  const now = Date.now();
+  if (now < (state.sniperPauseUntil[index] ?? 0)) return null;
+  if (now - state.lastSignalAt[index] < SIGNAL_COOLDOWN_MS) return null;
+  if (s.oiSnapshots.length < 2 || s.candles1m.length < 5) return null;
+
+  const vwap15      = calc15mVWAP(s.candles1m);
+  if (vwap15 === 0) return null;
+
+  const callDelta60s = getOIDelta60s(s.oiSnapshots, "call");
+  const putDelta60s  = getOIDelta60s(s.oiSnapshots, "put");
+  const partVol      = s.partialCandle?.v ?? 0;
+  const volSurge     = calcVolSurge(s.candles1m, partVol);
+
+  let dir:        SignalDir | null = null;
+  let setupLabel  = "";
+  let reason      = "";
+
+  // BUY: Price > VWAP + Call OI dropping (short covering) + Volume Surge
+  if (price > vwap15 && callDelta60s < SNIPER_OI_THRESHOLD && volSurge >= SNIPER_VOL_THRESHOLD) {
+    dir        = "BUY";
+    setupLabel = "⚡ Sniper — Short Covering";
+    reason     = `Call OI −${Math.abs(callDelta60s / 1000).toFixed(1)}K in 60s (shorts covering) · Vol Surge ${volSurge.toFixed(1)}× · Price ${price.toFixed(0)} > VWAP ${vwap15.toFixed(0)}`;
+  }
+  // SELL: Price < VWAP + Put OI dropping (long unwinding) + Volume Surge
+  else if (price < vwap15 && putDelta60s < SNIPER_OI_THRESHOLD && volSurge >= SNIPER_VOL_THRESHOLD) {
+    dir        = "SELL";
+    setupLabel = "⚡ Sniper — Long Unwinding";
+    reason     = `Put OI −${Math.abs(putDelta60s / 1000).toFixed(1)}K in 60s (longs unwinding) · Vol Surge ${volSurge.toFixed(1)}× · Price ${price.toFixed(0)} < VWAP ${vwap15.toFixed(0)}`;
+  }
+
+  if (!dir) return null;
+
+  // Tighter exits: 0.5× ATR14 for target, 0.3× for SL (precision scalp)
+  const atrBuf   = s.atr14 > 0 ? s.atr14 : price * 0.002;
+  const stopLoss = dir === "BUY" ? price - atrBuf * 0.3 : price + atrBuf * 0.3;
+  const target1  = dir === "BUY" ? price + atrBuf * 0.5 : price - atrBuf * 0.5;
+  const target2  = dir === "BUY" ? price + atrBuf * 1.0 : price - atrBuf * 1.0;
+
+  const oiMagnitude = Math.abs(Math.min(callDelta60s, putDelta60s));
+  let confidence    = 80;
+  if (oiMagnitude > 50000) confidence += 12;
+  else if (oiMagnitude > 30000) confidence += 7;
+  else if (oiMagnitude > 20000) confidence += 3;
+  if (volSurge > 4.0) confidence += 5;
+  else if (volSurge > 3.0) confidence += 3;
+  confidence = Math.min(100, confidence);
+
+  const step       = index === "NIFTY" ? 50 : 100;
+  const atmStr     = roundATM(price, step);
+  const optionName = `${index} ${atmStr} ${dir === "BUY" ? "CE" : "PE"} · SNIPER`;
+
+  const sig: ScalpSignal = {
+    id:              genId(),
+    index,
+    dir,
+    grade:           "S",
+    setupLabel,
+    optionName,
+    entry:           parseFloat(price.toFixed(2)),
+    stopLoss:        parseFloat(stopLoss.toFixed(2)),
+    target1:         parseFloat(target1.toFixed(2)),
+    target2:         parseFloat(target2.toFixed(2)),
+    spotAtEntry:     price,
+    vwap15:          parseFloat(vwap15.toFixed(2)),
+    ema9:            parseFloat(s.ema9.toFixed(2)),
+    atr14:           parseFloat(atrBuf.toFixed(2)),
+    h1Support:       parseFloat(s.h1Support.toFixed(2)),
+    oiZScore:        calcOIZScore(s.oiVelHistory),
+    oiVelocityCall:  parseFloat(callDelta60s.toFixed(0)),
+    oiVelocityPut:   parseFloat(putDelta60s.toFixed(0)),
+    liquiditySweep:  false,
+    vol3x:           volSurge >= 3,
+    fiveMinBreakout: false,
+    volumeDelta:     parseFloat(s.volumeDelta.toFixed(0)),
+    confidence,
+    reason,
+    status:          "ACTIVE",
+    trailingSlActive: false,
+    createdAt:       new Date(),
+  };
+
+  state.lastSignalAt[index] = now;
+  state.signals.push(sig);
+  logger.info({ id: sig.id, index, dir, callDelta60s, putDelta60s, volSurge, confidence }, "OI Velocity Sniper signal generated");
+  return sig;
 }
 
 // ── Signal Generation ─────────────────────────────────────────────────────────
@@ -630,9 +773,12 @@ function updateActiveSignals(niftyPrice: number, bnPrice: number): boolean {
     const hitT1 = s.dir === "BUY" ? price >= s.target1  : price <= s.target1;
     const hitSL = s.dir === "BUY" ? price <= s.stopLoss : price >= s.stopLoss;
 
+    const isSniper = s.setupLabel.includes("Sniper");
+
     if (hitT2) {
       s.status = "T2_HIT"; s.closedAt = new Date(); s.exitPrice = price;
       s.durationMs = s.closedAt.getTime() - s.createdAt.getTime();
+      if (isSniper) state.sniperPauseUntil[s.index] = Date.now() + SNIPER_PAUSE_MS;
       scalpEmitter.emit("update", { type: "tradeUpdate", tradeId: s.id, newStatus: "T2_HIT" });
       any = true;
     } else if (hitT1 && !s.trailingSlActive) {
@@ -640,11 +786,13 @@ function updateActiveSignals(niftyPrice: number, bnPrice: number): boolean {
       s.stopLoss   = s.entry;  // trail SL to breakeven
       s.status     = "T1_HIT";
       s.durationMs = Date.now() - s.createdAt.getTime();
+      if (isSniper) state.sniperPauseUntil[s.index] = Date.now() + SNIPER_PAUSE_MS;
       scalpEmitter.emit("update", { type: "tradeUpdate", tradeId: s.id, newStatus: "T1_HIT" });
       any = true;
     } else if (hitSL) {
       s.status = "SL_HIT"; s.closedAt = new Date(); s.exitPrice = price;
       s.durationMs = s.closedAt.getTime() - s.createdAt.getTime();
+      if (isSniper) state.sniperPauseUntil[s.index] = Date.now() + SNIPER_PAUSE_MS;
       scalpEmitter.emit("update", { type: "tradeUpdate", tradeId: s.id, newStatus: "SL_HIT" });
       any = true;
     }
@@ -842,13 +990,23 @@ async function pollMarket() {
   const callVelBN = getOIVelocity(state.banknifty.oiSnapshots, "call");
   const putVelBN  = getOIVelocity(state.banknifty.oiSnapshots, "put");
 
+  // OI Velocity Sniper metrics (60s absolute deltas)
+  const callDelta60sN  = getOIDelta60s(state.nifty.oiSnapshots,     "call");
+  const putDelta60sN   = getOIDelta60s(state.nifty.oiSnapshots,     "put");
+  const callDelta60sBN = getOIDelta60s(state.banknifty.oiSnapshots, "call");
+  const putDelta60sBN  = getOIDelta60s(state.banknifty.oiSnapshots, "put");
+
+  const partVolN  = state.nifty.partialCandle?.v     ?? 0;
+  const partVolBN = state.banknifty.partialCandle?.v ?? 0;
+
+  const volSurgeN  = calcVolSurge(state.nifty.candles1m,     partVolN);
+  const volSurgeBN = calcVolSurge(state.banknifty.candles1m, partVolBN);
+  const momentumScore = calcMomentumScore(callDelta60sN, putDelta60sN, callDelta60sBN, putDelta60sBN);
+
   const pcrN  = totalCallN  > 0 ? totalPutN  / totalCallN  : 0;
   const pcrBN = totalCallBN > 0 ? totalPutBN / totalCallBN : 0;
   const sentN  = calcSentiment(totalCallN, totalPutN);
   const sentBN = calcSentiment(totalCallBN, totalPutBN);
-
-  const partVolN  = state.nifty.partialCandle?.v     ?? 0;
-  const partVolBN = state.banknifty.partialCandle?.v ?? 0;
 
   const vol3N     = isVol3x(state.nifty.candles1m,     partVolN);
   const vol3BN    = isVol3x(state.banknifty.candles1m, partVolBN);
@@ -883,6 +1041,15 @@ async function pollMarket() {
     putOiVelocityNifty:      parseFloat(putVelN.toFixed(0)),
     callOiVelocityBankNifty: parseFloat(callVelBN.toFixed(0)),
     putOiVelocityBankNifty:  parseFloat(putVelBN.toFixed(0)),
+    // OI Velocity Sniper 60s deltas
+    callOiDelta60sNifty:     callDelta60sN,
+    putOiDelta60sNifty:      putDelta60sN,
+    callOiDelta60sBankNifty: callDelta60sBN,
+    putOiDelta60sBankNifty:  putDelta60sBN,
+    // Volume Surge + Momentum Score
+    volSurgeNifty:     parseFloat(volSurgeN.toFixed(2)),
+    volSurgeBankNifty: parseFloat(volSurgeBN.toFixed(2)),
+    momentumScore,
     pcrNifty:     parseFloat(pcrN.toFixed(3)),
     pcrBankNifty: parseFloat(pcrBN.toFixed(3)),
     sentimentNifty:     { ...sentN,  pcr: parseFloat(pcrN.toFixed(3)) },
@@ -901,6 +1068,7 @@ async function pollMarket() {
     volumeDeltaBankNifty:     parseFloat(state.banknifty.volumeDelta.toFixed(0)),
     cond1Nifty: c1N, cond2Nifty: c2N, cond3Nifty: c3N, cond4Nifty: c4N,
     cond1BankNifty: c1BN, cond2BankNifty: c2BN, cond3BankNifty: c3BN, cond4BankNifty: c4BN,
+    sniperPauseUntil: { ...state.sniperPauseUntil },
     isMarketOpen:   isMarketOpen(),
     isPrimeWindow:  isPrimeWindow(),
     avoidedSignals: state.avoided.slice(0, 5),
@@ -916,6 +1084,11 @@ async function pollMarket() {
     ] as Array<["NIFTY" | "BANKNIFTY", ReturnType<typeof mkState>, number]>) {
       const sig = tryGenerateSignal(idx, s, price);
       if (sig) scalpEmitter.emit("update", { type: "signal", signal: sig });
+      // Sniper runs in parallel — if cooldown allows, it fires sniper signals too
+      if (!sig) {
+        const sniperSig = tryGenerateSniperSignal(idx, s, price);
+        if (sniperSig) scalpEmitter.emit("update", { type: "signal", signal: sniperSig });
+      }
     }
     checkAbsorption(nPrice, bnPrice);
   }

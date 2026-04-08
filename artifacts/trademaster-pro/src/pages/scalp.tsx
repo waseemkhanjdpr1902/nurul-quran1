@@ -115,6 +115,15 @@ interface LiveData {
   putOiVelocityNifty:      number;
   callOiVelocityBankNifty: number;
   putOiVelocityBankNifty:  number;
+  // OI Velocity Sniper 60s absolute deltas
+  callOiDelta60sNifty:     number;
+  putOiDelta60sNifty:      number;
+  callOiDelta60sBankNifty: number;
+  putOiDelta60sBankNifty:  number;
+  // Volume Surge + Momentum Score
+  volSurgeNifty:     number;
+  volSurgeBankNifty: number;
+  momentumScore:     number;
   pcrNifty:     number;
   pcrBankNifty: number;
   sentimentNifty:     SentimentReading;
@@ -139,6 +148,7 @@ interface LiveData {
   cond2BankNifty: boolean;
   cond3BankNifty: boolean;
   cond4BankNifty: boolean;
+  sniperPauseUntil?: Record<string, number>;
   isMarketOpen:   boolean;
   isPrimeWindow:  boolean;
   avoidedSignals?:    AvoidedSignal[];
@@ -171,6 +181,21 @@ function playSignalSound(dir: SignalDir) {
     g.gain.setValueAtTime(0.15, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
     o.start(); o.stop(ctx.currentTime + 0.35);
+  } catch { /* ignore */ }
+}
+
+function playHighConfidenceSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    // Triple ascending chime — distinct from regular signal sound
+    [[880, 0], [1047, 0.12], [1319, 0.24], [1047, 0.40], [1319, 0.55]].forEach(([f, t]) => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = f; o.type = "sine";
+      g.gain.setValueAtTime(0.2, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.18);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.22);
+    });
   } catch { /* ignore */ }
 }
 
@@ -340,6 +365,115 @@ function ConfidenceMeter({ value, grade, setupLabel }: { value: number; grade: S
         </span>
       </div>
       <div className="text-[8px] text-gray-600 mt-0.5 truncate max-w-[120px]">{setupLabel}</div>
+    </div>
+  );
+}
+
+// ── Momentum Meter (OI Velocity 0–100) ────────────────────────────────────────
+
+function MomentumMeter({
+  score, callDelta60sN, putDelta60sN, callDelta60sBN, putDelta60sBN,
+  volSurgeN, volSurgeBN, sniperPauseUntil,
+}: {
+  score: number;
+  callDelta60sN: number;  putDelta60sN: number;
+  callDelta60sBN: number; putDelta60sBN: number;
+  volSurgeN: number;      volSurgeBN: number;
+  sniperPauseUntil?: Record<string, number>;
+}) {
+  const pct   = Math.min(100, Math.max(0, score));
+  const color = pct >= 80 ? "#ef4444" : pct >= 55 ? "#f97316" : pct >= 30 ? "#eab308" : "#3b82f6";
+  const label = pct >= 80 ? "⚡ Extreme" : pct >= 55 ? "High" : pct >= 30 ? "Moderate" : "Low";
+  const now   = Date.now();
+  const nPaused  = (sniperPauseUntil?.["NIFTY"]     ?? 0) > now;
+  const bnPaused = (sniperPauseUntil?.["BANKNIFTY"] ?? 0) > now;
+
+  const rows: Array<{ label: string; value: number; isVel: boolean; dir: "call" | "put" }> = [
+    { label: "NIFTY Call Δ60s",     value: callDelta60sN,  isVel: true,  dir: "call" },
+    { label: "NIFTY Put Δ60s",      value: putDelta60sN,   isVel: true,  dir: "put"  },
+    { label: "BankNifty Call Δ60s", value: callDelta60sBN, isVel: true,  dir: "call" },
+    { label: "BankNifty Put Δ60s",  value: putDelta60sBN,  isVel: true,  dir: "put"  },
+  ];
+
+  return (
+    <div className="bg-[hsl(220,13%,12%)] border border-[hsl(220,13%,20%)] rounded-xl p-4 mb-4">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-black text-white">🎯 OI Velocity Sniper</span>
+          <span className="text-[9px] px-2 py-0.5 rounded-full border font-bold"
+            style={{ borderColor: color + "55", color, backgroundColor: color + "18" }}>
+            Momentum {label} · {pct}%
+          </span>
+        </div>
+        <div className="flex gap-2">
+          {nPaused  && <span className="text-[9px] px-2 py-0.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 font-bold">⏸ NF Pause</span>}
+          {bnPaused && <span className="text-[9px] px-2 py-0.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 font-bold">⏸ BN Pause</span>}
+        </div>
+      </div>
+
+      {/* Momentum gauge bar */}
+      <div className="h-3 bg-[hsl(220,13%,18%)] rounded-full overflow-hidden mb-3 relative">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{
+            width: `${pct}%`,
+            background: `linear-gradient(to right, #3b82f6, #eab308 40%, #f97316 70%, #ef4444)`,
+          }}
+        />
+        {[25, 50, 75].map(p => (
+          <div key={p} className="absolute top-0 bottom-0 w-px bg-[hsl(220,13%,22%)]" style={{ left: `${p}%` }} />
+        ))}
+      </div>
+
+      {/* OI Delta 60s grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+        {rows.map(r => {
+          const hot  = r.value < -20000;
+          const warm = r.value < -5000;
+          const clr  = hot ? (r.dir === "call" ? "text-green-400" : "text-red-400") :
+                       warm ? "text-amber-400" : "text-gray-500";
+          return (
+            <div key={r.label} className={`rounded-lg px-2 py-1.5 text-center border ${
+              hot  ? (r.dir === "call" ? "bg-green-500/10 border-green-500/25" : "bg-red-500/10 border-red-500/25") :
+              warm ? "bg-amber-500/8 border-amber-500/20" :
+                     "bg-[hsl(220,13%,16%)] border-[hsl(220,13%,22%)]"
+            }`}>
+              <div className="text-[7px] text-gray-700 uppercase mb-0.5 truncate">{r.label}</div>
+              <div className={`text-xs font-mono font-black ${clr}`}>
+                {r.value === 0 ? "—" : `${r.value > 0 ? "+" : ""}${(r.value / 1000).toFixed(1)}K`}
+              </div>
+              {hot && <div className="text-[7px] font-bold mt-0.5" style={{ color: r.dir === "call" ? "#22c55e" : "#ef4444" }}>
+                {r.dir === "call" ? "SHORT COVER" : "LONG UNWIND"}
+              </div>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Volume Surge row */}
+      <div className="flex gap-3 flex-wrap">
+        {[
+          { label: "NIFTY Vol Surge",     val: volSurgeN  },
+          { label: "BankNifty Vol Surge", val: volSurgeBN },
+        ].map(({ label: l, val }) => {
+          const hot  = val >= 2.5;
+          const warm = val >= 1.5;
+          return (
+            <div key={l} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${
+              hot  ? "bg-amber-500/12 border-amber-500/25 text-amber-400" :
+              warm ? "bg-blue-500/10 border-blue-500/20 text-blue-400" :
+                     "bg-[hsl(220,13%,16%)] border-[hsl(220,13%,22%)] text-gray-600"
+            }`}>
+              <span className="text-[8px] text-gray-600 font-normal">{l}:</span>
+              <span>{val > 0 ? `${val.toFixed(1)}×` : "—"}</span>
+              {hot && <span className="text-amber-300 font-black">⚡</span>}
+            </div>
+          );
+        })}
+        <div className="ml-auto text-[9px] text-gray-700 self-center">
+          Sniper fires when OI Δ60s &lt; −20K &amp; Vol Surge &gt; 2.5×
+        </div>
+      </div>
     </div>
   );
 }
@@ -569,14 +703,14 @@ function PremiumModal({ onClose }: { onClose: () => void }) {
 
 function IndexPanel({
   name, price, change, changePct, vwap15, ema9, atr14,
-  h1Support, zScore, threshold, callVel, putVel,
+  h1Support, zScore, threshold, callVel, putVel, volSurge,
   vol3x, liquidSweep, fiveMinBreakout, volumeDelta,
   c1, c2, c3, c4,
 }: {
   name: string; price: number; change: number; changePct: number;
   vwap15: number; ema9: number; atr14: number;
   h1Support: number; zScore: number; threshold: number;
-  callVel: number; putVel: number;
+  callVel: number; putVel: number; volSurge: number;
   vol3x: boolean; liquidSweep: boolean; fiveMinBreakout: boolean; volumeDelta: number;
   c1: boolean; c2: boolean; c3: boolean; c4: boolean;
 }) {
@@ -661,6 +795,11 @@ function IndexPanel({
         {vol3x && (
           <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-400 font-bold">
             ⚡ Vol 3×
+          </span>
+        )}
+        {volSurge >= 2.5 && (
+          <span className="text-[9px] px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/25 text-orange-400 font-bold">
+            🔥 Surge {volSurge.toFixed(1)}×
           </span>
         )}
         {liquidSweep && (
@@ -945,7 +1084,10 @@ export default function ScalpDashboard() {
     });
     if (isNew) {
       setNewIds(prev => new Set(prev).add(sig.id));
-      if (soundOn) playSignalSound(sig.dir);
+      if (soundOn) {
+        if (sig.confidence >= 90) playHighConfidenceSound();
+        else playSignalSound(sig.dir);
+      }
       setTimeout(() => setNewIds(prev => { const s = new Set(prev); s.delete(sig.id); return s; }), 4000);
     }
   }, [soundOn]);
@@ -1013,6 +1155,7 @@ export default function ScalpDashboard() {
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h1 className="text-2xl font-black text-white">🎯 Market Intent Scalper</h1>
               <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-400 uppercase tracking-wider">v2 · OI Z-Score</span>
+              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 uppercase tracking-wider">⚡ OI Velocity Sniper</span>
             </div>
             <p className="text-[10px] text-gray-600">
               C1: Price &gt; VWAP-15 &amp; H1 Block · C2: Put OI Z-Score &gt; {threshold.toFixed(1)} · C3: Vol 3× + Sweep/Breakout · C4: Volume Delta+
@@ -1041,6 +1184,20 @@ export default function ScalpDashboard() {
         {/* Scoreboard */}
         {stats && <Scoreboard stats={stats} live={live} connected={connected} />}
 
+        {/* OI Velocity Sniper — Momentum Meter */}
+        {hasLive && (
+          <MomentumMeter
+            score={live.momentumScore ?? 0}
+            callDelta60sN={live.callOiDelta60sNifty ?? 0}
+            putDelta60sN={live.putOiDelta60sNifty ?? 0}
+            callDelta60sBN={live.callOiDelta60sBankNifty ?? 0}
+            putDelta60sBN={live.putOiDelta60sBankNifty ?? 0}
+            volSurgeN={live.volSurgeNifty ?? 0}
+            volSurgeBN={live.volSurgeBankNifty ?? 0}
+            sniperPauseUntil={live.sniperPauseUntil}
+          />
+        )}
+
         {/* Absorption Alerts */}
         <AbsorptionBanner alerts={absorptionAlerts} />
 
@@ -1056,6 +1213,7 @@ export default function ScalpDashboard() {
                 h1Support={live.h1SupportNifty}
                 zScore={live.oiZScoreNifty} threshold={threshold}
                 callVel={live.callOiVelocityNifty} putVel={live.putOiVelocityNifty}
+                volSurge={live.volSurgeNifty ?? 0}
                 vol3x={live.vol3xNifty} liquidSweep={live.liquiditySweepNifty}
                 fiveMinBreakout={live.fiveMinBreakoutNifty} volumeDelta={live.volumeDeltaNifty}
                 c1={live.cond1Nifty} c2={live.cond2Nifty} c3={live.cond3Nifty} c4={live.cond4Nifty}
@@ -1079,6 +1237,7 @@ export default function ScalpDashboard() {
                 h1Support={live.h1SupportBankNifty}
                 zScore={live.oiZScoreBankNifty} threshold={threshold}
                 callVel={live.callOiVelocityBankNifty} putVel={live.putOiVelocityBankNifty}
+                volSurge={live.volSurgeBankNifty ?? 0}
                 vol3x={live.vol3xBankNifty} liquidSweep={live.liquiditySweepBankNifty}
                 fiveMinBreakout={live.fiveMinBreakoutBankNifty} volumeDelta={live.volumeDeltaBankNifty}
                 c1={live.cond1BankNifty} c2={live.cond2BankNifty} c3={live.cond3BankNifty} c4={live.cond4BankNifty}

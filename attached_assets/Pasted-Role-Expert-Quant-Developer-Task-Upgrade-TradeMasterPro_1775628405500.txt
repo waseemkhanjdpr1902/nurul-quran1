@@ -1,0 +1,42 @@
+Role: Expert Quant Developer.
+Task: Upgrade TradeMasterPro to a high-frequency Momentum Scalper using Upstox WebSocket V3.
+
+1. Data Feed Optimization:
+
+Implement the MarketDataStreamerV3 from the upstox-js-sdk.
+
+Subscribe to LTP (Last Traded Price) and Full Feed (for OI/Volume) for Nifty/Bank Nifty ATM Call and Put options.
+
+2. The "OI Velocity" Engine:
+
+Create a rolling buffer that stores OI and Volume for the last 60 seconds.
+
+Calculate OI Velocity: (Current OI - OI 60s ago).
+
+Calculate Volume Surge: (Current 1m Vol / Average 5m Vol).
+
+3. Sniper Signal Logic (1-2 Min Targets):
+
+TRIGGER BUY: If Price > VWAP AND Call OI Velocity < -20,000 (Short Covering) AND Volume Surge > 2.5x.
+
+TRIGGER SELL: If Price < VWAP AND Put OI Velocity < -20,000 (Long Unwinding) AND Volume Surge > 2.5x.
+
+Exit Logic: Auto-calculate Target = Entry + 12 points and SL = Entry - 7 points for Bank Nifty.
+
+4. Performance UI:
+
+Display a "Momentum Meter" (0-100) based on the strength of the OI drop.
+
+Log signal results instantly: "Signal ID #123: Target Hit in 84 seconds."
+
+Add a sound alert for 'High Velocity' signals (Confidence > 90%).
+
+Why this prompt solves your "Accuracy" and "Speed" issues:
+WebSocket vs. REST: Standard REST APIs wait for you to ask for data. The WebSocket "pushes" data to you the millisecond a trade happens on the NSE. For 1-minute targets, this 1-2 second headstart is the difference between profit and a Stop Loss hit.
+
+Short Covering Detection: Most retail traders buy when they see green candles. Your tool will now buy when it sees Call Writers panicking (Negative OI Velocity). This is the "Fuel" for the fastest market moves.
+
+Automatic Expiry Handling: By using the WebSocket feed, your tool stays synced with the active contract's high-frequency ticks, avoiding the "incorrect LTP" issue from historical data caches.
+
+Pro-Tip for 2026 Scalping
+To keep the success ratio high, tell the tool to Auto-Pause for 30 seconds after a successful trade. This prevents "revenge scalping" in a zone where the momentum might have already exhausted.
