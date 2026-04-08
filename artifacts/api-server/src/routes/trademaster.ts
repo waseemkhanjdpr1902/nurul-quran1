@@ -148,6 +148,14 @@ router.get("/trademaster/signals/ltp", async (_req: Request, res: Response): Pro
     const groups: Record<string, ParsedOpt[]> = {};
     for (const p of parsed) (groups[`${p.index}|${p.expiry}`] ??= []).push(p);
 
+    // Upstox API returns snake_case: call_options.market_data.ltp / put_options.market_data.ltp
+    interface UpstoxStrike {
+      strike_price: number;
+      call_options?: { market_data?: { ltp?: number } };
+      put_options?:  { market_data?: { ltp?: number } };
+    }
+    interface UpstoxChainResp { data?: UpstoxStrike[] }
+
     const ltps: Record<number, { ltp: number | null; pctFromEntry: number | null }> = {};
     for (const [key, sigs] of Object.entries(groups)) {
       const [index, expiry] = key.split("|") as [string, string];
@@ -157,10 +165,16 @@ router.get("/trademaster/signals/ltp", async (_req: Request, res: Response): Pro
         const url = `https://api.upstox.com/v2/option/chain?instrument_key=${encodeURIComponent(instrument)}&expiry_date=${expiry}`;
         const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, signal: AbortSignal.timeout(8000) });
         if (!r.ok) { for (const s of sigs) ltps[s.id] = { ltp: null, pctFromEntry: null }; continue; }
-        const chain = parseUpstoxOptionChain(await r.json() as Record<string, unknown>, index, expiry);
+        const raw = await r.json() as UpstoxChainResp;
+        const rows = raw.data ?? [];
+
         for (const sig of sigs) {
-          const row = chain.strikes.find(s => s.strike === sig.strike);
-          const ltp = row ? (sig.type === "CE" ? (row.ce.ltp ?? null) : (row.pe.ltp ?? null)) : null;
+          const row = rows.find(r => r.strike_price === sig.strike);
+          const ltp = row
+            ? (sig.type === "CE"
+                ? (row.call_options?.market_data?.ltp ?? null)
+                : (row.put_options?.market_data?.ltp ?? null))
+            : null;
           const entry = parseFloat(sig.entryPrice);
           ltps[sig.id] = { ltp, pctFromEntry: ltp != null && entry > 0 ? +((ltp - entry) / entry * 100).toFixed(2) : null };
         }
