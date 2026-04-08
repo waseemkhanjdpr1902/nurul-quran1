@@ -1,0 +1,87 @@
+Here's a detailed prompt you can give to Replit (or any AI coding tool) to recreate the Nurul Quran website:
+
+Prompt for Replit:
+
+Create a complete Islamic Education web app called "Nurul Quran" with the following UI and features. Make it fully responsive and compatible with all browsers (Chrome, Edge, Firefox, Safari).
+
+🎨 UI / Design
+
+Color theme: Deep green (#1a472a) and gold/amber (#d4af37) with white text — classic Islamic aesthetic
+Font: Use Google Fonts — Amiri or Scheherazade for Arabic text, Poppins for English
+Background: Dark green gradient with subtle Islamic geometric pattern overlay
+Logo/Header: Crescent moon + star icon with "Nurul Quran" in stylish Arabic-inspired font and tagline "Islamic Education Platform"
+Navbar: Sticky top navigation with links: Home, Quran, Hadith, Prayer Times, Duas, Learn Arabic, About
+Footer: With Islamic quote, social links, and copyright
+
+
+✨ Features to Build
+1. 📖 Quran Reader
+
+Display all 114 Surahs in a list with Surah name (Arabic + English), number of Ayahs, and Revelation type (Makki/Madani)
+Click any Surah to open and read all Ayahs
+Show Arabic text + English translation side by side
+Use the free Al Quran Cloud API: https://api.alquran.cloud/v1/
+
+2. 🕌 Prayer Times
+
+Auto-detect user location using browser Geolocation API
+Display 5 daily prayer times: Fajr, Dhuhr, Asr, Maghrib, Isha
+Show next prayer countdown timer
+Use Aladhan API: https://api.aladhan.com/v1/timings
+
+3. 📿 Hadith Section
+
+Display random Hadith of the Day on the homepage
+Browse Hadith by collection (Bukhari, Muslim, etc.)
+Use Hadith API: https://random-hadith-generator.vercel.app/bukhari/
+
+4. 🤲 Duas Collection
+
+Categorized daily Duas (Morning, Evening, Eating, Sleeping, Travel, etc.)
+Show Dua in Arabic + transliteration + English meaning
+Copy Dua button
+
+5. 🔢 99 Names of Allah (Asmaul Husna)
+
+Display all 99 names in beautiful cards
+Each card shows: Arabic name, transliteration, meaning
+Animated hover effect on cards
+
+6. 🌙 Hijri Calendar
+
+Show today's Hijri (Islamic) date alongside Gregorian date
+Display upcoming Islamic events (Ramadan, Eid, etc.)
+
+7. 🔊 Audio Recitation (optional)
+
+Play Quran audio recitation for each Ayah using Al Quran Cloud audio API
+
+8. 🌐 Arabic Learning Section
+
+Basic Arabic alphabet with pronunciation guide
+Simple flashcard system to learn Arabic letters
+
+
+⚙️ Technical Requirements
+
+Built with HTML, CSS, and Vanilla JavaScript (no frameworks needed)
+All API calls using fetch() with proper error handling
+Local Storage to save user preferences (last read Surah, bookmarks)
+Fully mobile responsive with hamburger menu on small screens
+Add loading spinners while API data is being fetched
+Smooth CSS animations and transitions throughout
+All content loads without page refresh (Single Page App feel)
+Add a dark/light mode toggle
+Cross-browser compatible: Chrome, Edge, Firefox, Safari
+No broken layouts — test all screen sizes
+
+
+📁 File Structure
+nurul-quran/
+├── index.html
+├── style.css
+├── app.js
+├── assets/
+│   ├── logo.png
+│   └── pattern.svg
+Start by building the homepage with the navbar, hero section with Islamic greeting "Assalamu Alaikum", prayer times widget, Hadith of the Day, and quick links to all sections. Make it visually beautiful and professional.
