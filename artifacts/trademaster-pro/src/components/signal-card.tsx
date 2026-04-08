@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { postToTelegram, type Signal } from "@/lib/api";
+import { postToTelegram, type Signal, type SignalLTP } from "@/lib/api";
 
 export type { Signal };
 
@@ -8,6 +8,7 @@ type SignalCardProps = {
   isPremiumUser: boolean;
   adminToken?: string | null;
   onStatusUpdate?: (id: number, status: string) => void;
+  currentLtp?: SignalLTP | null;
 };
 
 function extractOptionType(assetName: string): "CE" | "PE" | null {
@@ -77,7 +78,7 @@ const GRADE_STYLES = {
 
 const GRADE_LABELS = { S: "GRADE S", A: "GRADE A", B: "GRADE B" };
 
-export function SignalCard({ signal, isPremiumUser: _isPremiumUser, adminToken, onStatusUpdate }: SignalCardProps) {
+export function SignalCard({ signal, isPremiumUser: _isPremiumUser, adminToken, onStatusUpdate, currentLtp }: SignalCardProps) {
   const [copied, setCopied] = useState(false);
   const [telegramMsg, setTelegramMsg] = useState("");
   const [telegramLoading, setTelegramLoading] = useState(false);
@@ -226,6 +227,32 @@ export function SignalCard({ signal, isPremiumUser: _isPremiumUser, adminToken, 
               <span className="text-[9px] text-[#3a5070] uppercase tracking-widest">R:R</span>
               <span className="text-[10px] text-cyan-400 font-bold">{signal.riskReward}</span>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CMP / Live LTP ──────────────────────────────────────────────────── */}
+      {isActive && signal.segment === "options" && (
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-[#1a2535]" style={{ background: "#0a1628" }}>
+          <span className="text-[9px] text-[#2a5070] uppercase tracking-widest font-mono">CMP</span>
+          {currentLtp?.ltp != null ? (
+            <>
+              <span className="text-white font-black text-sm font-mono">
+                ₹{currentLtp.ltp.toFixed(2)}
+              </span>
+              {currentLtp.pctFromEntry != null && (
+                <span className={`text-[11px] font-black font-mono ml-1 ${currentLtp.pctFromEntry >= 0 ? "text-[#00d084]" : "text-[#ff4466]"}`}>
+                  {currentLtp.pctFromEntry >= 0 ? "▲" : "▼"} {Math.abs(currentLtp.pctFromEntry).toFixed(1)}%
+                </span>
+              )}
+              <span className="text-[8px] text-[#2a4060] font-mono ml-auto">vs entry</span>
+              <span className="flex items-center gap-0.5">
+                <span className="w-1 h-1 rounded-full bg-[#00d084] animate-pulse" />
+                <span className="text-[8px] text-[#2a6050] font-mono">LIVE</span>
+              </span>
+            </>
+          ) : (
+            <span className="text-[10px] text-[#2a4060] font-mono">fetching…</span>
           )}
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchSignals, updateSignal, type Signal } from "@/lib/api";
+import { fetchSignals, fetchSignalLTPs, updateSignal, type Signal, type SignalLTP } from "@/lib/api";
 import { SignalCard } from "@/components/signal-card";
 import { useAdmin } from "@/hooks/use-admin";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -8,6 +8,11 @@ import { AdBanner } from "@/components/ad-banner";
 
 function todayIST(): string {
   return new Date(Date.now() + 5.5 * 3600000).toISOString().slice(0, 10);
+}
+
+function istDateStr(isoStr: string): string {
+  const d = new Date(isoStr);
+  return new Date(d.getTime() + 5.5 * 3600000).toISOString().slice(0, 10);
 }
 
 function istTimeStr(isoStr: string): string {
@@ -132,11 +137,18 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
     refetchInterval: 60000,
   });
 
+  const { data: ltpData } = useQuery<Record<number, SignalLTP>>({
+    queryKey: ["signals-ltp"],
+    queryFn: fetchSignalLTPs,
+    refetchInterval: 60000,
+    staleTime: 55000,
+  });
+
   const today = todayIST();
   const closedToday = (allData?.signals ?? []).filter((s) => {
     if (s.status === "active") return false;
-    const closedDateStr = s.closedAt ? new Date(s.closedAt).toISOString().slice(0, 10) : null;
-    const createdDateStr = new Date(s.createdAt).toISOString().slice(0, 10);
+    const closedDateStr = s.closedAt ? istDateStr(s.closedAt) : null;
+    const createdDateStr = istDateStr(s.createdAt);
     return (closedDateStr ?? createdDateStr) === today;
   });
 
@@ -314,6 +326,7 @@ export default function Home({ onNavigateAdmin, onNavigatePricing }: HomeProps) 
                       isPremiumUser={isPremium || !!isAdmin}
                       adminToken={adminToken}
                       onStatusUpdate={handleStatusUpdate}
+                      currentLtp={ltpData?.[signal.id] ?? null}
                     />
                   ))}
                 </div>

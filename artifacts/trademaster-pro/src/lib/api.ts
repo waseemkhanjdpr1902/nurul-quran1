@@ -678,6 +678,20 @@ export async function fetchPcrSignals(): Promise<PcrSignalResponse> {
   return r.json();
 }
 
+export type SignalLTP = { ltp: number | null; pctFromEntry: number | null };
+
+export async function fetchSignalLTPs(): Promise<Record<number, SignalLTP>> {
+  try {
+    const r = await fetch(`${API_BASE}/signals/ltp`);
+    if (!r.ok) return {};
+    const data = await r.json() as { ok: boolean; ltps: Record<string, SignalLTP> };
+    // keys come back as strings from JSON — convert to numbers
+    const result: Record<number, SignalLTP> = {};
+    for (const [k, v] of Object.entries(data.ltps ?? {})) result[parseInt(k)] = v;
+    return result;
+  } catch { return {}; }
+}
+
 export async function fetchUpstoxOptionChain(adminToken: string, segment: string, accessToken?: string, expiryDate?: string, contractType?: string): Promise<UpstoxOptionChain> {
   const params = new URLSearchParams({ segment });
   if (accessToken)   params.set("access_token", accessToken);

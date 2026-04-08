@@ -115,6 +115,65 @@ router.get("/trademaster/signals", async (req: Request, res: Response): Promise<
   }
 });
 
+// ── LTP cache — must be declared BEFORE the :id route ───────────────────────
+let _ltpCache: { data: Record<number, { ltp: number | null; pctFromEntry: number | null }>; ts: number } | null = null;
+const LTP_CACHE_TTL = 60_000;
+
+/** GET /trademaster/signals/ltp — live option LTPs for all active signals, 60s cache */
+router.get("/trademaster/signals/ltp", async (_req: Request, res: Response): Promise<void> => {
+  if (_ltpCache && Date.now() - _ltpCache.ts < LTP_CACHE_TTL) {
+    res.json({ ok: true, ltps: _ltpCache.data, cached: true }); return;
+  }
+  const token = process.env.UPSTOX_ACCESS_TOKEN;
+  if (!token) { res.json({ ok: false, ltps: {}, error: "UPSTOX_ACCESS_TOKEN not configured" }); return; }
+
+  const MONTH_MAP: Record<string, string> = {
+    JAN:"01",FEB:"02",MAR:"03",APR:"04",MAY:"05",JUN:"06",
+    JUL:"07",AUG:"08",SEP:"09",OCT:"10",NOV:"11",DEC:"12",
+  };
+  interface ParsedOpt { id: number; entryPrice: string; index: string; strike: number; type: "CE"|"PE"; expiry: string; }
+  try {
+    const activeSignals = await db.select().from(tradeMasterSignals)
+      .where(and(eq(tradeMasterSignals.status, "active"), eq(tradeMasterSignals.segment, "options")));
+    const parsed: ParsedOpt[] = [];
+    for (const sig of activeSignals) {
+      const m = sig.assetName.match(/^(NIFTY|BANKNIFTY|FINNIFTY)\s+(\d+)\s+(CE|PE)\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{1,2})$/i);
+      if (!m) continue;
+      const [, idx, strikeStr, type, mon, day] = m;
+      const monthNum = MONTH_MAP[mon.toUpperCase()];
+      if (!monthNum) continue;
+      const expiry = `${new Date().getFullYear()}-${monthNum}-${day.padStart(2, "0")}`;
+      parsed.push({ id: sig.id, entryPrice: sig.entryPrice, index: idx.toUpperCase(), strike: parseInt(strikeStr), type: type.toUpperCase() as "CE"|"PE", expiry });
+    }
+    const groups: Record<string, ParsedOpt[]> = {};
+    for (const p of parsed) (groups[`${p.index}|${p.expiry}`] ??= []).push(p);
+
+    const ltps: Record<number, { ltp: number | null; pctFromEntry: number | null }> = {};
+    for (const [key, sigs] of Object.entries(groups)) {
+      const [index, expiry] = key.split("|") as [string, string];
+      const instrument = UPSTOX_INSTRUMENT_MAP[index];
+      if (!instrument) continue;
+      try {
+        const url = `https://api.upstox.com/v2/option/chain?instrument_key=${encodeURIComponent(instrument)}&expiry_date=${expiry}`;
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }, signal: AbortSignal.timeout(8000) });
+        if (!r.ok) { for (const s of sigs) ltps[s.id] = { ltp: null, pctFromEntry: null }; continue; }
+        const chain = parseUpstoxOptionChain(await r.json() as Record<string, unknown>, index, expiry);
+        for (const sig of sigs) {
+          const row = chain.strikes.find(s => s.strike === sig.strike);
+          const ltp = row ? (sig.type === "CE" ? (row.ce.ltp ?? null) : (row.pe.ltp ?? null)) : null;
+          const entry = parseFloat(sig.entryPrice);
+          ltps[sig.id] = { ltp, pctFromEntry: ltp != null && entry > 0 ? +((ltp - entry) / entry * 100).toFixed(2) : null };
+        }
+      } catch { for (const s of sigs) ltps[s.id] = { ltp: null, pctFromEntry: null }; }
+    }
+    _ltpCache = { data: ltps, ts: Date.now() };
+    res.json({ ok: true, ltps, cached: false });
+  } catch (err) {
+    logger.error({ err }, "[LTP] fetch failed");
+    res.status(500).json({ ok: false, ltps: {}, error: "Internal error" });
+  }
+});
+
 router.get("/trademaster/signals/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const id = parseInt(req.params.id, 10);
