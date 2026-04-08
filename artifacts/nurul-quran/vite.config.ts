@@ -39,8 +39,19 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
+    target: ["chrome87", "edge88", "firefox78", "safari14"],
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    cssTarget: ["chrome87", "edge88", "firefox78", "safari14"],
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          router: ["wouter"],
+          query: ["@tanstack/react-query"],
+        },
+      },
+    },
   },
   server: {
     port,
