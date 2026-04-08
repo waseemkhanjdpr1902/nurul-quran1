@@ -18,7 +18,6 @@ import {
   TrendingUp,
   Moon,
   Home,
-  Sparkles,
 } from "lucide-react";
 import { PwaInstallPrompt } from "./pwa-install-prompt";
 
@@ -96,15 +95,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {item.label === "Stocks" ? "Halal Stocks" : item.label}
               </Link>
             ))}
-            <Link
-              href="/engage"
-              className={`flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary ${
-                location === "/engage" ? "text-primary border-b-2 border-primary py-5" : "text-violet-600 dark:text-violet-400"
-              }`}
-            >
-              <Sparkles className="h-4 w-4" />
-              Reflect
-            </Link>
             <Link
               href="/discover"
               className={`flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary ${
