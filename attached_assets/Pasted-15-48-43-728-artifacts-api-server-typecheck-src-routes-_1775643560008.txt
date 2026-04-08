@@ -1,0 +1,31 @@
+15:48:43.728 
+artifacts/api-server typecheck: src/routes/trademaster.ts(2083,13): error TS18047: 'changePct' is possibly 'null'.
+15:48:43.728 
+artifacts/api-server typecheck: src/routes/trademaster.ts(2083,45): error TS18047: 'changePct' is possibly 'null'.
+15:48:43.737 
+artifacts/api-server typecheck: src/routes/trademaster.ts(2119,9): error TS2769: No overload matches this call.
+15:48:43.738 
+artifacts/api-server typecheck:   Overload 1 of 2, '(value: { segment: SQL<unknown> | Placeholder<string, any> | "options" | "currency" | "nifty" | "banknifty" | "equity" | "intraday" | "commodity"; assetName: string | SQL<...> | Placeholder<...>; ... 18 more ...; exitPrice?: string | ... 3 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+15:48:43.738 
+artifacts/api-server typecheck:     Type 'string' is not assignable to type 'SQL<unknown> | Placeholder<string, any> | "options" | "currency" | "nifty" | "banknifty" | "equity" | "intraday" | "commodity"'.
+15:48:43.738 
+artifacts/api-server typecheck:   Overload 2 of 2, '(values: { segment: SQL<unknown> | Placeholder<string, any> | "options" | "currency" | "nifty" | "banknifty" | "equity" | "intraday" | "commodity"; assetName: string | SQL<...> | Placeholder<...>; ... 18 more ...; exitPrice?: string | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+15:48:43.739 
+artifacts/api-server typecheck:     Object literal may only specify known properties, and 'segment' does not exist in type '{ segment: SQL<unknown> | Placeholder<string, any> | "options" | "currency" | "nifty" | "banknifty" | "equity" | "intraday" | "commodity"; assetName: string | SQL<unknown> | Placeholder<...>; ... 18 more ...; exitPrice?: string | ... 3 more ... | undefined; }[]'.
+15:48:43.750 
+artifacts/api-server typecheck: Failed
+15:48:43.770 
+/vercel/path0/artifacts/api-server:
+15:48:43.770 
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 typecheck: `tsc -p tsconfig.json --noEmit`
+15:48:43.771 
+Exit status 2
+15:48:43.776 
+artifacts/mockup-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+15:48:43.811 
+ ELIFECYCLE  Command failed with exit code 2.
+15:48:43.840 
+ ELIFECYCLE  Command failed with exit code 2.
+15:48:43.855 
+Error: Command "pnpm run build" exited with 2
+Deployment Summary

@@ -1,0 +1,15 @@
+artifacts/api-server typecheck: src/routes/trademaster.ts(2083,13): error TS18047: 'changePct' is possibly 'null'.
+artifacts/api-server typecheck: src/routes/trademaster.ts(2083,45): error TS18047: 'changePct' is possibly 'null'.
+artifacts/api-server typecheck: src/routes/trademaster.ts(2119,9): error TS2769: No overload matches this call.
+artifacts/api-server typecheck:   Overload 1 of 2, '(value: { segment: SQL<unknown> | Placeholder<string, any> | "options" | "currency" | "nifty" | "banknifty" | "equity" | "intraday" | "commodity"; assetName: string | SQL<...> | Placeholder<...>; ... 18 more ...; exitPrice?: string | ... 3 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+artifacts/api-server typecheck:     Type 'string' is not assignable to type 'SQL<unknown> | Placeholder<string, any> | "options" | "currency" | "nifty" | "banknifty" | "equity" | "intraday" | "commodity"'.
+artifacts/api-server typecheck:   Overload 2 of 2, '(values: { segment: SQL<unknown> | Placeholder<string, any> | "options" | "currency" | "nifty" | "banknifty" | "equity" | "intraday" | "commodity"; assetName: string | SQL<...> | Placeholder<...>; ... 18 more ...; exitPrice?: string | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+artifacts/api-server typecheck:     Object literal may only specify known properties, and 'segment' does not exist in type '{ segment: SQL<unknown> | Placeholder<string, any> | "options" | "currency" | "nifty" | "banknifty" | "equity" | "intraday" | "commodity"; assetName: string | SQL<unknown> | Placeholder<...>; ... 18 more ...; exitPrice?: string | ... 3 more ... | undefined; }[]'.
+artifacts/api-server typecheck: Failed
+/vercel/path0/artifacts/api-server:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 typecheck: `tsc -p tsconfig.json --noEmit`
+Exit status 2
+artifacts/mockup-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+ ELIFECYCLE  Command failed with exit code 2.
+ ELIFECYCLE  Command failed with exit code 2.
+Error: Command "pnpm run build" exited with 2

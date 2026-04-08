@@ -84,13 +84,17 @@ async function fetchPCRAndVWAP(seg: string, token: string): Promise<{
     if (!Array.isArray(chainData.data) || chainData.data.length === 0) return null;
 
     // Parse strikes
-    type RawStrike = Record<string, Record<string, number>>;
+    type RawStrike = {
+      strike_price?: number;
+      call_options?: { market_data?: { ltp?: number; oi?: number } };
+      put_options?:  { market_data?: { ltp?: number; oi?: number } };
+    };
     const strikes: OptionChainStrike[] = (chainData.data as RawStrike[]).map(d => ({
       strikePrice: d.strike_price ?? 0,
       callLTP: d.call_options?.market_data?.ltp ?? 0,
       putLTP:  d.put_options?.market_data?.ltp  ?? 0,
-      callOI:  d.call_options?.market_data?.oi   ?? 0,
-      putOI:   d.put_options?.market_data?.oi    ?? 0,
+      callOI:  d.call_options?.market_data?.oi  ?? 0,
+      putOI:   d.put_options?.market_data?.oi   ?? 0,
     })).filter(s => s.strikePrice > 0);
 
     // PCR
@@ -171,7 +175,7 @@ async function fetchEquitySignals(): Promise<EquitySignal[]> {
       });
       if (!resp.ok) return;
       const json = await resp.json() as Record<string, unknown>;
-      const result0 = (json as Record<string, Record<string, unknown>[]>)?.chart?.result?.[0] as Record<string, unknown> | undefined;
+      const result0 = (json as { chart?: { result?: Record<string, unknown>[] } })?.chart?.result?.[0] as Record<string, unknown> | undefined;
       if (!result0) return;
       const closes = ((result0.indicators as Record<string, Record<string, number[]>[]>)?.quote?.[0]?.close ?? []).filter((v): v is number => typeof v === "number");
       const highs  = ((result0.indicators as Record<string, Record<string, number[]>[]>)?.quote?.[0]?.high  ?? []).filter((v): v is number => typeof v === "number");

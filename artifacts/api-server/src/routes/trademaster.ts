@@ -10,6 +10,7 @@ const router: IRouter = Router();
 
 const VALID_SEGMENTS = ["nifty", "banknifty", "options", "equity", "intraday", "commodity", "currency", "futures", "fno", "stocks"] as const;
 type ValidSegment = typeof VALID_SEGMENTS[number];
+type DbSegment = "nifty" | "banknifty" | "options" | "equity" | "intraday" | "commodity" | "currency";
 const VALID_SIGNAL_TYPES = ["buy", "sell"] as const;
 type ValidSignalType = typeof VALID_SIGNAL_TYPES[number];
 const VALID_STATUSES = ["active", "target_hit", "sl_hit"] as const;
@@ -19,10 +20,15 @@ function isValidSegment(s: unknown): s is ValidSegment {
   return typeof s === "string" && (VALID_SEGMENTS as readonly string[]).includes(s);
 }
 
-function buildSegmentWhere(segment: string) {
-  if (segment === "fno") return eq(tradeMasterSignals.segment, "options");
-  if (segment === "stocks") return eq(tradeMasterSignals.segment, "equity");
-  return eq(tradeMasterSignals.segment, segment);
+function toDbSegment(segment: ValidSegment): DbSegment {
+  if (segment === "fno") return "options";
+  if (segment === "stocks") return "equity";
+  if (segment === "futures") return "options";
+  return segment as DbSegment;
+}
+
+function buildSegmentWhere(segment: ValidSegment) {
+  return eq(tradeMasterSignals.segment, toDbSegment(segment));
 }
 function isValidSignalType(s: unknown): s is ValidSignalType {
   return typeof s === "string" && (VALID_SIGNAL_TYPES as readonly string[]).includes(s);
@@ -190,7 +196,7 @@ router.get("/trademaster/signals/ltp", async (_req: Request, res: Response): Pro
 
 router.get("/trademaster/signals/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params["id"] as string, 10);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
     const accessLevel = resolveAccessLevel(req);
     const isPremium = accessLevel === "admin" || await isSessionPremium(accessLevel ?? undefined);
@@ -216,7 +222,7 @@ router.post("/trademaster/signals", async (req: Request, res: Response): Promise
     const t1 = parseFloat(String(target1));
     if (isNaN(entry) || isNaN(sl) || isNaN(t1)) { res.status(400).json({ error: "entryPrice, stopLoss, target1 must be numbers" }); return; }
     const [signal] = await db.insert(tradeMasterSignals).values({
-      segment,
+      segment: toDbSegment(segment),
       assetName: String(assetName).trim(),
       signalType,
       entryPrice: String(entry),
@@ -241,7 +247,7 @@ router.post("/trademaster/signals", async (req: Request, res: Response): Promise
 router.patch("/trademaster/signals/:id", async (req: Request, res: Response): Promise<void> => {
   if (!requireAdmin(req, res)) return;
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params["id"] as string, 10);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
     const body = req.body as Record<string, unknown>;
     const update: SignalUpdatePayload = {};
@@ -270,7 +276,7 @@ router.patch("/trademaster/signals/:id", async (req: Request, res: Response): Pr
 router.delete("/trademaster/signals/:id", async (req: Request, res: Response): Promise<void> => {
   if (!requireAdmin(req, res)) return;
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params["id"] as string, 10);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
     const [deleted] = await db.delete(tradeMasterSignals).where(eq(tradeMasterSignals.id, id)).returning();
     if (!deleted) { res.status(404).json({ error: "Signal not found" }); return; }
@@ -710,7 +716,7 @@ router.get("/trademaster/subscriptions", async (req: Request, res: Response): Pr
 router.patch("/trademaster/subscriptions/:id", async (req: Request, res: Response): Promise<void> => {
   if (!requireAdmin(req, res)) return;
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params["id"] as string, 10);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
     const { status } = req.body as { status?: unknown };
     if (typeof status !== "string" || !["active", "cancelled", "expired"].includes(status)) {
@@ -899,7 +905,7 @@ router.post("/trademaster/journal", async (req: Request, res: Response): Promise
 
 router.put("/trademaster/journal/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params["id"] as string, 10);
     const { exitPrice, exitDate, notes, strategyUsed } = req.body as Record<string, unknown>;
     const existing = await db.select().from(tradeMasterJournal).where(eq(tradeMasterJournal.id, id)).then(r => r[0]);
     if (!existing) { res.status(404).json({ error: "Trade not found" }); return; }
@@ -930,7 +936,7 @@ router.put("/trademaster/journal/:id", async (req: Request, res: Response): Prom
 
 router.delete("/trademaster/journal/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(req.params["id"] as string, 10);
     await db.delete(tradeMasterJournal).where(eq(tradeMasterJournal.id, id));
     res.json({ success: true });
   } catch (err) {
@@ -1539,7 +1545,7 @@ router.get("/trademaster/pcr-signal", async (req: Request, res: Response): Promi
 
     // 2. Fetch 5-min intraday candles for LTP + VWAP
     try {
-      const candles = await fetchUpstoxCandles(seg, "intraday", token);
+      const candles = await fetchUpstoxCandles(seg, "intraday", token ?? "");
       if (candles && candles.closes.length >= 5) {
         ltp  = candles.closes[candles.closes.length - 1];
         vwap = scannerVWAP(candles.highs, candles.lows, candles.closes, candles.vols);
@@ -1908,7 +1914,7 @@ router.get("/trademaster/upstox/option-chain", async (req: Request, res: Respons
     // Parse chain + compute signals
     const parsed = parseUpstoxOptionChain(data, seg, resolvedExpiry);
     const signals = computeOptionChainSignals(parsed, seg);
-    res.json({ ok: true, segment: seg, expiry: resolvedExpiry, contractType: contract_type, ...parsed, signals, fetchedAt: new Date().toISOString() });
+    res.json({ ok: true, contractType: contract_type, ...parsed, signals, fetchedAt: new Date().toISOString() });
   } catch (err) {
     logger.error({ err }, "[Upstox] Option chain fetch failed");
     res.status(500).json({ error: "Failed to fetch option chain from Upstox" });
@@ -1928,7 +1934,8 @@ router.post("/trademaster/daily-tips", async (req: Request, res: Response): Prom
   const token = process.env.UPSTOX_ACCESS_TOKEN;
 
   interface TipDraft {
-    segment: string; assetName: string; signalType: "buy" | "sell";
+    segment: "nifty" | "banknifty" | "options" | "equity" | "intraday" | "commodity" | "currency";
+    assetName: string; signalType: "buy" | "sell";
     entryPrice: number; stopLoss: number; target1: number; target2?: number;
     pcr?: string; iv?: string; notes: string; isPremium: boolean;
   }
@@ -2059,8 +2066,9 @@ router.post("/trademaster/daily-tips", async (req: Request, res: Response): Prom
       const recent10h = highs.slice(-11, -1);
       const recent10l = lows.slice(-11, -1);
 
-      const isBuy  = rsi > 58 && cmp > vwap * 1.002 && volRatio > 1.25 && changePct > 0.3;
-      const isSell = rsi < 42 && cmp < vwap * 0.998 && volRatio > 1.25 && changePct < -0.3;
+      const chg = changePct ?? 0;
+      const isBuy  = rsi > 58 && cmp > vwap * 1.002 && volRatio > 1.25 && chg > 0.3;
+      const isSell = rsi < 42 && cmp < vwap * 0.998 && volRatio > 1.25 && chg < -0.3;
       if (!isBuy && !isSell) return null;
 
       const signal: "buy" | "sell" = isBuy ? "buy" : "sell";
@@ -2076,11 +2084,11 @@ router.post("/trademaster/daily-tips", async (req: Request, res: Response): Prom
       if (signal === "buy") {
         if (cmp > vwap) reasons.push("above VWAP");
         if (volRatio > 1.5) reasons.push(`${volRatio.toFixed(1)}x vol surge`);
-        if (changePct > 1)  reasons.push(`+${changePct.toFixed(1)}% momentum`);
+        if (chg > 1)  reasons.push(`+${chg.toFixed(1)}% momentum`);
       } else {
         if (cmp < vwap) reasons.push("below VWAP");
         if (volRatio > 1.5) reasons.push(`${volRatio.toFixed(1)}x vol surge`);
-        if (changePct < -1) reasons.push(`${changePct.toFixed(1)}% selling pressure`);
+        if (chg < -1) reasons.push(`${chg.toFixed(1)}% selling pressure`);
       }
 
       return { stock, signal, entry: cmp, sl: slVal, t1, t2, reasons };

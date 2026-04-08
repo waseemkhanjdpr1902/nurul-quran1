@@ -1,22 +1,16 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
 const router = Router();
 
-// ── GET /engage/verse/:mood ───────────────────────────────────────────────────
-// Returns one random verse for the given mood category.
-// Moods: stressed | grateful | anxious | peaceful
-// Note: the /api prefix is added by the parent app.use("/api", router)
-router.get("/engage/verse/:mood", async (req, res) => {
+router.get("/engage/verse/:mood", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { mood } = req.params;
+    const mood = String(req.params["mood"]);
     const allowed = ["stressed", "grateful", "anxious", "peaceful"];
     if (!allowed.includes(mood.toLowerCase())) {
-      return res.status(400).json({ error: "Invalid mood" });
+      res.status(400).json({ error: "Invalid mood" }); return;
     }
-
-    // Fetch all verses for this mood, then pick one at random
     const rows = await db.execute(
       sql`SELECT id, arabic, translation, reference, mood
           FROM mood_verses
@@ -24,11 +18,9 @@ router.get("/engage/verse/:mood", async (req, res) => {
           ORDER BY RANDOM()
           LIMIT 1`
     );
-
     if (!rows.rows.length) {
-      return res.status(404).json({ error: "No verse found for this mood" });
+      res.status(404).json({ error: "No verse found for this mood" }); return;
     }
-
     res.json({ verse: rows.rows[0] });
   } catch (err) {
     console.error("engage/verse error:", err);
@@ -36,18 +28,14 @@ router.get("/engage/verse/:mood", async (req, res) => {
   }
 });
 
-// ── GET /engage/ummah-goal ────────────────────────────────────────────────────
-// Returns the current global Ummah Goal stats (pages read, target, label).
-router.get("/engage/ummah-goal", async (req, res) => {
+router.get("/engage/ummah-goal", async (req: Request, res: Response): Promise<void> => {
   try {
     const rows = await db.execute(
       sql`SELECT id, pages_read, goal_target, label FROM global_stats WHERE id = 1`
     );
-
     if (!rows.rows.length) {
-      return res.status(404).json({ error: "Stats not found" });
+      res.status(404).json({ error: "Stats not found" }); return;
     }
-
     res.json({ stats: rows.rows[0] });
   } catch (err) {
     console.error("engage/ummah-goal error:", err);
@@ -55,10 +43,7 @@ router.get("/engage/ummah-goal", async (req, res) => {
   }
 });
 
-// ── POST /engage/ummah-goal/increment ─────────────────────────────────────────
-// Atomically increments the shared pages_read counter by 1.
-// Uses PostgreSQL's atomic UPDATE — safe for concurrent requests.
-router.post("/engage/ummah-goal/increment", async (req, res) => {
+router.post("/engage/ummah-goal/increment", async (req: Request, res: Response): Promise<void> => {
   try {
     const rows = await db.execute(
       sql`UPDATE global_stats
@@ -66,11 +51,9 @@ router.post("/engage/ummah-goal/increment", async (req, res) => {
           WHERE id = 1
           RETURNING pages_read, goal_target, label`
     );
-
     if (!rows.rows.length) {
-      return res.status(404).json({ error: "Stats not found" });
+      res.status(404).json({ error: "Stats not found" }); return;
     }
-
     res.json({ stats: rows.rows[0] });
   } catch (err) {
     console.error("engage/increment error:", err);
