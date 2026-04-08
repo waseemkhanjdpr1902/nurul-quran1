@@ -8,21 +8,17 @@ import { SubscriptionGuard } from "@/components/subscription-guard";
 import Home from "@/pages/home";
 import Admin from "@/pages/admin";
 import Pricing from "@/pages/pricing";
-import Journal from "@/pages/journal";
 import Calculators from "@/pages/calculators";
-import Watchlist from "@/pages/watchlist";
 import Events from "@/pages/events";
 import ScalpDashboard from "@/pages/scalp";
 
 const queryClient = new QueryClient();
 
-type Page = "signals" | "scalp" | "watchlist" | "journal" | "calculators" | "events" | "pricing" | "admin";
+type Page = "signals" | "scalp" | "calculators" | "events" | "pricing" | "admin";
 
 const NAV: { key: Page; label: string; short: string }[] = [
   { key: "signals",     label: "SIGNALS",      short: "SIG" },
   { key: "scalp",       label: "HFT SCALP",    short: "HFT" },
-  { key: "watchlist",   label: "WATCHLIST",    short: "WL" },
-  { key: "journal",     label: "TRADE LOG",    short: "LOG" },
   { key: "calculators", label: "CALC",         short: "CLC" },
   { key: "events",      label: "EVENTS",       short: "EVT" },
 ];
@@ -178,12 +174,6 @@ function App() {
               </SubscriptionGuard>
             )}
             {page === "scalp"       && <ScalpDashboard />}
-            {page === "watchlist"   && <Watchlist />}
-            {page === "journal"     && (
-              <SubscriptionGuard onNavigatePricing={navigateToPricing} redirectMessage="Trade journal requires Pro subscription.">
-                <Journal />
-              </SubscriptionGuard>
-            )}
             {page === "calculators" && (
               <SubscriptionGuard onNavigatePricing={navigateToPricing} redirectMessage="Calculators require Pro subscription.">
                 <Calculators />
