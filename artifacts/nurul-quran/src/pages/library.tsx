@@ -5,8 +5,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Heart, ChevronRight, ChevronLeft, Youtube, ExternalLink } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { Search, Heart, ChevronRight, ChevronLeft, Youtube, ExternalLink, Lock, CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { useLocation } from "wouter";
 
 type CategoryDef = { label: string; value: string; color: string; bg: string; border: string };
 
@@ -18,6 +19,7 @@ const CATEGORIES: CategoryDef[] = [
 ];
 
 const PAGE_SIZE = 9;
+const FREE_LECTURE_ID = "sl-10";
 
 interface StaticLecture {
   id: string;
@@ -43,7 +45,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/I4JpIxGKedQ/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=I4JpIxGKedQ",
     duration: 3240,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-2",
@@ -55,7 +57,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/m0qVUKGv_GQ/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=m0qVUKGv_GQ",
     duration: 1800,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-3",
@@ -67,7 +69,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/rMaGQI3ZBZQ/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=rMaGQI3ZBZQ",
     duration: 2700,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-4",
@@ -79,7 +81,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/aOYvDUmvRj0/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=aOYvDUmvRj0",
     duration: 1620,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-5",
@@ -91,7 +93,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/moxSEpnOyFI/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=moxSEpnOyFI",
     duration: 32400,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-6",
@@ -103,7 +105,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/6Ax2JFRgLaQ/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=6Ax2JFRgLaQ",
     duration: 2100,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-7",
@@ -115,7 +117,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/zIbWlCXOQeQ/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=zIbWlCXOQeQ",
     duration: 3600,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-8",
@@ -127,7 +129,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/0CRdZvOJcNc/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=0CRdZvOJcNc",
     duration: 4200,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-9",
@@ -139,7 +141,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/F95XnMGklGE/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=F95XnMGklGE",
     duration: 1980,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-10",
@@ -163,7 +165,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/3D3MpEFcgbU/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=3D3MpEFcgbU",
     duration: 7200,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-12",
@@ -175,7 +177,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/8RbqbhNH4Kk/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=8RbqbhNH4Kk",
     duration: 2400,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-13",
@@ -187,7 +189,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/WFBXIBhWnwM/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=WFBXIBhWnwM",
     duration: 2700,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-14",
@@ -199,7 +201,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/Kf6BmDEpvEE/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=Kf6BmDEpvEE",
     duration: 3300,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-15",
@@ -211,7 +213,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/JBqsaRFSFwI/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=JBqsaRFSFwI",
     duration: 2880,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-16",
@@ -223,7 +225,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/xFb3bEp1VGA/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=xFb3bEp1VGA",
     duration: 1500,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-17",
@@ -235,7 +237,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/hRd6bkR9YqA/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=hRd6bkR9YqA",
     duration: 5100,
-    isPremium: false,
+    isPremium: true,
   },
   {
     id: "sl-18",
@@ -247,7 +249,7 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "https://img.youtube.com/vi/6Tv14PsEwAA/hqdefault.jpg",
     youtubeUrl: "https://www.youtube.com/watch?v=6Tv14PsEwAA",
     duration: 1800,
-    isPremium: false,
+    isPremium: true,
   },
 ];
 
@@ -267,8 +269,10 @@ export default function Library() {
   const [offset, setOffset] = useState(0);
   const [favs, setFavs] = useState<Set<number>>(new Set());
   const [favsLoaded, setFavsLoaded] = useState(false);
+  const [, setLocation] = useLocation();
 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isPremiumUser = !!user?.isPremium;
 
   const { data, isLoading } = useGetLectures({
     search: debouncedSearch || undefined,
@@ -323,15 +327,28 @@ export default function Library() {
     }).catch(() => {});
   };
 
-  const openYoutube = (url?: string | null) => {
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  const handleLectureClick = (lecture: StaticLecture | any, isStatic: boolean) => {
+    if (!isStatic) {
+      const url = (lecture as any).youtubeUrl;
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const sl = lecture as StaticLecture;
+    if (!sl.isPremium) {
+      window.open(sl.youtubeUrl, "_blank", "noopener,noreferrer");
+    } else {
+      if (isPremiumUser) {
+        window.open(sl.youtubeUrl, "_blank", "noopener,noreferrer");
+      } else {
+        setLocation("/support");
+      }
+    }
   };
 
   const apiLectures = data?.lectures ?? [];
   const apiTotal = data?.total ?? 0;
   const hasApiData = !isLoading && apiTotal > 0;
 
-  // Filter static lectures by category and search when API has no data
   const filteredStatic = STATIC_LECTURES.filter(l => {
     const matchCat = category === "All" || l.category === category;
     const matchSearch = !debouncedSearch ||
@@ -356,9 +373,15 @@ export default function Library() {
           <Youtube className="w-7 h-7 text-red-500" />
           <h1 className="text-3xl font-serif font-bold text-foreground">Arabic Learning</h1>
         </div>
-        <p className="text-muted-foreground mb-8">
+        <p className="text-muted-foreground mb-2">
           Free curated Arabic lessons from the world's best educators — opens in YouTube
         </p>
+        <div className="flex items-center gap-2 mb-8">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span className="text-sm text-emerald-700 font-medium">
+            1 free lesson available · Premium unlocks all {STATIC_LECTURES.length} lessons
+          </span>
+        </div>
       </motion.div>
 
       {/* Search */}
@@ -410,13 +433,12 @@ export default function Library() {
         {isLoading
           ? Array.from({ length: PAGE_SIZE }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)
           : lectures.map((lecture, i) => {
-              const youtubeUrl = isStatic
-                ? (lecture as StaticLecture).youtubeUrl
-                : (lecture as any).youtubeUrl as string | null | undefined;
+              const sl = isStatic ? (lecture as StaticLecture) : null;
+              const youtubeUrl = sl ? sl.youtubeUrl : (lecture as any).youtubeUrl;
               const thumb = lecture.thumbnailUrl;
-              const speakerName = isStatic
-                ? (lecture as StaticLecture).speakerName
-                : (lecture as any).speakerName;
+              const speakerName = sl ? sl.speakerName : (lecture as any).speakerName;
+              const isFree = sl ? !sl.isPremium : true;
+              const isLocked = !isFree && !isPremiumUser;
 
               return (
                 <motion.div
@@ -425,20 +447,50 @@ export default function Library() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                   data-testid={`card-lecture-${lecture.id}`}
-                  className="group bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition-all hover:border-red-200 cursor-pointer"
-                  onClick={() => openYoutube(youtubeUrl)}
+                  className={`group bg-card border rounded-xl overflow-hidden transition-all cursor-pointer ${
+                    isFree
+                      ? "border-emerald-200 hover:border-emerald-400 hover:shadow-md ring-1 ring-emerald-100"
+                      : "border-border hover:shadow-md hover:border-amber-300"
+                  }`}
+                  onClick={() => handleLectureClick(lecture, isStatic)}
                 >
                   {/* Thumbnail */}
-                  {thumb ? (
-                    <div className="relative w-full aspect-video bg-muted overflow-hidden">
+                  <div className="relative w-full aspect-video bg-muted overflow-hidden">
+                    {thumb ? (
                       <img
                         src={thumb}
                         alt={lecture.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className={`w-full h-full object-cover transition-transform duration-300 ${isLocked ? "blur-sm scale-105" : "group-hover:scale-105"}`}
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
                       />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
+                        <Youtube className="w-10 h-10 text-red-400" />
+                      </div>
+                    )}
+
+                    {/* Free badge */}
+                    {isFree && (
+                      <div className="absolute top-2 left-2 flex items-center gap-1 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                        <CheckCircle2 className="w-3 h-3" />
+                        FREE
+                      </div>
+                    )}
+
+                    {/* Lock overlay for premium */}
+                    {isLocked && (
+                      <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2">
+                        <div className="w-10 h-10 rounded-full bg-amber-500/90 flex items-center justify-center shadow-lg">
+                          <Lock className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="text-white text-xs font-semibold bg-black/40 px-2 py-0.5 rounded">Premium</span>
+                      </div>
+                    )}
+
+                    {/* Play button for free / unlocked */}
+                    {!isLocked && (
                       <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center shadow-lg">
                           <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6 ml-0.5">
@@ -446,12 +498,8 @@ export default function Library() {
                           </svg>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="w-full aspect-video bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
-                      <Youtube className="w-10 h-10 text-red-400" />
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   {/* Card body */}
                   <div className="p-4">
@@ -471,7 +519,8 @@ export default function Library() {
                             <Heart className={`w-3.5 h-3.5 ${favs.has(Number(lecture.id)) ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
                           </Button>
                         )}
-                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {!isLocked && <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                        {isLocked && <Lock className="w-3.5 h-3.5 text-amber-500" />}
                       </div>
                     </div>
 
@@ -488,6 +537,19 @@ export default function Library() {
                         <span className="text-[10px] text-muted-foreground ml-auto">{formatDuration(lecture.duration)}</span>
                       )}
                     </div>
+
+                    {isLocked && (
+                      <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-amber-600">
+                        <Lock className="w-3 h-3" />
+                        Unlock with Premium
+                      </div>
+                    )}
+                    {isFree && (
+                      <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Watch for free
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               );

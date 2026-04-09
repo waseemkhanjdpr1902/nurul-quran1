@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useGetCourses } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Lock, BookOpen, Clock, Users, Star } from "lucide-react";
+import { Lock, BookOpen, Clock, Users, Star, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 const CATEGORIES = ["All", "Quran Recitation", "Tafseer", "Fiqh", "Aqeedah", "Hadith", "Spirituality", "Islamic History", "Word-to-Word"];
 
@@ -19,7 +20,10 @@ interface StaticCourse {
   students: number;
   rating: number;
   level: string;
+  freeUrl?: string;
 }
+
+const FREE_COURSE_ID = "quran-tajweed";
 
 const STATIC_COURSES: StaticCourse[] = [
   {
@@ -33,13 +37,14 @@ const STATIC_COURSES: StaticCourse[] = [
     students: 3200,
     rating: 4.9,
     level: "Beginner",
+    freeUrl: "https://www.youtube.com/playlist?list=PLGpnWMlkT8vQREMgwpY_OQVwqMHCOXhIe",
   },
   {
     id: "tafseer-juz-amma",
     title: "Tafseer of Juz Amma",
     description: "Deep explanation of the 30th Juz of the Quran. Learn the meaning, context, and lessons of the most commonly recited surahs in Salah.",
     category: "Tafseer",
-    isPremium: false,
+    isPremium: true,
     lectureCount: 18,
     speakerName: "Dr. Bilal Philips",
     students: 4100,
@@ -51,7 +56,7 @@ const STATIC_COURSES: StaticCourse[] = [
     title: "Fiqh of Salah — Complete Guide",
     description: "Complete Islamic jurisprudence of prayer — conditions, pillars, obligations, Sunnah acts, and invalidators. Based on classical Fiqh sources.",
     category: "Fiqh",
-    isPremium: false,
+    isPremium: true,
     lectureCount: 16,
     speakerName: "Mufti Menk",
     students: 5800,
@@ -75,7 +80,7 @@ const STATIC_COURSES: StaticCourse[] = [
     title: "40 Hadith of Imam Nawawi",
     description: "Study the 40 most important hadith of Imam Nawawi — the foundational texts of Islamic ethics, worship, and character. Essential for every Muslim.",
     category: "Hadith",
-    isPremium: false,
+    isPremium: true,
     lectureCount: 20,
     speakerName: "Sheikh Omar Suleiman",
     students: 6200,
@@ -99,7 +104,7 @@ const STATIC_COURSES: StaticCourse[] = [
     title: "Seerah: Life of the Prophet ﷺ",
     description: "Complete biography of Prophet Muhammad ﷺ from birth to his passing. Makkah period, Hijra, Madinah period, major battles, and lessons for modern Muslims.",
     category: "Islamic History",
-    isPremium: false,
+    isPremium: true,
     lectureCount: 32,
     speakerName: "Sheikh Yasir Qadhi",
     students: 8100,
@@ -147,7 +152,7 @@ const STATIC_COURSES: StaticCourse[] = [
     title: "The Rightly Guided Caliphs",
     description: "History of Abu Bakr, Umar, Uthman, and Ali (RA) — their leadership, challenges, conquests, and lasting legacy for the Muslim ummah.",
     category: "Islamic History",
-    isPremium: false,
+    isPremium: true,
     lectureCount: 20,
     speakerName: "Sheikh Abdul Nasir Jangda",
     students: 3500,
@@ -159,7 +164,7 @@ const STATIC_COURSES: StaticCourse[] = [
     title: "99 Names of Allah — Deep Dive",
     description: "Explore the 99 beautiful names and attributes of Allah (Asmaul Husna). Understand their meaning, implications for worship, and how to incorporate them into daily life.",
     category: "Aqeedah",
-    isPremium: false,
+    isPremium: true,
     lectureCount: 15,
     speakerName: "Sheikh Omar Suleiman",
     students: 4900,
@@ -170,6 +175,9 @@ const STATIC_COURSES: StaticCourse[] = [
 
 export default function Courses() {
   const [category, setCategory] = useState("All");
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const isPremiumUser = !!user?.isPremium;
 
   const { data: apiCourses, isLoading } = useGetCourses({
     category: category !== "All" ? category : undefined,
@@ -184,11 +192,34 @@ export default function Courses() {
   const displayCourses = courses && courses.length > 0 ? courses : filteredStatic;
   const isStatic = !hasApiData;
 
+  const handleCourseClick = (course: StaticCourse | typeof displayCourses[0]) => {
+    if (!isStatic) {
+      setLocation(`/courses/${course.id}`);
+      return;
+    }
+    const sc = course as StaticCourse;
+    if (!sc.isPremium) {
+      if (sc.freeUrl) window.open(sc.freeUrl, "_blank", "noopener,noreferrer");
+    } else {
+      if (!isPremiumUser) {
+        setLocation("/support");
+      } else {
+        setLocation("/support");
+      }
+    }
+  };
+
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-3xl font-serif font-bold text-foreground mb-2">Islamic Courses</h1>
-        <p className="text-muted-foreground mb-8">Structured learning paths for Islamic knowledge</p>
+        <p className="text-muted-foreground mb-2">Structured learning paths for Islamic knowledge</p>
+        <div className="flex items-center gap-2 mb-8">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span className="text-sm text-emerald-700 font-medium">
+            1 free course available · Premium unlocks all {STATIC_COURSES.length} courses
+          </span>
+        </div>
       </motion.div>
 
       {/* Category filter */}
@@ -219,23 +250,41 @@ export default function Courses() {
               const students = (course as StaticCourse).students;
               const rating = (course as StaticCourse).rating;
               const level = (course as StaticCourse).level;
+              const isFree = !course.isPremium;
 
-              const Card = (
+              return (
                 <motion.div
+                  key={course.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06 }}
-                  className="group bg-card border border-border rounded-xl p-6 transition-all flex flex-col h-full hover:shadow-lg hover:border-primary/30 cursor-pointer"
+                  data-testid={`card-course-${course.id}`}
+                  onClick={() => isStatic && handleCourseClick(course)}
+                  className={`group bg-card border rounded-xl p-6 transition-all flex flex-col h-full cursor-pointer hover:shadow-lg ${
+                    isFree
+                      ? "border-emerald-200 hover:border-emerald-400 ring-1 ring-emerald-100"
+                      : "border-border hover:border-amber-300"
+                  }`}
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors bg-primary/10 group-hover:bg-primary/20">
-                      <BookOpen className="w-6 h-6 text-primary" />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
+                      isFree ? "bg-emerald-50 group-hover:bg-emerald-100" : "bg-primary/10 group-hover:bg-primary/20"
+                    }`}>
+                      {isFree
+                        ? <BookOpen className="w-6 h-6 text-emerald-600" />
+                        : <Lock className="w-6 h-6 text-amber-500" />
+                      }
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       {level && (
                         <span className="text-[10px] bg-muted text-muted-foreground rounded px-2 py-0.5 font-medium">{level}</span>
                       )}
-                      {course.isPremium && (
+                      {isFree ? (
+                        <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Free
+                        </div>
+                      ) : (
                         <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-600 text-xs font-medium px-2.5 py-1 rounded-full">
                           <Lock className="w-3 h-3" />
                           Premium
@@ -246,7 +295,9 @@ export default function Courses() {
 
                   <div className="flex-1">
                     <Badge variant="secondary" className="text-[10px] mb-2">{course.category}</Badge>
-                    <h3 className="font-semibold mb-2 line-clamp-2 text-base leading-snug text-foreground group-hover:text-primary transition-colors">
+                    <h3 className={`font-semibold mb-2 line-clamp-2 text-base leading-snug transition-colors ${
+                      isFree ? "text-foreground group-hover:text-emerald-700" : "text-foreground group-hover:text-primary"
+                    }`}>
                       {course.title}
                     </h3>
                     {course.description && (
@@ -254,7 +305,6 @@ export default function Courses() {
                     )}
                   </div>
 
-                  {/* Rating row (static courses only) */}
                   {isStaticCourse && rating && (
                     <div className="flex items-center gap-1 mb-3">
                       <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
@@ -274,26 +324,21 @@ export default function Courses() {
                     )}
                   </div>
 
-                  <div className="mt-4 flex items-center gap-1.5 text-sm font-medium text-primary group-hover:gap-2.5 transition-all"
+                  <div
+                    className={`mt-4 flex items-center gap-1.5 text-sm font-medium group-hover:gap-2.5 transition-all ${
+                      isFree ? "text-emerald-700" : "text-amber-600"
+                    }`}
                     data-testid={`button-enroll-${course.id}`}
                   >
-                    {course.isPremium ? (
-                      <><Lock className="w-4 h-4" /> View Course</>
+                    {isFree ? (
+                      <><BookOpen className="w-4 h-4" /> Start Learning — Free</>
                     ) : (
-                      <><BookOpen className="w-4 h-4" /> Start Learning</>
+                      isPremiumUser
+                        ? <><BookOpen className="w-4 h-4" /> View Course</>
+                        : <><Lock className="w-4 h-4" /> Unlock with Premium</>
                     )}
                   </div>
                 </motion.div>
-              );
-
-              const href = isStaticCourse
-                ? "/support"
-                : `/courses/${course.id}`;
-
-              return (
-                <Link key={course.id} href={href} data-testid={`card-course-${course.id}`}>
-                  {Card}
-                </Link>
               );
             })}
       </div>
