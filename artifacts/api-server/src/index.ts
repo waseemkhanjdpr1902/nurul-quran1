@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { startSignalEvaluator } from "./lib/trademaster-evaluator";
 import { startAutoSignalGenerator } from "./lib/trademaster-auto-signal";
 import { startScalpEngine } from "./lib/trademaster-scalp-engine";
+import { seedDatabase } from "./lib/seed";
 
 const rawPort = process.env["PORT"];
 
@@ -25,6 +26,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  seedDatabase();
   startSignalEvaluator();
   startAutoSignalGenerator();
   startScalpEngine();
