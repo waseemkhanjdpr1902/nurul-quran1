@@ -37,7 +37,7 @@ const STATIC_COURSES: StaticCourse[] = [
     students: 3200,
     rating: 4.9,
     level: "Beginner",
-    freeUrl: "https://www.youtube.com/playlist?list=PLGpnWMlkT8vQREMgwpY_OQVwqMHCOXhIe",
+    freeUrl: "https://www.youtube.com/watch?v=RrjkMzSnFHM",
   },
   {
     id: "tafseer-juz-amma",
