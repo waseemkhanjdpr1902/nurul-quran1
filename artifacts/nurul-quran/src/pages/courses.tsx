@@ -37,7 +37,7 @@ const STATIC_COURSES: StaticCourse[] = [
     students: 3200,
     rating: 4.9,
     level: "Beginner",
-    freeUrl: "https://www.youtube.com/watch?v=RrjkMzSnFHM",
+    freeUrl: "https://www.youtube.com/results?search_query=quran+recitation+tajweed+full+course+beginners+makharij",
   },
   {
     id: "tafseer-juz-amma",
