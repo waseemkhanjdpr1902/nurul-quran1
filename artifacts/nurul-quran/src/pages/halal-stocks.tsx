@@ -108,7 +108,8 @@ export default function HalalStocks() {
   const [sectors, setSectors] = useState<string[]>(["All"]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchInput, setSearchInput] = useState("");
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const isPremium = !!user?.isPremium;
 
   const fetchStocks = async (q = search, sec = sector) => {
     setIsLoading(true);
@@ -154,8 +155,8 @@ export default function HalalStocks() {
     fetchStocks(search, sec);
   };
 
-  const visibleStocks = isAuthenticated ? stocks : stocks.slice(0, FREE_LIMIT);
-  const lockedStocks = isAuthenticated ? [] : stocks.slice(FREE_LIMIT);
+  const visibleStocks = isPremium ? stocks : stocks.slice(0, FREE_LIMIT);
+  const lockedStocks = isPremium ? [] : stocks.slice(FREE_LIMIT);
   const positiveStocks = stocks.filter(s => s.changePercent != null && s.changePercent > 0).length;
   const negativeStocks = stocks.filter(s => s.changePercent != null && s.changePercent < 0).length;
 
@@ -198,7 +199,7 @@ export default function HalalStocks() {
       </div>
 
       {/* Free limit notice */}
-      {!isAuthenticated && (
+      {!isPremium && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -220,7 +221,7 @@ export default function HalalStocks() {
       {/* Stats bar */}
       {!isLoading && stocks.length > 0 && (
         <div className="flex items-center gap-6 mb-6 text-sm flex-wrap">
-          <span className="text-muted-foreground">{isAuthenticated ? stocks.length : `${FREE_LIMIT} of ${stocks.length}`} stocks shown</span>
+          <span className="text-muted-foreground">{isPremium ? stocks.length : `${FREE_LIMIT} of ${stocks.length}`} stocks shown</span>
           {positiveStocks > 0 && (
             <div className="flex items-center gap-1 text-green-600">
               <TrendingUp className="w-4 h-4" /><span>{positiveStocks} gaining</span>
@@ -363,7 +364,7 @@ export default function HalalStocks() {
           </div>
 
           {/* Premium upsell row */}
-          {!isAuthenticated && lockedStocks.length > 0 && (
+          {!isPremium && lockedStocks.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
