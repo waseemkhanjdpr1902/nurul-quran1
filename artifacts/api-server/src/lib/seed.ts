@@ -121,10 +121,10 @@ const LECTURES_BY_COURSE: Record<number, Array<{
   ],
 };
 
-export async function seedDatabase() {
+export async function seedDatabase(force = false) {
   try {
     const speakerCount = await db.select({ count: sql<number>`count(*)` }).from(speakersTable);
-    if (Number(speakerCount[0]?.count) > 0) {
+    if (!force && Number(speakerCount[0]?.count) > 0) {
       logger.info("Database already seeded — skipping");
       return;
     }

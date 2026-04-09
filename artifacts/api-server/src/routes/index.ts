@@ -14,9 +14,11 @@ import inventoryRouter from "./inventory";
 import stockswapRouter from "./stockswap";
 import engageRouter from "./engage";
 import soulSearchRouter from "./soul-search";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
+router.use(adminRouter);
 router.use(healthRouter);
 router.use(lecturesRouter);
 router.use(coursesRouter);
