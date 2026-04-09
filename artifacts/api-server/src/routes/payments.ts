@@ -36,8 +36,8 @@ router.post("/payments/create-checkout-session", async (req, res): Promise<void>
           price_data: {
             currency,
             product_data: {
-              name: "Donation to Nurul Quran",
-              description: "Support Islamic education for all",
+              name: "Islamic Learning Fee — Nurul Quran",
+              description: "Support Islamic education and learning for all",
             },
             unit_amount: amount,
           },

@@ -295,7 +295,7 @@ export default function Support() {
     }
 
     if (!isAuthenticated) {
-      toast({ title: "Login required", description: "Please log in to donate." });
+      toast({ title: "Login required", description: "Please log in to pay the Islamic Learning Fee." });
       setLocation("/login");
       return;
     }
@@ -315,7 +315,7 @@ export default function Support() {
         amount: order.amount,
         currency: order.currency,
         name: "Nurul Quran",
-        description: "Sadaqah — Support Islamic Education",
+        description: "Islamic Learning Fee — Nurul Quran",
         order_id: order.id,
         prefill: { name: user?.name || "", email: user?.email || "" },
         handler: async (response: any) => {
@@ -556,16 +556,16 @@ export default function Support() {
           </div>
         </div>
 
-        {/* ── Sadaqah / Donation ── */}
+        {/* ── Islamic Learning Fee ── */}
         <div className="bg-primary/5 border border-primary/20 rounded-2xl p-8 mb-16">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <Heart className="w-5 h-5 text-primary" />
-                <h2 className="text-xl font-serif font-bold text-foreground">Give Sadaqah</h2>
+                <h2 className="text-xl font-serif font-bold text-foreground">Islamic Learning Fee</h2>
               </div>
               <p className="text-sm text-muted-foreground">
-                Support our mission with a one-time donation. Your sadaqah keeps content free for those who cannot afford premium.
+                Pay a one-time Islamic Learning Fee to support our mission. Your contribution keeps content free for those who cannot afford premium.
               </p>
             </div>
             <div className="flex gap-3 items-center w-full sm:w-auto">
@@ -586,7 +586,7 @@ export default function Support() {
                 className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold whitespace-nowrap"
                 data-testid="button-donate"
               >
-                {donating ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Heart className="w-4 h-4 mr-1.5" /> Donate</>}
+                {donating ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Heart className="w-4 h-4 mr-1.5" /> Pay Now</>}
               </Button>
             </div>
           </div>

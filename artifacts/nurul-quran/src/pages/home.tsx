@@ -348,7 +348,7 @@ export default function Home() {
           >
             <h2 className="text-2xl font-serif font-bold text-primary mb-2">Support Islamic Education</h2>
             <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-              Your donations help us maintain and expand free access to authentic Islamic knowledge for Muslims worldwide.
+              Your Islamic Learning Fee helps us maintain and expand free access to authentic Islamic knowledge for Muslims worldwide.
             </p>
             <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8" data-testid="button-support">
               <Link href="/support">Support Nurul Quran</Link>
