@@ -24,13 +24,13 @@ interface RazorpayConfig {
 }
 
 const FEATURES = [
-  { icon: "play-circle", text: "Access all 79 Islamic lectures" },
-  { icon: "layers", text: "All 18 Islamic courses unlocked" },
-  { icon: "book-open", text: "Quran with detailed Tafseer Ibn Katheer" },
-  { icon: "trending-up", text: "Halal Stock Screener access" },
-  { icon: "download", text: "Download lectures offline" },
+  { icon: "layers", text: "All 12 Islamic courses unlocked" },
+  { icon: "play-circle", text: "All 18 Arabic learning lessons" },
+  { icon: "book-open", text: "Quran with Tafseer Ibn Katheer" },
+  { icon: "trending-up", text: "Full Halal Stock Screener (30+ stocks)" },
   { icon: "shield", text: "Ad-free experience" },
-  { icon: "headphones", text: "Priority customer support" },
+  { icon: "mail", text: "Priority email support" },
+  { icon: "zap", text: "Early access to new content" },
 ];
 
 export default function SupportScreen() {

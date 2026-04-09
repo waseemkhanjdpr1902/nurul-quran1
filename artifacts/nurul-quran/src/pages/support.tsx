@@ -48,17 +48,17 @@ const PLANS = [
     highlight: false,
     amountPaise: null,
     features: [
-      "Access 3 halal stocks",
-      "Free Quran reader (all surahs)",
+      "Free Quran reader (all 114 surahs)",
       "English & Urdu translations",
-      "3 free courses",
-      "Basic lecture library",
+      "1 free course — Quran Recitation with Tajweed",
+      "1 free lesson — Daily Arabic Conversations",
+      "3 Halal stocks preview",
     ],
     locked: [
-      "Premium courses & lectures",
-      "Full halal stock screener",
+      "All 12 premium courses",
+      "All 18 Arabic learning lessons",
+      "Full halal stock screener (30+ stocks)",
       "Tafseer Ibn Katheer",
-      "Offline listening",
       "Ad-free experience",
     ],
     cta: "Current Plan",
@@ -74,13 +74,13 @@ const PLANS = [
     highlight: true,
     amountPaise: 99900,
     features: [
+      "All 12 Islamic courses unlocked",
+      "All 18 Arabic learning lessons",
       "Full halal stock screener (30+ stocks)",
-      "All premium courses & lectures",
-      "Complete Tafseer Ibn Katheer",
-      "Offline audio listening",
+      "Quran with Tafseer Ibn Katheer",
       "Ad-free experience",
-      "Priority support",
-      "New content first",
+      "Priority email support",
+      "Early access to new content",
     ],
     cta: "Start Premium",
     disabled: false,
@@ -100,10 +100,9 @@ const PLANS = [
       "Everything in Premium",
       "₹667/month billed yearly",
       "2 months free",
-      "Exclusive annual webinars",
-      "Scholar Q&A sessions",
-      "Certificate of completion",
-      "Early access to new features",
+      "Lowest price — best value",
+      "Direct access to developer via email",
+      "Early access to all new features",
     ],
     cta: "Get Annual Plan",
     disabled: false,
@@ -111,12 +110,12 @@ const PLANS = [
 ];
 
 const FEATURES_DETAIL = [
-  { icon: BookOpen, title: "All Premium Courses", desc: "18+ structured Islamic knowledge courses from Aqeedah, Fiqh, Tafseer, Seerah, and more" },
-  { icon: Headphones, title: "Complete Lecture Library", desc: "300+ lectures by world-renowned scholars with audio, in English, Urdu, and Arabic" },
-  { icon: Crown, title: "Full Quran Experience", desc: "Read with Tafseer Ibn Katheer, all translations, and per-ayah Mishary Alafasy recitation" },
-  { icon: Zap, title: "30+ Halal Stocks", desc: "Full Shariah-screened stock database with live prices, analysis, and investment tips" },
-  { icon: Shield, title: "Ad-Free & Offline", desc: "Zero ads, distraction-free learning, and offline listening through our PWA app" },
-  { icon: Globe, title: "Multi-Language", desc: "Content in English, Urdu, and Arabic — designed for Muslims worldwide" },
+  { icon: BookOpen, title: "12 Islamic Courses", desc: "Structured courses covering Aqeedah, Fiqh, Tafseer, Hadith, Seerah, Spirituality, and more" },
+  { icon: Headphones, title: "18 Arabic Learning Lessons", desc: "Curated Arabic lessons by world-renowned educators — alphabet, grammar, Quranic Arabic, and daily conversations" },
+  { icon: Crown, title: "Full Quran Experience", desc: "Read with Tafseer Ibn Katheer, English & Urdu translations, and per-ayah Mishary Alafasy recitation" },
+  { icon: Zap, title: "30+ Halal Stocks", desc: "Full Shariah-screened stock database with live prices, analysis, and investment guidance" },
+  { icon: Shield, title: "Ad-Free Experience", desc: "Zero ads and distraction-free Islamic learning on both the website and mobile app" },
+  { icon: Globe, title: "Multi-Language", desc: "Content in English, Urdu, and Arabic — designed for Muslims in India and worldwide" },
 ];
 
 const FAQS = [
@@ -135,8 +134,8 @@ const TESTIMONIALS = [
 
 const STATS = [
   { value: "10,000+", label: "Active Learners" },
-  { value: "300+", label: "Lectures" },
-  { value: "18", label: "Courses" },
+  { value: "18", label: "Arabic Lessons" },
+  { value: "12", label: "Islamic Courses" },
   { value: "50+", label: "Countries" },
 ];
 
