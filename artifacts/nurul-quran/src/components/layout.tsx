@@ -26,10 +26,9 @@ import {
   Languages,
   Menu,
   X,
-  Smartphone,
 } from "lucide-react";
 import { PwaInstallPrompt } from "./pwa-install-prompt";
-import { useState } from "react";
+import React, { useState } from "react";
 
 function DownloadAppModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
@@ -130,6 +129,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout, user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
+
+  // Show download popup once per session right after login
+  const prevAuth = React.useRef(false);
+  React.useEffect(() => {
+    if (isAuthenticated && !prevAuth.current) {
+      const alreadyShown = sessionStorage.getItem("nq_app_prompt_shown");
+      if (!alreadyShown) {
+        setTimeout(() => setShowDownload(true), 800);
+        sessionStorage.setItem("nq_app_prompt_shown", "1");
+      }
+    }
+    prevAuth.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   return (
     <div className="min-h-[100dvh] flex flex-col" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 148px)" }}>
@@ -238,18 +250,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               </div>
 
-              {/* Download App */}
-              <div className="pt-4 pb-2">
-                <div className="border-t border-border pt-4">
-                  <button
-                    onClick={() => { setMobileMenuOpen(false); setShowDownload(true); }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors text-primary hover:bg-primary/10 w-full"
-                  >
-                    <Smartphone className="h-5 w-5 shrink-0" />
-                    Get the App
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -321,17 +321,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Get the App button — always visible */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDownload(true)}
-              className="hidden lg:flex items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/5 font-medium"
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              Get the App
-            </Button>
-
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
