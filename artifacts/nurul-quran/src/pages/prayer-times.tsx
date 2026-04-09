@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Clock, RefreshCw, AlertCircle } from "lucide-react";
+import { MapPin, Clock, RefreshCw, AlertCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 
 interface PrayerTimings {
   Fajr: string;
@@ -56,6 +57,8 @@ export default function PrayerTimes() {
   const [countdown, setCountdown] = useState("");
   const [nextPrayer, setNextPrayer] = useState("");
   const [locationName, setLocationName] = useState("Your Location");
+  const [cityInput, setCityInput] = useState("");
+  const [citySearching, setCitySearching] = useState(false);
 
   const fetchPrayerTimes = useCallback(async (lat: number, lon: number) => {
     setLoading(true);
@@ -108,6 +111,26 @@ export default function PrayerTimes() {
       }
     );
   }, [fetchPrayerTimes]);
+
+  const searchByCity = useCallback(async () => {
+    if (!cityInput.trim()) return;
+    setCitySearching(true);
+    setError(null);
+    try {
+      const geo = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityInput)}&limit=1`
+      );
+      const geoData = await geo.json();
+      if (!geoData.length) throw new Error("City not found. Please try a different name.");
+      const { lat, lon, display_name } = geoData[0];
+      setLocationName(display_name.split(",").slice(0, 2).join(", "));
+      await fetchPrayerTimes(parseFloat(lat), parseFloat(lon));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "City search failed");
+    } finally {
+      setCitySearching(false);
+    }
+  }, [cityInput, fetchPrayerTimes]);
 
   useEffect(() => {
     requestLocation();
@@ -205,19 +228,42 @@ export default function PrayerTimes() {
       <div className="container mx-auto max-w-3xl px-4 py-10">
         {loading && (
           <div className="space-y-3">
+            <p className="text-center text-sm text-muted-foreground pb-2 animate-pulse">
+              📍 Detecting your location...
+            </p>
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-20 rounded-2xl" />
             ))}
           </div>
         )}
 
-        {error && (
-          <div className="flex flex-col items-center gap-4 py-12 text-center">
-            <AlertCircle className="h-10 w-10 text-destructive" />
-            <p className="text-muted-foreground">{error}</p>
+        {error && !loading && !data && (
+          <div className="flex flex-col items-center gap-5 py-10 text-center">
+            <AlertCircle className="h-10 w-10 text-amber-500" />
+            <p className="text-muted-foreground max-w-sm">{error}</p>
             <Button onClick={requestLocation} style={{ background: "#1a472a" }} className="text-white">
-              Try Again
+              Try Location Again
             </Button>
+            <div className="w-full max-w-sm">
+              <p className="text-sm text-muted-foreground mb-3">— or search by city —</p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. Karachi, Dubai, London..."
+                  value={cityInput}
+                  onChange={(e) => setCityInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && searchByCity()}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={searchByCity}
+                  disabled={citySearching || !cityInput.trim()}
+                  style={{ background: "#1a472a" }}
+                  className="text-white"
+                >
+                  {citySearching ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
