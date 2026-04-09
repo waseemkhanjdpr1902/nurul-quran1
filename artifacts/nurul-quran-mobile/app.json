@@ -8,6 +8,7 @@
     "scheme": "nurul-quran-mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "owner": "waseemkhanjdpr",
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "cover",
@@ -15,14 +16,25 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.nurulquran.mobile"
+      "bundleIdentifier": "com.nurulquran.mobile",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.nurulquran.mobile",
+      "versionCode": 1,
+      "compileSdkVersion": 35,
+      "targetSdkVersion": 35,
+      "minSdkVersion": 24,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#004D40"
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -39,6 +51,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "nurul-quran-mobile"
+      }
     }
   }
 }
