@@ -26,9 +26,78 @@ import {
   Languages,
   Menu,
   X,
+  Smartphone,
 } from "lucide-react";
 import { PwaInstallPrompt } from "./pwa-install-prompt";
 import { useState } from "react";
+
+function DownloadAppModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-background rounded-2xl shadow-2xl w-full max-w-sm p-6 relative"
+        onClick={e => e.stopPropagation()}
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <BookOpen className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-serif font-bold text-lg text-foreground">Nurul Quran App</h2>
+            <p className="text-xs text-muted-foreground">Learn Islam anywhere, anytime</p>
+          </div>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
+          Get the full Nurul Quran experience on your phone — Quran recitation, Islamic courses, prayer times, duas, and more.
+        </p>
+
+        {/* Store Buttons */}
+        <div className="space-y-3">
+          <a
+            href="https://play.google.com/store/apps/details?id=com.nurulquran.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-[#0d1117] text-white rounded-xl px-4 py-3 hover:bg-[#1a2332] transition-colors w-full"
+          >
+            <svg viewBox="0 0 24 24" className="w-7 h-7 shrink-0" fill="currentColor">
+              <path d="M3.18 23.76c.33.19.7.24 1.06.16l11.94-6.9-2.59-2.59-10.41 9.33zm-1.93-20.4C1.1 3.6 1 3.9 1 4.22v15.56c0 .32.1.62.25.87l.09.08 8.71-8.71v-.2L1.34 3.28l-.09.08zm19.4 8.74l-2.6-1.5-2.9 2.9 2.9 2.9 2.62-1.51c.75-.43.75-1.36-.02-1.79zM4.24.08L16.18 7.2l-2.59 2.59L3.18.46C3.51.26 3.93.27 4.24.08z"/>
+            </svg>
+            <div className="text-left">
+              <p className="text-[10px] text-white/60 leading-none">GET IT ON</p>
+              <p className="text-sm font-semibold leading-tight">Google Play</p>
+            </div>
+          </a>
+
+          <a
+            href="https://apps.apple.com/app/nurul-quran/id0000000000"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-[#0d1117] text-white rounded-xl px-4 py-3 hover:bg-[#1a2332] transition-colors w-full"
+          >
+            <svg viewBox="0 0 24 24" className="w-7 h-7 shrink-0" fill="currentColor">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11"/>
+            </svg>
+            <div className="text-left">
+              <p className="text-[10px] text-white/60 leading-none">DOWNLOAD ON THE</p>
+              <p className="text-sm font-semibold leading-tight">App Store</p>
+            </div>
+          </a>
+        </div>
+
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          Free to download · Premium features available
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const primaryNavItems = [
   { href: "/", label: "Home", icon: Home },
@@ -60,6 +129,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { isAuthenticated, logout, user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
 
   return (
     <div className="min-h-[100dvh] flex flex-col" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 148px)" }}>
@@ -167,6 +237,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   Discover Islam
                 </Link>
               </div>
+
+              {/* Download App */}
+              <div className="pt-4 pb-2">
+                <div className="border-t border-border pt-4">
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); setShowDownload(true); }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors text-primary hover:bg-primary/10 w-full"
+                  >
+                    <Smartphone className="h-5 w-5 shrink-0" />
+                    Get the App
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -238,6 +321,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Get the App button — always visible */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDownload(true)}
+              className="hidden lg:flex items-center gap-1.5 border-primary/30 text-primary hover:bg-primary/5 font-medium"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              Get the App
+            </Button>
+
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -302,6 +396,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <AudioPlayer />
       <PwaInstallPrompt />
+      <DownloadAppModal open={showDownload} onClose={() => setShowDownload(false)} />
     </div>
   );
 }
