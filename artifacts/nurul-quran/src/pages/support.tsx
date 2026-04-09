@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   Heart, Star, Crown, Check, Loader2, CreditCard, IndianRupee,
   BookOpen, Headphones, Shield, Zap, Users, Globe, ChevronDown, ChevronUp,
-  Sparkles, Lock, Infinity, LogIn, CheckCircle2,
+  Sparkles, Lock, Infinity, LogIn, CheckCircle2, Mail, Phone, MapPin, User,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -612,6 +612,87 @@ export default function Support() {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* ── Contact Us ── */}
+        <div className="mb-16 max-w-3xl mx-auto">
+          <h2 className="text-2xl font-serif font-bold text-foreground text-center mb-2">Contact Us</h2>
+          <p className="text-muted-foreground text-center text-sm mb-8">We're here to help — reach out anytime</p>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Developer Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-card border border-border rounded-2xl p-7 flex flex-col gap-4"
+            >
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground text-base">Mohammed Waseem</p>
+                  <p className="text-xs text-muted-foreground">Founder &amp; Developer</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Built with love and dedication to help Muslims around the world connect with the Quran and Islamic knowledge. JazakAllah Khair for your support.
+              </p>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
+                <Users className="w-4 h-4 text-primary shrink-0" />
+                <span className="font-medium text-foreground">Nurul Quran Team</span>
+              </div>
+            </motion.div>
+
+            {/* Contact Details Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-card border border-border rounded-2xl p-7 flex flex-col gap-5"
+            >
+              <h3 className="font-semibold text-foreground text-base mb-1">Get in Touch</h3>
+
+              <a
+                href="mailto:support@nurulquran.info"
+                className="flex items-center gap-3 group"
+              >
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                  <Mail className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Email Support</p>
+                  <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">support@nurulquran.info</p>
+                </div>
+              </a>
+
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Globe className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Website</p>
+                  <p className="text-sm font-medium text-foreground">www.nurulquran.info</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <MapPin className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Location</p>
+                  <p className="text-sm font-medium text-foreground">India</p>
+                </div>
+              </div>
+
+              <div className="mt-auto pt-2">
+                <p className="text-xs text-muted-foreground">
+                  We typically respond within <span className="text-foreground font-medium">24–48 hours</span>. For premium support, subscribers get priority responses.
+                </p>
+              </div>
+            </motion.div>
           </div>
         </div>
 
