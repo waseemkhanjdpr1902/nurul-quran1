@@ -331,23 +331,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Support CTA */}
-        <section>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="bg-primary/5 border border-primary/20 rounded-2xl p-8 text-center"
-          >
-            <h2 className="text-2xl font-serif font-bold text-primary mb-2">Support Islamic Education</h2>
-            <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-              Your Islamic Learning Fee helps us maintain and expand free access to authentic Islamic knowledge for Muslims worldwide.
-            </p>
-            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8" data-testid="button-support">
-              <Link href="/support">Support Nurul Quran</Link>
-            </Button>
-          </motion.div>
-        </section>
       </div>
     </div>
   );

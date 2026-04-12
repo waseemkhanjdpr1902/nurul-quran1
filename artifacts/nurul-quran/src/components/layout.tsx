@@ -6,7 +6,6 @@ import {
   Compass,
   Library,
   GraduationCap,
-  HeartHandshake,
   TrendingUp,
   Moon,
   Home,
@@ -35,7 +34,6 @@ const primaryNavItems = [
   { href: "/library", label: "Library", icon: Library },
   { href: "/courses", label: "Courses", icon: GraduationCap },
   { href: "/halal-stocks", label: "Stocks", icon: TrendingUp },
-  { href: "/support", label: "Support", icon: HeartHandshake },
 ];
 
 const islamicNavItems = [
@@ -213,11 +211,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           </nav>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Link href="/support">Support</Link>
-            </Button>
-          </div>
         </div>
       </header>
 
