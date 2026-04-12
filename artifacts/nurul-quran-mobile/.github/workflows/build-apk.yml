@@ -1,0 +1,45 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/nurul-quran-mobile/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: artifacts/nurul-quran-mobile
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Create or link Expo project and build APK
+        run: |
+          eas init --non-interactive
+          eas build --platform android --profile preview --non-interactive
+
+      - name: Done
+        run: |
+          echo "Build submitted to Expo servers!"
+          echo "Download your APK at:"
+          echo "https://expo.dev/accounts/waseemkhanjdpr/projects/nurul-quran-mobile/builds"
