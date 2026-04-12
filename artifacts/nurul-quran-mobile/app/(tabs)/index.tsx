@@ -73,16 +73,9 @@ export default function HomeScreen() {
             <Text style={styles.subGreeting}>May Allah bless your learning journey</Text>
           </View>
           <Pressable onPress={() => router.push("/profile" as any)} hitSlop={8}>
-            {user?.isPremium ? (
-              <View style={styles.premiumBadge}>
-                <Feather name="star" size={14} color="#C8A04A" />
-                <Text style={styles.premiumBadgeText}>Premium</Text>
-              </View>
-            ) : (
-              <View style={styles.userCircle}>
-                <Feather name="user" size={20} color="rgba(255,255,255,0.9)" />
-              </View>
-            )}
+            <View style={styles.userCircle}>
+              <Feather name="user" size={20} color="rgba(255,255,255,0.9)" />
+            </View>
           </Pressable>
         </View>
 
@@ -251,22 +244,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.75)",
-  },
-  premiumBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(200,160,74,0.2)",
-    borderWidth: 1,
-    borderColor: "#C8A04A",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  premiumBadgeText: {
-    color: "#C8A04A",
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
   },
   userCircle: {
     width: 40,

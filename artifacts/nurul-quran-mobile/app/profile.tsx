@@ -86,12 +86,7 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const planLabel =
-    (user as any)?.isPremium === true
-      ? (user as any)?.subscriptionPlan === "yearly"
-        ? "Premium Annual"
-        : "Premium Monthly"
-      : "Free Plan";
+  const planLabel = isAuthenticated ? "Member" : "Guest";
 
   return (
     <ScrollView
@@ -131,17 +126,10 @@ export default function ProfileScreen() {
         <View
           style={[
             styles.planBadge,
-            {
-              backgroundColor:
-                (user as any)?.isPremium ? colors.gold || "#f59e0b" : "rgba(255,255,255,0.25)",
-            },
+            { backgroundColor: "rgba(255,255,255,0.25)" },
           ]}
         >
-          <Feather
-            name={(user as any)?.isPremium ? "star" : "user"}
-            size={12}
-            color="#fff"
-          />
+          <Feather name="user" size={12} color="#fff" />
           <Text style={styles.planText}>{planLabel}</Text>
         </View>
       </View>

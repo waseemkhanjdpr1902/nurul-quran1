@@ -82,8 +82,8 @@ export default function TabLayout() {
         <Tabs.Screen
           name="support"
           options={{
-            title: "Premium",
-            tabBarIcon: ({ color }) => <Feather name="star" size={22} color={color} />,
+            title: "Donate",
+            tabBarIcon: ({ color }) => <Feather name="heart" size={22} color={color} />,
           }}
         />
       </Tabs>
