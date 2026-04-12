@@ -8,7 +8,7 @@
     "scheme": "nurul-quran-mobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "owner": "waseemkhanjdpr",
+    "owner": "mohammedwaseem",
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "cover",
@@ -49,7 +49,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "nurul-quran-mobile"
+        "projectId": "b17c2ce0-0cad-4b85-b5e5-eb1b777b1f58"
       }
     }
   }
