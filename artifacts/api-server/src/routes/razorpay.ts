@@ -91,7 +91,7 @@ router.get("/payments/razorpay/config", (_req, res): void => {
 });
 
 router.post("/payments/razorpay/create-order", paymentLimiter, async (req, res): Promise<void> => {
-  const { amount, currency, receipt } = req.body ?? {};
+  const { amount, currency } = req.body ?? {};
 
   const cur = typeof currency === "string" && ALLOWED_CURRENCIES.has(currency) ? currency : "INR";
 
@@ -99,8 +99,6 @@ router.post("/payments/razorpay/create-order", paymentLimiter, async (req, res):
     res.status(400).json({ error: `amount must be an integer between 100 and ${MAX_AMOUNT_PAISE} (in paise)` });
     return;
   }
-
-  const safeReceipt = `receipt_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
 
   const razorpay = getRazorpay();
   if (!razorpay) {
@@ -112,7 +110,6 @@ router.post("/payments/razorpay/create-order", paymentLimiter, async (req, res):
     const order = await razorpay.orders.create({
       amount,
       currency: cur,
-      receipt: safeReceipt,
       payment_capture: 1,
     });
 
@@ -120,7 +117,6 @@ router.post("/payments/razorpay/create-order", paymentLimiter, async (req, res):
       id: order.id,
       amount: order.amount,
       currency: order.currency,
-      receipt: order.receipt,
     });
   } catch (err) {
     req.log.error({ err }, "Razorpay create order error");
@@ -449,7 +445,6 @@ router.post("/payments/razorpay/subscription", paymentLimiter, async (req, res):
     const order = await razorpay.orders.create({
       amount: 99900,
       currency: "INR",
-      receipt: `subscription_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`,
       payment_capture: 1,
       notes: { type: "subscription", plan: "premium_monthly" },
     });
