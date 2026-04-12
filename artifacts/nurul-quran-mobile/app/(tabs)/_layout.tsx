@@ -79,13 +79,6 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <Feather name="layers" size={22} color={color} />,
           }}
         />
-        <Tabs.Screen
-          name="support"
-          options={{
-            title: "Donate",
-            tabBarIcon: ({ color }) => <Feather name="heart" size={22} color={color} />,
-          }}
-        />
       </Tabs>
 
       {/* Global AudioPlayerBar sits above the tab bar */}
