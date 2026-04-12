@@ -3,12 +3,15 @@
   "outputDirectory": "artifacts/nurul-quran/dist/public",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null,
+  "functions": {
+    "api/[...path].ts": {
+      "memory": 1024,
+      "maxDuration": 30,
+      "includeFiles": "lib/**,artifacts/api-server/src/**"
+    }
+  },
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://quran-master-prompt.replit.app/api/:path*"
-    },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
@@ -17,13 +20,21 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Permissions-Policy", "value": "geolocation=(self), camera=(), microphone=()" }
       ]
     },
     {
       "source": "/assets/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
       ]
     }
   ]
