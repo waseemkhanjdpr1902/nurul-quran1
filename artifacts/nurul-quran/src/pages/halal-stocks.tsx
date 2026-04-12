@@ -382,9 +382,6 @@ export default function HalalStocks() {
                 <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
                   <Link href="/support"><Crown className="w-4 h-4 mr-1.5" /> Subscribe — ₹999/month</Link>
                 </Button>
-                <Button asChild variant="outline">
-                  <Link href="/register">Create Free Account</Link>
-                </Button>
               </div>
             </motion.div>
           )}

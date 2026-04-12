@@ -12,9 +12,6 @@ import Home from "@/pages/home";
 import Library from "@/pages/library";
 import Courses from "@/pages/courses";
 import Support from "@/pages/support";
-import Login from "@/pages/login";
-import Register from "@/pages/register";
-import Profile from "@/pages/profile";
 import HalalStocks from "@/pages/halal-stocks";
 import QuranReader from "@/pages/quran-reader";
 import CourseDetail from "@/pages/course-detail";
@@ -36,9 +33,6 @@ function Router() {
         <Route path="/library" component={Library} />
         <Route path="/courses" component={Courses} />
         <Route path="/support" component={Support} />
-        <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
-        <Route path="/profile" component={Profile} />
         <Route path="/halal-stocks" component={HalalStocks} />
         <Route path="/quran" component={QuranReader} />
         <Route path="/quran/:surahId" component={QuranReader} />

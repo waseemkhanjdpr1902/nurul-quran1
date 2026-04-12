@@ -5,11 +5,10 @@ import { motion } from "framer-motion";
 import {
   Heart, Star, Crown, Check, Loader2, CreditCard, IndianRupee,
   BookOpen, Headphones, Shield, Zap, Users, Globe, ChevronDown, ChevronUp,
-  Sparkles, Lock, Infinity, LogIn, CheckCircle2, Mail, Phone, MapPin, User,
+  Sparkles, Lock, Infinity, CheckCircle2, Mail, Phone, MapPin, User,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
 
 declare global {
   interface Window { Razorpay: any; }
@@ -146,8 +145,7 @@ export default function Support() {
   const [donating, setDonating] = useState(false);
   const [customDonation, setCustomDonation] = useState("");
   const { toast } = useToast();
-  const { user, isAuthenticated, login } = useAuth();
-  const [, setLocation] = useLocation();
+  const { user } = useAuth();
 
   const razorpayConfig = useRazorpayConfig();
   const razorpayReady = razorpayConfig?.configured === true;
@@ -178,15 +176,6 @@ export default function Support() {
 
   const handleSubscribe = async (plan: typeof PLANS[0]) => {
     if (plan.disabled || !plan.amountPaise) return;
-
-    if (!isAuthenticated) {
-      toast({
-        title: "Login required",
-        description: "Please log in or create an account to subscribe.",
-      });
-      setLocation("/login");
-      return;
-    }
 
     if (user?.isPremium) {
       toast({
@@ -242,18 +231,6 @@ export default function Support() {
             const result = await verify.json();
 
             if (result.success) {
-              if (result.user && token) {
-                login(token, result.user);
-              } else if (token) {
-                const me = await fetch("/api/users/me", {
-                  headers: { Authorization: `Bearer ${token}` },
-                });
-                if (me.ok) {
-                  const userData = await me.json();
-                  login(token, userData);
-                }
-              }
-
               toast({
                 title: "🎉 Welcome to Premium!",
                 description: "Your subscription is now active. JazakAllah Khair for supporting Islamic education!",
@@ -291,12 +268,6 @@ export default function Support() {
     const amountPaise = Math.round(amount * 100);
     if (amountPaise < 100) {
       toast({ title: "Minimum ₹1", variant: "destructive" }); return;
-    }
-
-    if (!isAuthenticated) {
-      toast({ title: "Login required", description: "Please log in to pay the Islamic Learning Fee." });
-      setLocation("/login");
-      return;
     }
 
     setDonating(true);
@@ -470,12 +441,10 @@ export default function Support() {
               <PlanButton
                 plan={plan}
                 loadingPlan={loadingPlan}
-                isAuthenticated={isAuthenticated}
                 isPremium={!!user?.isPremium}
                 razorpayReady={razorpayReady}
                 razorpayConfig={razorpayConfig}
                 onSubscribe={() => handleSubscribe(plan)}
-                onLogin={() => setLocation("/login")}
               />
 
               {plan.id === "monthly" && razorpayReady && (
@@ -744,21 +713,17 @@ export default function Support() {
 function PlanButton({
   plan,
   loadingPlan,
-  isAuthenticated,
   isPremium,
   razorpayReady,
   razorpayConfig,
   onSubscribe,
-  onLogin,
 }: {
   plan: typeof PLANS[0];
   loadingPlan: string | null;
-  isAuthenticated: boolean;
   isPremium: boolean;
   razorpayReady: boolean;
   razorpayConfig: any;
   onSubscribe: () => void;
-  onLogin: () => void;
 }) {
   const isLoading = loadingPlan === plan.id;
 
@@ -778,19 +743,6 @@ function PlanButton({
         className={`w-full h-12 font-semibold text-sm ${plan.highlight ? "" : "border-primary text-primary"}`}
       >
         <CheckCircle2 className="w-4 h-4 mr-1.5" /> Active Plan
-      </Button>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <Button
-        onClick={onLogin}
-        variant={plan.highlight ? "secondary" : "outline"}
-        className={`w-full h-12 font-semibold text-sm ${plan.highlight ? "" : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"}`}
-        data-testid={`button-login-${plan.id}`}
-      >
-        <LogIn className="w-4 h-4 mr-1.5" /> Log in to Subscribe
       </Button>
     );
   }

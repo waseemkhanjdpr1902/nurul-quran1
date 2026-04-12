@@ -62,7 +62,7 @@ export default function CourseDetail() {
   const params = useParams<{ id: string }>();
   const courseId = parseInt(params.id ?? "0", 10);
   const { playLecture, currentLecture, isPlaying, onEnded } = useAudioPlayer();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [premiumGate, setPremiumGate] = useState<{ title: string } | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [autoPlay, setAutoPlay] = useState(true);
@@ -93,20 +93,20 @@ export default function CourseDetail() {
       const idx = list.findIndex(l => l.id === currentId);
       if (idx >= 0 && idx < list.length - 1) {
         const next = list[idx + 1];
-        if (!next.isPremium || isAuthenticated) {
+        if (!next.isPremium || user?.isPremium) {
           playLecture(next);
         }
       }
     });
     return unsubscribe;
-  }, [onEnded, currentLecture, autoPlay, isAuthenticated, playLecture]);
+  }, [onEnded, currentLecture, autoPlay, user, playLecture]);
 
   const handlePlay = (lecture: Lecture) => {
-    if (course?.isPremium && !isAuthenticated) {
+    if (course?.isPremium && !user?.isPremium) {
       setPremiumGate({ title: lecture.title });
       return;
     }
-    if (lecture.isPremium && !isAuthenticated) {
+    if (lecture.isPremium && !user?.isPremium) {
       setPremiumGate({ title: lecture.title });
       return;
     }

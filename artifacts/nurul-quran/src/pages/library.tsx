@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Heart, ChevronRight, ChevronLeft, Youtube, ExternalLink, Lock, CheckCircle2 } from "lucide-react";
+import { Search, ChevronRight, ChevronLeft, Youtube, ExternalLink, Lock, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 
@@ -267,11 +267,9 @@ export default function Library() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [offset, setOffset] = useState(0);
-  const [favs, setFavs] = useState<Set<number>>(new Set());
-  const [favsLoaded, setFavsLoaded] = useState(false);
   const [, setLocation] = useLocation();
 
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
   const isPremiumUser = !!user?.isPremium;
 
   const { data, isLoading } = useGetLectures({
@@ -280,28 +278,6 @@ export default function Library() {
     limit: PAGE_SIZE,
     offset,
   });
-
-  useEffect(() => {
-    if (!isAuthenticated || favsLoaded) return;
-    const token = localStorage.getItem("nurulquran_token");
-    if (!token) return;
-    fetch("/api/users/favorites", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.json())
-      .then((lectures: { id: number }[]) => {
-        setFavs(new Set(lectures.map(l => l.id)));
-        setFavsLoaded(true);
-      })
-      .catch(() => setFavsLoaded(true));
-  }, [isAuthenticated, favsLoaded]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setFavs(new Set());
-      setFavsLoaded(false);
-    }
-  }, [isAuthenticated]);
 
   const handleSearch = (val: string) => {
     setSearch(val);
@@ -312,20 +288,6 @@ export default function Library() {
     }, 350);
   };
 
-  const toggleFav = async (lectureId: number) => {
-    if (!isAuthenticated) return;
-    const token = localStorage.getItem("nurulquran_token");
-    const isFav = favs.has(lectureId);
-    setFavs(prev => {
-      const next = new Set(prev);
-      isFav ? next.delete(lectureId) : next.add(lectureId);
-      return next;
-    });
-    await fetch(`/api/users/favorites/${lectureId}`, {
-      method: isFav ? "DELETE" : "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    }).catch(() => {});
-  };
 
   const handleLectureClick = (lecture: StaticLecture | any, isStatic: boolean) => {
     if (!isStatic) {
@@ -508,17 +470,6 @@ export default function Library() {
                         {lecture.title}
                       </h3>
                       <div className="flex items-center gap-1 shrink-0 mt-0.5">
-                        {isAuthenticated && !isStatic && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={e => { e.stopPropagation(); toggleFav(Number(lecture.id)); }}
-                            data-testid={`button-fav-${lecture.id}`}
-                          >
-                            <Heart className={`w-3.5 h-3.5 ${favs.has(Number(lecture.id)) ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
-                          </Button>
-                        )}
                         {!isLocked && <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
                         {isLocked && <Lock className="w-3.5 h-3.5 text-amber-500" />}
                       </div>
