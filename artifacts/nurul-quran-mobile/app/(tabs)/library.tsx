@@ -1,427 +1,123 @@
 import { Feather } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
-import React, { useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useState } from "react";
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 import { useColors } from "@/hooks/useColors";
-import { useGetLectures } from "@workspace/api-client-react";
 
-type Category = {
-  label: string;
-  value: string | null;
-  color: string;
-  bg: string;
-  icon: string;
-};
-
-const CATEGORIES: Category[] = [
-  { label: "All",            value: null,             color: "#0D4A3E", bg: "#E0F2EE", icon: "grid"    },
-  { label: "Arabic",         value: "Arabic",         color: "#9F1239", bg: "#FFE4E6", icon: "type"    },
-  { label: "Quranic Arabic", value: "Quranic Arabic", color: "#1E40AF", bg: "#DBEAFE", icon: "book"    },
-  { label: "Arabic Grammar", value: "Arabic Grammar", color: "#6B21A8", bg: "#F3E8FF", icon: "feather" },
+const DUAS = [
+  {
+    category: "Morning", icon: "sun",
+    duas: [
+      { title: "Waking Up", arabic: "الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ", transliteration: "Alhamdu lillahil-ladhi ahyana ba'da ma amatana wa ilayhin-nushur", translation: "All praise is for Allah who gave us life after having taken it from us and unto Him is the resurrection." },
+      { title: "Morning Dhikr", arabic: "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ", transliteration: "Asbahna wa asbahal mulku lillah walhamdu lillah", translation: "We have entered the morning and all sovereignty and all praise belongs to Allah." },
+    ],
+  },
+  {
+    category: "Evening", icon: "moon",
+    duas: [
+      { title: "Evening Dhikr", arabic: "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ وَالْحَمْدُ لِلَّهِ", transliteration: "Amsayna wa amsal mulku lillah walhamdu lillah", translation: "We have entered the evening and all sovereignty and all praise belongs to Allah." },
+      { title: "Before Sleeping", arabic: "بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا", transliteration: "Bismika allahumma amutu wa ahya", translation: "In Your name O Allah, I die and I live." },
+    ],
+  },
+  {
+    category: "After Prayer", icon: "clock",
+    duas: [
+      { title: "Tasbeeh", arabic: "سُبْحَانَ اللَّهِ ، الْحَمْدُ لِلَّهِ ، اللَّهُ أَكْبَرُ", transliteration: "SubhanAllah, Alhamdulillah, Allahu Akbar", translation: "Glory be to Allah (33×), Praise be to Allah (33×), Allah is the Greatest (34×)." },
+      { title: "Entering Mosque", arabic: "اللَّهُمَّ افْتَحْ لِي أَبْوَابَ رَحْمَتِكَ", transliteration: "Allahumm-aftah li abwaba rahmatik", translation: "O Allah, open the gates of Your mercy for me." },
+    ],
+  },
+  {
+    category: "Daily Life", icon: "heart",
+    duas: [
+      { title: "Before Eating", arabic: "بِسْمِ اللَّهِ", transliteration: "Bismillah", translation: "In the name of Allah." },
+      { title: "After Eating", arabic: "الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنَا وَسَقَانَا وَجَعَلَنَا مُسْلِمِينَ", transliteration: "Alhamdu lillahil-ladhi at'amana wa saqana wa ja'alana muslimin", translation: "All praise is for Allah who fed us, gave us drink, and made us Muslims." },
+      { title: "For Anxiety", arabic: "حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ", transliteration: "Hasbunallahu wa ni'mal wakil", translation: "Allah is sufficient for us, and He is the best Disposer of affairs." },
+    ],
+  },
+  {
+    category: "Protection", icon: "shield",
+    duas: [
+      { title: "Ayat Al-Kursi", arabic: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ", transliteration: "Allahu la ilaha illa huwal hayyul qayyum", translation: "Allah — there is no deity except Him, the Ever-Living, the Sustainer of existence. (Al-Baqarah 2:255)" },
+      { title: "Against Evil", arabic: "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ", transliteration: "A'udhu bikalimatillahit-tammati min sharri ma khalaq", translation: "I seek refuge in the perfect words of Allah from the evil of what He has created." },
+    ],
+  },
+  {
+    category: "Forgiveness", icon: "refresh-cw",
+    duas: [
+      { title: "Sayyid al-Istighfar", arabic: "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ خَلَقْتَنِي وَأَنَا عَبْدُكَ", transliteration: "Allahumma anta rabbi la ilaha illa anta khalaqtani wa ana abduk", translation: "O Allah, You are my Lord. None has the right to be worshipped except You. You created me and I am your servant." },
+      { title: "Seeking Forgiveness", arabic: "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ الَّذِي لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ وَأَتُوبُ إِلَيْهِ", transliteration: "Astaghfirullahal-'adhim...", translation: "I seek forgiveness from Allah the Magnificent, the Living, the Sustainer, and I repent to Him." },
+    ],
+  },
 ];
 
-function formatDuration(secs?: number | null): string {
-  if (!secs) return "";
-  const m = Math.floor(secs / 60);
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  return r > 0 ? `${h}h ${r}m` : `${h}h`;
-}
-
-export default function LibraryScreen() {
+export default function DuasScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string | null>(null);
-  const catScrollRef = useRef<ScrollView>(null);
-
-  const { data, isLoading, refetch } = useGetLectures({
-    search: search || undefined,
-    category: category || undefined,
-    limit: 50,
-    offset: 0,
-  });
-
-  const lectures = data?.lectures ?? [];
+  const [expanded, setExpanded] = useState<string | null>(null);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const handleOpen = async (item: any) => {
-    const youtubeUrl = (item as any).youtubeUrl;
-    if (youtubeUrl) {
-      await WebBrowser.openBrowserAsync(youtubeUrl, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      });
-    }
-  };
-
-  const activeCat = CATEGORIES.find((c) => c.value === category) ?? CATEGORIES[0];
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <LinearGradient colors={[colors.tealDark, colors.teal]} style={[styles.header, { paddingTop: topPad + 20 }]}>
+        <Text style={styles.headerTitle}>Duas & Dhikr</Text>
+        <Text style={styles.headerSub}>Essential supplications from Quran & Sunnah</Text>
+      </LinearGradient>
 
-      {/* ── STICKY HEADER ── */}
-      <View style={[styles.stickyHeader, { paddingTop: topPad + 12, backgroundColor: colors.tealDark }]}>
-        {/* Title row */}
-        <View style={styles.titleRow}>
-          <View>
-            <Text style={styles.screenTitle}>Arabic Learning</Text>
-            <Text style={styles.screenSub}>{data?.total ?? 0} free video lessons</Text>
-          </View>
-          <View style={[styles.activeBadge, { backgroundColor: activeCat.bg }]}>
-            <Text style={[styles.activeBadgeText, { color: activeCat.color }]}>
-              {activeCat.label}
-            </Text>
-          </View>
-        </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: Platform.OS === "web" ? 34 + 84 : 84 + 20 }]}>
+        {DUAS.map((cat) => (
+          <View key={cat.category} style={styles.categoryBlock}>
+            <View style={styles.categoryHeader}>
+              <View style={[styles.catIcon, { backgroundColor: colors.tealLight }]}>
+                <Feather name={cat.icon as any} size={16} color={colors.teal} />
+              </View>
+              <Text style={[styles.categoryTitle, { color: colors.foreground }]}>{cat.category}</Text>
+            </View>
 
-        {/* Search bar */}
-        <View style={[styles.searchBar, { backgroundColor: "rgba(255,255,255,0.12)", borderColor: "rgba(255,255,255,0.2)" }]}>
-          <Feather name="search" size={18} color="rgba(255,255,255,0.7)" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search lessons..."
-            placeholderTextColor="rgba(255,255,255,0.5)"
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")} hitSlop={8}>
-              <Feather name="x" size={16} color="rgba(255,255,255,0.7)" />
-            </Pressable>
-          )}
-        </View>
-
-        {/* Category filter tabs */}
-        <ScrollView
-          ref={catScrollRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.catScroll}
-        >
-          {CATEGORIES.map((cat) => {
-            const active = cat.value === category;
-            return (
-              <Pressable
-                key={cat.label}
-                onPress={() => setCategory(cat.value)}
-                style={({ pressed }) => [
-                  styles.catTab,
-                  active && styles.catTabActive,
-                  {
-                    backgroundColor: active ? "#fff" : "rgba(255,255,255,0.12)",
-                    borderColor: active ? "#fff" : "rgba(255,255,255,0.25)",
-                    opacity: pressed ? 0.8 : 1,
-                  },
-                ]}
-              >
-                <Feather
-                  name={cat.icon as any}
-                  size={13}
-                  color={active ? cat.color : "rgba(255,255,255,0.8)"}
-                />
-                <Text
-                  style={[
-                    styles.catTabText,
-                    { color: active ? cat.color : "rgba(255,255,255,0.9)" },
-                    active && styles.catTabTextActive,
-                  ]}
+            {cat.duas.map((dua) => {
+              const key = `${cat.category}-${dua.title}`;
+              const isOpen = expanded === key;
+              return (
+                <Pressable
+                  key={dua.title}
+                  onPress={() => setExpanded(isOpen ? null : key)}
+                  style={({ pressed }) => [styles.duaCard, { backgroundColor: colors.card, borderColor: isOpen ? colors.teal : colors.border, opacity: pressed ? 0.9 : 1 }]}
                 >
-                  {cat.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        <View style={styles.headerAccent} />
-      </View>
-
-      {/* ── LECTURE LIST ── */}
-      {isLoading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading lessons...</Text>
-        </View>
-      ) : lectures.length === 0 ? (
-        <View style={styles.empty}>
-          <View style={[styles.emptyIcon, { backgroundColor: colors.card }]}>
-            <Feather name="youtube" size={36} color={colors.mutedForeground} />
+                  <View style={styles.duaRow}>
+                    <Text style={[styles.duaTitle, { color: colors.foreground }]}>{dua.title}</Text>
+                    <Feather name={isOpen ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+                  </View>
+                  {isOpen && (
+                    <View style={styles.duaBody}>
+                      <Text style={[styles.duaArabic, { color: colors.foreground }]}>{dua.arabic}</Text>
+                      <Text style={[styles.duaTranslit, { color: colors.teal }]}>{dua.transliteration}</Text>
+                      <Text style={[styles.duaTrans, { color: colors.mutedForeground }]}>{dua.translation}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No lessons found</Text>
-          <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-            {search ? `No results for "${search}"` : "Try a different category"}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={lectures}
-          keyExtractor={(item) => String(item.id)}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingBottom: Platform.OS === "web" ? 34 + 84 + 60 : 84 + 60 + 16,
-            paddingTop: 12,
-            paddingHorizontal: 16,
-            gap: 12,
-          }}
-          onRefresh={refetch}
-          refreshing={false}
-          renderItem={({ item }) => (
-            <VideoCard item={item as any} colors={colors} onPress={() => handleOpen(item)} />
-          )}
-        />
-      )}
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
-function VideoCard({ item, colors, onPress }: { item: any; colors: any; onPress: () => void }) {
-  const thumb = item.thumbnailUrl;
-  const catColor = CATEGORIES.find(c => c.value === item.category)?.color ?? "#0D4A3E";
-  const catBg   = CATEGORIES.find(c => c.value === item.category)?.bg   ?? "#E0F2EE";
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        {
-          backgroundColor: colors.card,
-          borderColor: colors.border ?? "#E5E7EB",
-          opacity: pressed ? 0.92 : 1,
-        },
-      ]}
-    >
-      {/* Thumbnail */}
-      {thumb ? (
-        <Image source={{ uri: thumb }} style={styles.thumb} resizeMode="cover" />
-      ) : (
-        <View style={[styles.thumb, styles.thumbPlaceholder, { backgroundColor: colors.tealLight ?? "#E0F2EE" }]}>
-          <Feather name="youtube" size={28} color={colors.teal ?? "#0D9488"} />
-        </View>
-      )}
-
-      {/* Content */}
-      <View style={styles.cardContent}>
-        <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={[styles.cardSpeaker, { color: colors.mutedForeground }]} numberOfLines={1}>
-          {item.speakerName ?? "Unknown"}
-        </Text>
-
-        <View style={styles.cardMeta}>
-          <View style={[styles.catBadge, { backgroundColor: catBg }]}>
-            <Text style={[styles.catBadgeText, { color: catColor }]}>{item.category}</Text>
-          </View>
-          {item.duration ? (
-            <Text style={[styles.duration, { color: colors.mutedForeground }]}>
-              {formatDuration(item.duration)}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-
-      {/* YouTube play arrow */}
-      <View style={styles.playBtn}>
-        <Feather name="youtube" size={20} color="#FF0000" />
-      </View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-
-  stickyHeader: {
-    paddingBottom: 0,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
-    zIndex: 10,
-  },
-  titleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  screenTitle: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    color: "#FFFFFF",
-    marginBottom: 2,
-  },
-  screenSub: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.65)",
-  },
-  activeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    marginTop: 2,
-  },
-  activeBadgeText: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-  },
-
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 16,
-    marginBottom: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: "#fff",
-  },
-
-  catScroll: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    gap: 8,
-  },
-  catTab: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 22,
-    borderWidth: 1.5,
-  },
-  catTabActive: {
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  catTabText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  catTabTextActive: {
-    fontFamily: "Inter_700Bold",
-  },
-  headerAccent: {
-    height: 3,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-
-  loading: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  empty: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 40,
-  },
-  emptyIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
-  },
-  emptyText: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
-
-  /* ── Video Card ── */
-  card: {
-    flexDirection: "row",
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-    alignItems: "center",
-  },
-  thumb: {
-    width: 96,
-    height: 72,
-  },
-  thumbPlaceholder: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardContent: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 4,
-  },
-  cardTitle: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    lineHeight: 18,
-  },
-  cardSpeaker: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
-  cardMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 4,
-  },
-  catBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  catBadgeText: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-  },
-  duration: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-  },
-  playBtn: {
-    paddingRight: 14,
-    paddingLeft: 6,
-  },
+  header: { paddingHorizontal: 20, paddingBottom: 20 },
+  headerTitle: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#fff", marginBottom: 4 },
+  headerSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
+  content: { padding: 16, gap: 20 },
+  categoryBlock: { gap: 10 },
+  categoryHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
+  catIcon: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  categoryTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  duaCard: { borderRadius: 14, borderWidth: 1.5, padding: 14 },
+  duaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  duaTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", flex: 1 },
+  duaBody: { marginTop: 12, gap: 8 },
+  duaArabic: { fontSize: 20, fontFamily: "Inter_400Regular", textAlign: "right", lineHeight: 34, writingDirection: "rtl" },
+  duaTranslit: { fontSize: 12, fontFamily: "Inter_400Regular", fontStyle: "italic" },
+  duaTrans: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
 });

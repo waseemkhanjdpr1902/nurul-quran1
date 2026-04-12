@@ -68,15 +68,15 @@ export default function TabLayout() {
         <Tabs.Screen
           name="library"
           options={{
-            title: "Library",
-            tabBarIcon: ({ color }) => <Feather name="play-circle" size={22} color={color} />,
+            title: "Duas",
+            tabBarIcon: ({ color }) => <Feather name="heart" size={22} color={color} />,
           }}
         />
         <Tabs.Screen
           name="courses"
           options={{
-            title: "Courses",
-            tabBarIcon: ({ color }) => <Feather name="layers" size={22} color={color} />,
+            title: "Learn",
+            tabBarIcon: ({ color }) => <Feather name="book" size={22} color={color} />,
           }}
         />
       </Tabs>

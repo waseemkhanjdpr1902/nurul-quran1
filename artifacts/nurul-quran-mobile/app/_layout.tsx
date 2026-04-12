@@ -11,8 +11,6 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { setBaseUrl } from "@workspace/api-client-react";
-
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AudioProvider } from "@/context/AudioContext";
 import { AuthProvider } from "@/context/AuthContext";
@@ -28,25 +26,12 @@ const queryClient = new QueryClient({
   },
 });
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
-
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="auth/login"
-        options={{
-          headerShown: false,
-          presentation: "modal",
-          animation: "slide_from_bottom",
-        }}
-      />
-      <Stack.Screen name="profile" options={{ headerShown: false }} />
-      <Stack.Screen name="stocks" options={{ headerShown: false }} />
       <Stack.Screen name="surah/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="discover" options={{ headerShown: false }} />
-      <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
