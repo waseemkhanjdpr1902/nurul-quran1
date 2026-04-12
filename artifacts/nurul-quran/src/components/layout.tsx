@@ -4,8 +4,6 @@ import { Button } from "./ui/button";
 import {
   BookOpen,
   Compass,
-  Library,
-  GraduationCap,
   TrendingUp,
   Moon,
   Home,
@@ -32,9 +30,7 @@ import React, { useState } from "react";
 const primaryNavItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/quran", label: "Quran", icon: Moon },
-  { href: "/library", label: "Library", icon: Library },
-  { href: "/courses", label: "Courses", icon: GraduationCap },
-  { href: "/halal-stocks", label: "Stocks", icon: TrendingUp },
+  { href: "/halal-stocks", label: "Halal Stocks", icon: TrendingUp },
 ];
 
 const islamicNavItems = [
@@ -104,7 +100,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     }`}
                   >
                     <item.icon className="h-5 w-5 shrink-0" />
-                    {item.label === "Stocks" ? "Halal Stocks" : item.label}
+                    {item.label}
                   </Link>
                 );
               })}
@@ -176,7 +172,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     : "text-muted-foreground"
                 }`}
               >
-                {item.label === "Stocks" ? "Halal Stocks" : item.label}
+                {item.label}
               </Link>
             ))}
             <div className="w-px h-5 bg-border mx-1" />

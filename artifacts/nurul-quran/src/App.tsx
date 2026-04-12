@@ -9,11 +9,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
 import Home from "@/pages/home";
-import Library from "@/pages/library";
-import Courses from "@/pages/courses";
 import HalalStocks from "@/pages/halal-stocks";
 import QuranReader from "@/pages/quran-reader";
-import CourseDetail from "@/pages/course-detail";
 import Discover from "@/pages/discover";
 import PrayerTimes from "@/pages/prayer-times";
 import Hadith from "@/pages/hadith";
@@ -30,12 +27,9 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/library" component={Library} />
-        <Route path="/courses" component={Courses} />
         <Route path="/halal-stocks" component={HalalStocks} />
         <Route path="/quran" component={QuranReader} />
         <Route path="/quran/:surahId" component={QuranReader} />
-        <Route path="/courses/:id" component={CourseDetail} />
         <Route path="/discover" component={Discover} />
         <Route path="/prayer-times" component={PrayerTimes} />
         <Route path="/hadith" component={Hadith} />

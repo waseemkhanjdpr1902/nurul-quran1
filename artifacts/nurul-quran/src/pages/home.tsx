@@ -113,10 +113,10 @@ const FEATURE_TILES = [
 ];
 
 const STATIC_STATS = [
-  { label: "Lectures", value: "37", icon: MicVocal },
-  { label: "Courses", value: "12", icon: BookOpen },
-  { label: "Scholars", value: "10", icon: Users },
-  { label: "Listeners", value: "8,000+", icon: LayoutGrid },
+  { label: "Surahs", value: "114", icon: BookOpen },
+  { label: "Islamic Tools", value: "8+", icon: LayoutGrid },
+  { label: "Scholars", value: "10+", icon: Users },
+  { label: "Listeners", value: "8,000+", icon: MicVocal },
 ];
 
 type LearnCard = {
