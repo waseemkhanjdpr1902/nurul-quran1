@@ -3,17 +3,12 @@ name: Build Android APK
 on:
   push:
     branches: [main]
-    paths:
-      - "artifacts/nurul-quran-mobile/**"
   workflow_dispatch:
 
 jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: artifacts/nurul-quran-mobile
 
     steps:
       - name: Checkout repository
@@ -33,13 +28,13 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Create or link Expo project and build APK
-        run: |
-          eas init --non-interactive
-          eas build --platform android --profile preview --non-interactive
+      - name: Create or link Expo project
+        run: eas init --non-interactive
 
-      - name: Done
+      - name: Build Android APK
+        run: eas build --platform android --profile preview --non-interactive
+
+      - name: Build complete
         run: |
-          echo "Build submitted to Expo servers!"
-          echo "Download your APK at:"
-          echo "https://expo.dev/accounts/waseemkhanjdpr/projects/nurul-quran-mobile/builds"
+          echo "APK build submitted!"
+          echo "Download from: https://expo.dev/accounts/waseemkhanjdpr/projects/nurul-quran-mobile/builds"
