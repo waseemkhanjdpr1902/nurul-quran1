@@ -17,6 +17,7 @@ import {
   Languages,
   Menu,
   X,
+  Mail,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -139,6 +140,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Compass className="h-5 w-5 shrink-0" />
                   Discover Islam
                 </Link>
+                <Link
+                  href="/contact"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+                    location === "/contact" ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <Mail className="h-5 w-5 shrink-0" />
+                  Contact
+                </Link>
               </div>
 
             </div>
@@ -208,6 +219,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <Compass className="h-4 w-4" />
               Discover Islam
+            </Link>
+            <Link
+              href="/contact"
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors rounded-lg hover:bg-muted ${
+                location === "/contact" ? "text-primary bg-primary/5" : "text-muted-foreground"
+              }`}
+            >
+              <Mail className="h-4 w-4" />
+              Contact
             </Link>
           </nav>
 
