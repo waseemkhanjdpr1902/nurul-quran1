@@ -34,4 +34,5 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Build Android APK
+        working-directory: artifacts/nurul-quran-mobile
         run: eas build --platform android --profile preview --non-interactive
