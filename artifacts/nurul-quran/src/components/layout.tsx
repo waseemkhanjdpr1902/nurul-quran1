@@ -4,7 +4,6 @@ import { Button } from "./ui/button";
 import {
   BookOpen,
   Compass,
-  TrendingUp,
   Moon,
   Home,
   Clock,
@@ -30,7 +29,6 @@ import React, { useState } from "react";
 const primaryNavItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/quran", label: "Quran", icon: Moon },
-  { href: "/halal-stocks", label: "Halal Stocks", icon: TrendingUp },
 ];
 
 const islamicNavItems = [

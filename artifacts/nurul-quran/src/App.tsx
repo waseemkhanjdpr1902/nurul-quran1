@@ -9,7 +9,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
 import Home from "@/pages/home";
-import HalalStocks from "@/pages/halal-stocks";
 import QuranReader from "@/pages/quran-reader";
 import Discover from "@/pages/discover";
 import PrayerTimes from "@/pages/prayer-times";
@@ -27,7 +26,6 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Home} />
-        <Route path="/halal-stocks" component={HalalStocks} />
         <Route path="/quran" component={QuranReader} />
         <Route path="/quran/:surahId" component={QuranReader} />
         <Route path="/discover" component={Discover} />
