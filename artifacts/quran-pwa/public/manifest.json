@@ -1,0 +1,44 @@
+{
+  "name": "Nurul Quran",
+  "short_name": "Nurul Quran",
+  "description": "Complete Islamic learning app — Quran, Prayer Times, Qibla, and more",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f3d20",
+  "theme_color": "#1a6b36",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["education", "lifestyle"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Quran Reader",
+      "short_name": "Quran",
+      "description": "Read the Holy Quran",
+      "url": "/quran",
+      "icons": [{ "src": "/icon.png", "sizes": "512x512" }]
+    },
+    {
+      "name": "Prayer Times",
+      "short_name": "Prayers",
+      "description": "View today's prayer times",
+      "url": "/prayer-times",
+      "icons": [{ "src": "/icon.png", "sizes": "512x512" }]
+    }
+  ]
+}
