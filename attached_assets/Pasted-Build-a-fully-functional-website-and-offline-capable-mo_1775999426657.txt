@@ -1,0 +1,62 @@
+Build a fully functional website and offline-capable mobile PWA (Progressive Web App) 
+replicating nurulquran.info with the following specifications:
+
+=== FEATURES TO BUILD ===
+- Quran reader with full Arabic text (all 114 surahs)
+- Translation support (English + Urdu at minimum)
+- Audio recitation playback (use open-source API: api.alquran.cloud)
+- Search functionality (search by surah, ayah, keyword)
+- Tafsir/explanation section
+- Prayer times (using Aladhan API — free, no key needed)
+- Qibla direction
+- Hijri calendar
+- Home page with Islamic content/daily ayah
+
+=== FEATURES TO REMOVE ===
+- Remove the Library section entirely
+- Remove the Courses section entirely
+- Remove ALL payment/subscription options (no Stripe, no billing, no premium)
+- Remove Login / Register / User accounts entirely
+- No authentication of any kind
+
+=== OFFLINE MOBILE APP (PWA) ===
+- Add full PWA support with manifest.json and service worker
+- Cache all Quran text locally so app works offline after first visit
+- Add "Add to Home Screen" prompt for mobile users
+- Works on Android and iOS as an installed app
+- App icon and splash screen
+
+=== TECH STACK ===
+- Next.js 14 (App Router) + Tailwind CSS
+- No database, no backend auth
+- All Quran data from: https://api.alquran.cloud/v1 (free, no API key)
+- Prayer times from: https://api.aladhan.com/v1 (free, no API key)
+
+=== VERCEL DEPLOYMENT (CRITICAL) ===
+- Set up the project to deploy on Vercel
+- Add a vercel.json config file to root
+- Make sure the app runs 100% on Vercel's edge — NOT dependent on Replit being active
+- Once deployed to Vercel, the site must stay live 24/7 even if this Replit project is paused, 
+  stopped, or deleted
+- Add instructions in README.md for connecting to Vercel
+
+=== vercel.json (include this exactly) ===
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs"
+}
+
+=== DEPLOYMENT INSTRUCTIONS TO INCLUDE IN README ===
+1. Push this project to GitHub (File > Connect to GitHub in Replit)
+2. Go to vercel.com > New Project > Import from GitHub
+3. Select this repo, click Deploy
+4. Site will be permanently live at your Vercel URL
+5. Replit can be paused — Vercel hosts independently
+
+=== IMPORTANT ===
+- The final live site must work without ANY running Replit server
+- All API calls are client-side to free public APIs
+- No secrets or API keys required
+- Mobile-first responsive design
+- Fast loading, clean Islamic UI (green/gold color scheme)
