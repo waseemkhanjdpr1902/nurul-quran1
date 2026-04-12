@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import {
   Search, TrendingUp, TrendingDown, CheckCircle, RefreshCw,
   Info, Star, BarChart2, Zap, Shield
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 interface HalalStock {
   symbol: string;
@@ -22,10 +22,51 @@ interface HalalStock {
   currency: string;
 }
 
-interface StocksResponse {
-  stocks: HalalStock[];
-  total: number;
-}
+const HALAL_STOCKS_BASE: Omit<HalalStock, "price" | "change" | "changePercent" | "marketCap" | "currency">[] = [
+  { symbol: "AMZN", name: "Amazon", sector: "Technology", reason: "E-commerce & Cloud — no primary haram activity", screening: "pass" },
+  { symbol: "MSFT", name: "Microsoft", sector: "Technology", reason: "Software & Cloud — halal compliant", screening: "pass" },
+  { symbol: "AAPL", name: "Apple Inc.", sector: "Technology", reason: "Consumer Electronics — passes Islamic screening", screening: "pass" },
+  { symbol: "GOOGL", name: "Alphabet (Google)", sector: "Technology", reason: "Technology & Search — halal core business", screening: "pass" },
+  { symbol: "NVDA", name: "NVIDIA", sector: "Technology", reason: "AI & Semiconductors — compliant", screening: "pass" },
+  { symbol: "META", name: "Meta Platforms", sector: "Technology", reason: "Social Media — passes debt screening", screening: "pass" },
+  { symbol: "TSM", name: "TSMC", sector: "Technology", reason: "Semiconductor manufacturing — compliant", screening: "pass" },
+  { symbol: "ASML", name: "ASML Holding", sector: "Technology", reason: "Chipmaking equipment — halal", screening: "pass" },
+  { symbol: "ADBE", name: "Adobe Inc.", sector: "Technology", reason: "Creative software — halal compliant", screening: "pass" },
+  { symbol: "CRM", name: "Salesforce", sector: "Technology", reason: "CRM Software — passes Islamic screening", screening: "pass" },
+  { symbol: "ORCL", name: "Oracle", sector: "Technology", reason: "Enterprise software & cloud — compliant", screening: "pass" },
+  { symbol: "CSCO", name: "Cisco Systems", sector: "Technology", reason: "Networking equipment — halal", screening: "pass" },
+  { symbol: "SHOP", name: "Shopify", sector: "Technology", reason: "E-commerce platform — halal compliant", screening: "pass" },
+  { symbol: "SNOW", name: "Snowflake", sector: "Technology", reason: "Cloud data platform — compliant", screening: "pass" },
+  { symbol: "JNJ", name: "Johnson & Johnson", sector: "Healthcare", reason: "Medical devices & pharma — halal", screening: "pass" },
+  { symbol: "UNH", name: "UnitedHealth Group", sector: "Healthcare", reason: "Healthcare services — halal compliant", screening: "pass" },
+  { symbol: "ABT", name: "Abbott Laboratories", sector: "Healthcare", reason: "Medical devices — Islamic compliant", screening: "pass" },
+  { symbol: "MDT", name: "Medtronic", sector: "Healthcare", reason: "Medical technology — halal", screening: "pass" },
+  { symbol: "TMO", name: "Thermo Fisher Scientific", sector: "Healthcare", reason: "Life science instruments — compliant", screening: "pass" },
+  { symbol: "PFE", name: "Pfizer", sector: "Healthcare", reason: "Pharmaceuticals — passes debt screening", screening: "pass" },
+  { symbol: "LLY", name: "Eli Lilly", sector: "Healthcare", reason: "Pharmaceuticals — halal compliant", screening: "pass" },
+  { symbol: "AMGN", name: "Amgen", sector: "Healthcare", reason: "Biotechnology — Islamic screening passed", screening: "pass" },
+  { symbol: "ISRG", name: "Intuitive Surgical", sector: "Healthcare", reason: "Robotic surgery — halal", screening: "pass" },
+  { symbol: "WMT", name: "Walmart", sector: "Consumer", reason: "Retail — passes debt/interest screening", screening: "pass" },
+  { symbol: "TGT", name: "Target", sector: "Consumer", reason: "Retail — halal compliant core", screening: "pass" },
+  { symbol: "COST", name: "Costco", sector: "Consumer", reason: "Wholesale retail — Islamic compliant", screening: "pass" },
+  { symbol: "NKE", name: "Nike", sector: "Consumer", reason: "Sportswear — halal compliant", screening: "pass" },
+  { symbol: "SBUX", name: "Starbucks", sector: "Consumer", reason: "Coffee & beverages — no haram revenue", screening: "pass" },
+  { symbol: "HD", name: "Home Depot", sector: "Consumer", reason: "Home improvement retail — compliant", screening: "pass" },
+  { symbol: "MCD", name: "McDonald's", sector: "Consumer", reason: "Halal-certified locations globally — passes screening", screening: "pass" },
+  { symbol: "V", name: "Visa Inc.", sector: "Financial Services", reason: "Payment processing — interest-free service fees", screening: "pass" },
+  { symbol: "MA", name: "Mastercard", sector: "Financial Services", reason: "Payment network — transaction fees only, halal", screening: "pass" },
+  { symbol: "PYPL", name: "PayPal", sector: "Financial Services", reason: "Digital payments — mainly fee-based, compliant", screening: "pass" },
+  { symbol: "SQ", name: "Block (Square)", sector: "Financial Services", reason: "Payments & fintech — halal compliant services", screening: "pass" },
+  { symbol: "BA", name: "Boeing", sector: "Industrials", reason: "Commercial aviation — halal compliant", screening: "pass" },
+  { symbol: "CAT", name: "Caterpillar", sector: "Industrials", reason: "Construction equipment — halal", screening: "pass" },
+  { symbol: "RTX", name: "RTX Corporation", sector: "Industrials", reason: "Aerospace & defense — passes screening", screening: "pass" },
+  { symbol: "ENPH", name: "Enphase Energy", sector: "Clean Energy", reason: "Solar microinverters — halal & ethical", screening: "pass" },
+  { symbol: "FSLR", name: "First Solar", sector: "Clean Energy", reason: "Solar panel manufacturing — Islamic compliant", screening: "pass" },
+  { symbol: "NEE", name: "NextEra Energy", sector: "Clean Energy", reason: "Renewable energy — halal compliant", screening: "pass" },
+  { symbol: "TSLA", name: "Tesla", sector: "Clean Energy", reason: "Electric vehicles & clean energy — passes screening", screening: "pass" },
+];
+
+const ALL_SECTORS = ["All", ...Array.from(new Set(HALAL_STOCKS_BASE.map(s => s.sector)))];
 
 const SECTOR_COLORS: Record<string, string> = {
   Technology: "bg-blue-100 text-blue-700 border-blue-200",
@@ -42,6 +83,28 @@ function formatMarketCap(cap: number | null): string {
   if (cap >= 1e9) return `$${(cap / 1e9).toFixed(1)}B`;
   if (cap >= 1e6) return `$${(cap / 1e6).toFixed(0)}M`;
   return `$${cap.toLocaleString()}`;
+}
+
+async function fetchPrices(symbols: string[]): Promise<Record<string, { price: number | null; change: number | null; changePercent: number | null }>> {
+  const result: Record<string, { price: number | null; change: number | null; changePercent: number | null }> = {};
+  symbols.forEach(s => { result[s] = { price: null, change: null, changePercent: null }; });
+  try {
+    const syms = symbols.join(",");
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return result;
+    const data = await res.json() as any;
+    const quotes: any[] = data?.quoteResponse?.result ?? [];
+    quotes.forEach((q: any) => {
+      result[q.symbol] = {
+        price: q.regularMarketPrice ?? null,
+        change: q.regularMarketChange ?? null,
+        changePercent: q.regularMarketChangePercent ?? null,
+      };
+    });
+  } catch {
+  }
+  return result;
 }
 
 const LONG_TERM_TIPS = [
@@ -97,58 +160,43 @@ const LONG_TERM_TIPS = [
 ];
 
 export default function HalalStocks() {
-  const [stocks, setStocks] = useState<HalalStock[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [sector, setSector] = useState("All");
-  const [sectors, setSectors] = useState<string[]>(["All"]);
+  const [prices, setPrices] = useState<Record<string, { price: number | null; change: number | null; changePercent: number | null }>>({});
+  const [pricesLoading, setPricesLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const fetchStocks = async (q = search, sec = sector) => {
-    setIsLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (q) params.set("search", q);
-      if (sec && sec !== "All") params.set("sector", sec);
-      const res = await fetch(`/api/halal-stocks?${params}`);
-      const data: StocksResponse = await res.json();
-      setStocks(data.stocks);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error("Failed to fetch stocks", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [sector, setSector] = useState("All");
 
-  const fetchSectors = async () => {
-    try {
-      const res = await fetch("/api/halal-stocks/sectors");
-      const data = await res.json();
-      setSectors(data.sectors);
-    } catch {}
-  };
-
-  useEffect(() => {
-    fetchSectors();
-    fetchStocks();
+  const loadPrices = useCallback(async () => {
+    setPricesLoading(true);
+    const symbols = HALAL_STOCKS_BASE.map(s => s.symbol);
+    const result = await fetchPrices(symbols);
+    setPrices(result);
+    setLastUpdated(new Date());
+    setPricesLoading(false);
   }, []);
+
+  useEffect(() => { loadPrices(); }, [loadPrices]);
 
   const handleSearch = (val: string) => {
     setSearchInput(val);
     clearTimeout((window as any)._stockSearchTimer);
-    (window as any)._stockSearchTimer = setTimeout(() => {
-      setSearch(val);
-      fetchStocks(val, sector);
-    }, 400);
+    (window as any)._stockSearchTimer = setTimeout(() => setSearch(val.toLowerCase()), 350);
   };
 
-  const handleSector = (sec: string) => {
-    setSector(sec);
-    fetchStocks(search, sec);
-  };
+  const filtered = HALAL_STOCKS_BASE.filter(s => {
+    const matchSector = sector === "All" || s.sector === sector;
+    const matchSearch = !search || s.name.toLowerCase().includes(search) || s.symbol.toLowerCase().includes(search);
+    return matchSector && matchSearch;
+  });
 
-  const visibleStocks = stocks;
+  const stocks: HalalStock[] = filtered.map(s => ({
+    ...s,
+    currency: "USD",
+    ...(prices[s.symbol] ?? { price: null, change: null, changePercent: null }),
+    marketCap: null,
+  }));
+
   const positiveStocks = stocks.filter(s => s.changePercent != null && s.changePercent > 0).length;
   const negativeStocks = stocks.filter(s => s.changePercent != null && s.changePercent < 0).length;
 
@@ -163,17 +211,18 @@ export default function HalalStocks() {
               <h1 className="text-3xl font-serif font-bold text-foreground">Halal Stock Screener</h1>
             </div>
             <p className="text-muted-foreground max-w-2xl">
-              Shariah-compliant stocks screened based on Islamic finance principles — free from riba, 
+              Shariah-compliant stocks screened based on Islamic finance principles — free from riba,
               haram industries, and excessive debt.
             </p>
             {lastUpdated && (
               <p className="text-xs text-muted-foreground mt-1">
                 Prices updated: {lastUpdated.toLocaleTimeString()}
+                {!Object.values(prices).some(p => p.price != null) && " (live prices unavailable — showing screening data)"}
               </p>
             )}
           </div>
-          <Button variant="outline" size="sm" onClick={() => fetchStocks(search, sector)} disabled={isLoading} className="gap-1.5">
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          <Button variant="outline" size="sm" onClick={loadPrices} disabled={pricesLoading} className="gap-1.5">
+            <RefreshCw className={`w-4 h-4 ${pricesLoading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
@@ -191,7 +240,7 @@ export default function HalalStocks() {
       </div>
 
       {/* Stats bar */}
-      {!isLoading && stocks.length > 0 && (
+      {stocks.length > 0 && (
         <div className="flex items-center gap-6 mb-6 text-sm flex-wrap">
           <span className="text-muted-foreground">{stocks.length} stocks shown</span>
           {positiveStocks > 0 && (
@@ -223,10 +272,10 @@ export default function HalalStocks() {
 
       {/* Sector Filters */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {sectors.map(sec => (
+        {ALL_SECTORS.map(sec => (
           <button
             key={sec}
-            onClick={() => handleSector(sec)}
+            onClick={() => setSector(sec)}
             data-testid={`button-sector-${sec.toLowerCase().replace(/\s+/g, '-')}`}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
               sector === sec
@@ -240,70 +289,65 @@ export default function HalalStocks() {
       </div>
 
       {/* Stock Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)}
-        </div>
-      ) : stocks.length === 0 ? (
+      {stocks.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Search className="w-12 h-12 mx-auto mb-4 opacity-30" />
           <p>No halal stocks found for your search.</p>
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {visibleStocks.map((stock, i) => (
-              <motion.div
-                key={stock.symbol}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                data-testid={`card-stock-${stock.symbol}`}
-                className="bg-card border border-border rounded-xl p-4 hover:shadow-md transition-all hover:border-primary/30"
-              >
-                <div className="flex items-start justify-between mb-2 gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="font-bold text-sm text-foreground font-mono" data-testid={`text-symbol-${stock.symbol}`}>{stock.symbol}</span>
-                      <CheckCircle className="w-3.5 h-3.5 text-primary shrink-0" />
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">{stock.name}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {stocks.map((stock, i) => (
+            <motion.div
+              key={stock.symbol}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
+              data-testid={`card-stock-${stock.symbol}`}
+              className="bg-card border border-border rounded-xl p-4 hover:shadow-md transition-all hover:border-primary/30"
+            >
+              <div className="flex items-start justify-between mb-2 gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="font-bold text-sm text-foreground font-mono" data-testid={`text-symbol-${stock.symbol}`}>{stock.symbol}</span>
+                    <CheckCircle className="w-3.5 h-3.5 text-primary shrink-0" />
                   </div>
-                  <div className="text-right shrink-0">
-                    {stock.price != null ? (
-                      <>
-                        <p className="font-bold text-base text-foreground" data-testid={`text-price-${stock.symbol}`}>
-                          ${stock.price.toFixed(2)}
+                  <p className="text-xs text-muted-foreground truncate">{stock.name}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  {stock.price != null ? (
+                    <>
+                      <p className="font-bold text-base text-foreground" data-testid={`text-price-${stock.symbol}`}>
+                        ${stock.price.toFixed(2)}
+                      </p>
+                      {stock.changePercent != null && (
+                        <p className={`text-xs font-medium ${stock.changePercent >= 0 ? "text-green-600" : "text-red-500"}`}>
+                          {stock.changePercent >= 0 ? "+" : ""}{stock.changePercent.toFixed(2)}%
                         </p>
-                        {stock.changePercent != null && (
-                          <p className={`text-xs font-medium ${stock.changePercent >= 0 ? "text-green-600" : "text-red-500"}`}>
-                            {stock.changePercent >= 0 ? "+" : ""}{stock.changePercent.toFixed(2)}%
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">Price N/A</p>
-                    )}
-                  </div>
+                      )}
+                    </>
+                  ) : pricesLoading ? (
+                    <div className="w-12 h-4 bg-muted animate-pulse rounded" />
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Price N/A</p>
+                  )}
                 </div>
-                <div className="mb-2">
-                  <Badge className={`text-[10px] px-1.5 py-0 border ${SECTOR_COLORS[stock.sector] ?? "bg-gray-100 text-gray-700 border-gray-200"}`}>
-                    {stock.sector}
-                  </Badge>
+              </div>
+              <div className="mb-2">
+                <Badge className={`text-[10px] px-1.5 py-0 border ${SECTOR_COLORS[stock.sector] ?? "bg-gray-100 text-gray-700 border-gray-200"}`}>
+                  {stock.sector}
+                </Badge>
+              </div>
+              {stock.change != null && (
+                <div className={`flex items-center gap-1 text-xs mb-1 ${stock.change >= 0 ? "text-green-600" : "text-red-500"}`}>
+                  {stock.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                  <span>{stock.change >= 0 ? "+" : ""}{stock.change.toFixed(2)}</span>
                 </div>
-                {stock.change != null && (
-                  <div className={`flex items-center gap-1 text-xs mb-1 ${stock.change >= 0 ? "text-green-600" : "text-red-500"}`}>
-                    {stock.change >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    <span>{stock.change >= 0 ? "+" : ""}{stock.change.toFixed(2)}</span>
-                  </div>
-                )}
-                <p className="text-[10px] text-muted-foreground">Cap: {formatMarketCap(stock.marketCap)}</p>
-                <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-2 border-t border-border pt-1.5">{stock.reason}</p>
-              </motion.div>
-            ))}
-
-          </div>
-        </>
+              )}
+              <p className="text-[10px] text-muted-foreground">Cap: {formatMarketCap(stock.marketCap)}</p>
+              <p className="text-[10px] text-muted-foreground mt-1.5 line-clamp-2 border-t border-border pt-1.5">{stock.reason}</p>
+            </motion.div>
+          ))}
+        </div>
       )}
 
       {/* Long-term Investment Tips */}
@@ -324,7 +368,7 @@ export default function HalalStocks() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
               className={`rounded-xl border p-5 ${
-                tip.isWarning
+                (tip as any).isWarning
                   ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800/40"
                   : "bg-card border-border hover:border-primary/30 transition-colors"
               }`}
@@ -332,7 +376,7 @@ export default function HalalStocks() {
               <div className="flex items-start gap-3 mb-3">
                 <span className="text-2xl leading-none">{tip.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <h3 className={`font-semibold text-sm ${tip.isWarning ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>
+                  <h3 className={`font-semibold text-sm ${(tip as any).isWarning ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>
                     {tip.title}
                   </h3>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -355,7 +399,7 @@ export default function HalalStocks() {
                   </div>
                 </div>
               </div>
-              <p className={`text-xs leading-relaxed mb-3 ${tip.isWarning ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+              <p className={`text-xs leading-relaxed mb-3 ${(tip as any).isWarning ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
                 {tip.tip}
               </p>
               {tip.stocks.length > 0 && (
