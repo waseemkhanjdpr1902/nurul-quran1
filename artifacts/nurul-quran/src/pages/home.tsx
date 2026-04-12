@@ -1,13 +1,9 @@
-import { useAudioPlayer } from "@/hooks/use-audio-player";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Play, BookOpen, Users, MicVocal, LayoutGrid, Compass, ChevronRight, Clock, ScrollText, Star, BookMarked, CalendarDays, Languages } from "lucide-react";
+import { BookOpen, Users, MicVocal, LayoutGrid, Compass, ChevronRight, Clock, ScrollText, Star, BookMarked, CalendarDays, Languages, Droplets, Hand, Shield, Sparkles, GraduationCap, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { HijriCalendar } from "@/components/hijri-calendar";
 import { PrayerTimesWidget } from "@/components/prayer-times-widget";
 import { useState, useEffect } from "react";
-import { STATIC_COURSES } from "@/lib/courses-data";
 
 interface HadithData {
   hadithnumber: number;
@@ -123,14 +119,192 @@ const STATIC_STATS = [
   { label: "Listeners", value: "8,000+", icon: LayoutGrid },
 ];
 
-const FEATURED_LECTURES = [
-  { id: "fl-1", title: "Seerah: Pre-Islamic Arabia & Early Life", speaker: "Dr. Yasir Qadhi", category: "Islamic History", duration: "54m", url: "https://www.youtube.com/results?search_query=seerah+pre+islamic+arabia+yasir+qadhi" },
-  { id: "fl-2", title: "Tafseer of Surah Al-Fatiha", speaker: "Nouman Ali Khan", category: "Tafseer", duration: "42m", url: "https://www.youtube.com/results?search_query=tafseer+surah+fatiha+nouman+ali+khan" },
-  { id: "fl-3", title: "Understanding the 99 Names of Allah", speaker: "Omar Suleiman", category: "Aqeedah", duration: "1h 12m", url: "https://www.youtube.com/results?search_query=99+names+allah+omar+suleiman" },
-  { id: "fl-4", title: "The Fiqh of Salah — Pillars & Conditions", speaker: "Mufti Menk", category: "Fiqh", duration: "38m", url: "https://www.youtube.com/results?search_query=fiqh+salah+pillars+conditions+mufti+menk" },
-  { id: "fl-5", title: "40 Hadith of Imam Nawawi — Hadith 1", speaker: "Omar Suleiman", category: "Hadith", duration: "29m", url: "https://www.youtube.com/results?search_query=40+hadith+nawawi+hadith+1+omar+suleiman" },
-  { id: "fl-6", title: "Purification of the Soul — Introduction", speaker: "Hamza Yusuf", category: "Spirituality", duration: "1h 5m", url: "https://www.youtube.com/results?search_query=purification+soul+tazkiyah+introduction+hamza+yusuf" },
+type LearnCard = {
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  desc: string;
+  tag: string;
+  steps?: string[];
+  href?: string;
+  external?: string;
+};
+
+const LEARN_CARDS: LearnCard[] = [
+  {
+    icon: Hand,
+    iconBg: "#0D4A3E",
+    iconColor: "#d4af37",
+    title: "How to Pray Salah",
+    desc: "Step-by-step guide to the 5 daily prayers — from intention (niyyah) to tasleem.",
+    tag: "7 steps",
+    steps: [
+      "Make Wudu (ritual purification)",
+      "Stand facing the Qiblah (Kaaba, Mecca)",
+      "Make your Niyyah (intention) in your heart",
+      "Raise hands to ears: Allahu Akbar (Takbeer)",
+      "Recite Al-Fatiha + a Surah, then bow (Ruku)",
+      "Prostrate twice (Sujood) — forehead on ground",
+      "Sit for Tashahhud, then end with Tasleem",
+    ],
+    href: "/prayer-times",
+  },
+  {
+    icon: Droplets,
+    iconBg: "#1E40AF",
+    iconColor: "#93C5FD",
+    title: "Wudu (Ablution)",
+    desc: "Ritual purification required before Salah — learn the correct order and method.",
+    tag: "6 steps",
+    steps: [
+      "Say Bismillah and intend Wudu in your heart",
+      "Wash both hands up to the wrists (×3)",
+      "Rinse mouth and sniff water into nose (×3 each)",
+      "Wash face fully from forehead to chin (×3)",
+      "Wash arms up to elbows — right then left (×3)",
+      "Wipe head once, then wash feet to ankles (×3)",
+    ],
+    href: "/duas",
+  },
+  {
+    icon: Shield,
+    iconBg: "#7C3AED",
+    iconColor: "#C4B5FD",
+    title: "5 Pillars of Islam",
+    desc: "The five foundations every Muslim must fulfil — the core of Islamic practice.",
+    tag: "5 pillars",
+    steps: [
+      "Shahada — Testimony of faith in Allah and His Prophet ﷺ",
+      "Salah — 5 daily prayers (Fajr, Dhuhr, Asr, Maghrib, Isha)",
+      "Zakat — Annual charity: 2.5% of savings above nisab",
+      "Sawm — Fasting during the month of Ramadan",
+      "Hajj — Pilgrimage to Mecca (once in lifetime if able)",
+    ],
+    href: "/discover",
+  },
+  {
+    icon: Sparkles,
+    iconBg: "#9F1239",
+    iconColor: "#FDA4AF",
+    title: "6 Articles of Iman",
+    desc: "The six beliefs that form the foundation of Islamic faith (Aqeedah).",
+    tag: "6 beliefs",
+    steps: [
+      "Belief in Allah — One God, no partners",
+      "Belief in the Angels — created from light, always obey Allah",
+      "Belief in the Books — Torah, Psalms, Gospel, Quran",
+      "Belief in the Prophets — from Adam to Muhammad ﷺ",
+      "Belief in the Last Day — Judgment, Paradise & Hellfire",
+      "Belief in Divine Decree (Qadar) — good and bad from Allah",
+    ],
+    href: "/discover",
+  },
+  {
+    icon: BookOpen,
+    iconBg: "#065F46",
+    iconColor: "#6EE7B7",
+    title: "Reading the Quran",
+    desc: "Start your Quran journey — read all 114 Surahs with Arabic text and English translation.",
+    tag: "114 surahs",
+    href: "/quran",
+  },
+  {
+    icon: BookMarked,
+    iconBg: "#92400E",
+    iconColor: "#FCD34D",
+    title: "Daily Duas & Dhikr",
+    desc: "Essential supplications for morning, evening, before sleep, eating, travelling and more.",
+    tag: "40+ duas",
+    href: "/duas",
+  },
+  {
+    icon: GraduationCap,
+    iconBg: "#1E3A5F",
+    iconColor: "#93C5FD",
+    title: "Learn Arabic",
+    desc: "Master the Arabic alphabet, Quranic vocabulary, grammar, and everyday phrases.",
+    tag: "Free lessons",
+    href: "/learn-arabic",
+  },
+  {
+    icon: Heart,
+    iconBg: "#7C2D12",
+    iconColor: "#FCA5A5",
+    title: "99 Names of Allah",
+    desc: "Memorise and understand the 99 beautiful names of Allah (Asmaul Husna) with meanings.",
+    tag: "99 names",
+    href: "/asmaul-husna",
+  },
 ];
+
+function LearnCardItem({ card, index }: { card: LearnCard; index: number }) {
+  const [open, setOpen] = useState(false);
+  const Icon = card.icon;
+
+  const content = (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06 }}
+      className="group bg-card border-2 border-border rounded-2xl p-5 hover:shadow-lg transition-all hover:border-primary/40 cursor-pointer h-full flex flex-col"
+      onClick={card.steps ? () => setOpen(!open) : undefined}
+    >
+      <div className="flex items-start gap-3 mb-3">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 duration-200" style={{ background: card.iconBg }}>
+          <Icon className="w-5 h-5" style={{ color: card.iconColor }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors leading-tight">{card.title}</h3>
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ background: card.iconBg + "20", color: card.iconBg }}>
+              {card.tag}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{card.desc}</p>
+        </div>
+      </div>
+
+      {card.steps && (
+        <>
+          {open && (
+            <ol className="mt-2 mb-3 space-y-1.5 list-none">
+              {card.steps.map((step, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                  <span className="shrink-0 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center text-white" style={{ background: card.iconBg }}>
+                    {i + 1}
+                  </span>
+                  <span className="leading-relaxed pt-0.5">{step}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          <div className="mt-auto pt-2 flex items-center justify-between">
+            <span className="text-xs font-semibold" style={{ color: card.iconBg }}>
+              {open ? "Show less ↑" : "See steps ↓"}
+            </span>
+            {card.href && (
+              <Link href={card.href} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                <span className="text-xs text-muted-foreground hover:text-primary transition-colors">Related page →</span>
+              </Link>
+            )}
+          </div>
+        </>
+      )}
+
+      {!card.steps && card.href && (
+        <div className="mt-auto pt-2 flex items-center justify-end">
+          <span className="text-xs font-semibold" style={{ color: card.iconBg }}>Open →</span>
+        </div>
+      )}
+    </motion.div>
+  );
+
+  if (card.steps) return content;
+  if (card.href) return <Link href={card.href} className="h-full block">{content}</Link>;
+  if (card.external) return <a href={card.external} target="_blank" rel="noopener noreferrer" className="h-full block">{content}</a>;
+  return content;
+}
 
 export default function Home() {
   const ayah = getTodaysAyah();
@@ -144,12 +318,7 @@ export default function Home() {
         </div>
         <div className="container mx-auto max-w-4xl px-4 text-center relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <p
-              className="text-4xl md:text-5xl mb-3 leading-tight"
-              style={{ fontFamily: "'Amiri', serif", color: "#d4af37" }}
-              dir="rtl"
-              lang="ar"
-            >
+            <p className="text-4xl md:text-5xl mb-3 leading-tight" style={{ fontFamily: "'Amiri', serif", color: "#d4af37" }} dir="rtl" lang="ar">
               السَّلَامُ عَلَيْكُمْ
             </p>
             <p className="text-primary-foreground/70 text-sm md:text-base font-medium tracking-wide mb-6">
@@ -204,6 +373,7 @@ export default function Home() {
       </section>
 
       <div className="container mx-auto max-w-6xl px-4 py-10 space-y-14">
+
         {/* Islamic Feature Tiles */}
         <section>
           <h2 className="text-2xl font-serif font-bold text-foreground mb-6">Islamic Features</h2>
@@ -216,10 +386,7 @@ export default function Home() {
                   transition={{ delay: i * 0.06 }}
                   className="group flex flex-col items-center gap-2 rounded-2xl border-2 border-border bg-card p-4 text-center hover:shadow-md transition-all cursor-pointer hover:border-[#d4af37]/60"
                 >
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors group-hover:scale-110 duration-200"
-                    style={{ background: "#1a472a" }}
-                  >
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors group-hover:scale-110 duration-200" style={{ background: "#1a472a" }}>
                     <tile.icon className="h-6 w-6" style={{ color: "#d4af37" }} />
                   </div>
                   <div>
@@ -281,73 +448,15 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* Recent Lectures */}
+        {/* Islamic Learning Basics */}
         <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-serif font-bold text-foreground">Featured Lectures</h2>
-            <Button variant="ghost" asChild className="text-primary text-sm">
-              <Link href="/library">View all</Link>
-            </Button>
+          <div className="mb-6">
+            <h2 className="text-2xl font-serif font-bold text-foreground">Islamic Learning Basics</h2>
+            <p className="text-muted-foreground text-sm mt-1">Essential knowledge every Muslim should know — tap any card to learn the steps</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {FEATURED_LECTURES.map((lecture, i) => (
-              <motion.a
-                key={lecture.id}
-                href={lecture.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                data-testid={`card-lecture-${lecture.id}`}
-                className="group bg-card border border-border rounded-xl p-4 hover:shadow-md transition-all cursor-pointer hover:border-primary/30 block"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1 min-w-0 pr-2">
-                    <h3 className="font-semibold text-sm text-foreground truncate group-hover:text-primary transition-colors">{lecture.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{lecture.speaker}</p>
-                  </div>
-                  <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                    <Play className="w-4 h-4 text-primary group-hover:text-primary-foreground ml-0.5" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <Badge variant="secondary" className="text-[10px] px-2 py-0.5">{lecture.category}</Badge>
-                  <span className="text-[10px] text-muted-foreground ml-auto">{lecture.duration}</span>
-                </div>
-              </motion.a>
-            ))}
-          </div>
-        </section>
-
-        {/* Featured Courses */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-serif font-bold text-foreground">Featured Courses</h2>
-            <Button variant="ghost" asChild className="text-primary text-sm">
-              <Link href="/courses">View all</Link>
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {STATIC_COURSES.slice(0, 3).map((course, i) => (
-              <Link key={course.id} href={`/courses/${course.id}`} data-testid={`card-course-${course.id}`}>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="group bg-card border border-border rounded-xl p-5 hover:shadow-md transition-all hover:border-primary/30 cursor-pointer h-full"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <Badge className="text-[10px] bg-primary/10 text-primary border-0">{course.category}</Badge>
-                  </div>
-                  <h3 className="font-semibold text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors">{course.title}</h3>
-                  <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{course.description}</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{course.lectureCount} lectures</span>
-                    <span className="truncate max-w-[120px]">{course.speakerName}</span>
-                  </div>
-                </motion.div>
-              </Link>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {LEARN_CARDS.map((card, i) => (
+              <LearnCardItem key={card.title} card={card} index={i} />
             ))}
           </div>
         </section>
