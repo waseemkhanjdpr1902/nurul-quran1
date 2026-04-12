@@ -1,17 +1,46 @@
 import { motion } from "framer-motion";
-import { Mail, User, MessageSquare, Send, Heart, Shield } from "lucide-react";
+import { Mail, User, MessageSquare, Send, Heart, Shield, CheckCircle2, Loader2 } from "lucide-react";
 import { useState } from "react";
+
+type Status = "idle" | "sending" | "success" | "error";
 
 export default function Contact() {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<Status>("idle");
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    const body = encodeURIComponent(`Name: ${name}\n\n${message}`);
-    const sub = encodeURIComponent(subject || "Nurul Quran Enquiry");
-    window.location.href = `mailto:support@nurulquran.info?subject=${sub}&body=${body}`;
+    setStatus("sending");
+    try {
+      const form = new FormData();
+      form.append("name", name);
+      form.append("email", email);
+      form.append("_subject", subject || "Nurul Quran Enquiry");
+      form.append("message", message);
+      form.append("_captcha", "false");
+      form.append("_template", "table");
+
+      const res = await fetch("https://formsubmit.co/ajax/support@nurulquran.info", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: form,
+      });
+
+      if (res.ok) {
+        setStatus("success");
+        setName("");
+        setEmail("");
+        setSubject("");
+        setMessage("");
+      } else {
+        setStatus("error");
+      }
+    } catch {
+      setStatus("error");
+    }
   };
 
   return (
@@ -126,59 +155,109 @@ export default function Contact() {
               </div>
               <div>
                 <h2 className="font-bold text-foreground font-serif">Send a Message</h2>
-                <p className="text-xs text-muted-foreground">Opens your email client</p>
+                <p className="text-xs text-muted-foreground">Delivered directly to our inbox</p>
               </div>
             </div>
 
-            <form onSubmit={handleSend} className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Your Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Ahmed Ali"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Subject</label>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="e.g. Suggestion / Report an issue"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Message</label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Write your message here..."
-                  rows={6}
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors resize-none"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90 hover:shadow-md active:scale-[0.98]"
-                style={{ background: "linear-gradient(135deg, #1a472a, #0D4A3E)" }}
+            {status === "success" ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center py-12 text-center gap-4"
               >
-                <Send className="w-4 h-4" />
-                Send Message
-              </button>
+                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "#1a472a" }}>
+                  <CheckCircle2 className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-foreground font-serif mb-1">Message Sent!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    JazakAllah Khair. We'll reply to your email within 48 hours, in sha Allah.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setStatus("idle")}
+                  className="text-xs text-primary underline underline-offset-2 mt-2"
+                >
+                  Send another message
+                </button>
+              </motion.div>
+            ) : (
+              <form onSubmit={handleSend} className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Your Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Ahmed Ali"
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                    required
+                    disabled={status === "sending"}
+                  />
+                </div>
 
-              <p className="text-center text-xs text-muted-foreground">
-                Clicking "Send Message" will open your email app pre-filled with your message.
-              </p>
-            </form>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Your Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. ahmed@example.com"
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                    required
+                    disabled={status === "sending"}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Subject</label>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="e.g. Suggestion / Report an issue"
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                    disabled={status === "sending"}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Message</label>
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Write your message here..."
+                    rows={5}
+                    className="w-full px-4 py-2.5 rounded-xl border-2 border-border bg-background text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors resize-none"
+                    required
+                    disabled={status === "sending"}
+                  />
+                </div>
+
+                {status === "error" && (
+                  <p className="text-xs text-red-500 text-center">
+                    Something went wrong. Please try emailing us directly at support@nurulquran.info
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={status === "sending"}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold text-sm text-white transition-all hover:opacity-90 hover:shadow-md active:scale-[0.98] disabled:opacity-70"
+                  style={{ background: "linear-gradient(135deg, #1a472a, #0D4A3E)" }}
+                >
+                  {status === "sending" ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
+                  ) : (
+                    <><Send className="w-4 h-4" /> Send Message</>
+                  )}
+                </button>
+
+                <p className="text-center text-xs text-muted-foreground">
+                  Your message goes directly to our inbox — no email app needed.
+                </p>
+              </form>
+            )}
           </div>
         </motion.div>
       </div>
