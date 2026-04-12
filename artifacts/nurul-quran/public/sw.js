@@ -1,10 +1,17 @@
-const CACHE_NAME = 'nurul-quran-v1';
+const CACHE_NAME = 'nurul-quran-v3';
 const STATIC_ASSETS = [
   '/',
   '/library',
   '/courses',
   '/halal-stocks',
-  '/support',
+  '/quran',
+  '/prayer-times',
+  '/hadith',
+  '/duas',
+  '/asmaul-husna',
+  '/calendar',
+  '/learn-arabic',
+  '/discover',
   '/manifest.json',
 ];
 
@@ -29,7 +36,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache API calls or external audio
+  // Never cache API calls or cross-origin requests
   if (url.pathname.startsWith('/api/') || url.hostname !== self.location.hostname) {
     return;
   }
@@ -38,12 +45,17 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
         .catch(() => caches.match('/'))
     );
     return;
   }
 
-  // Cache first for static assets (JS, CSS, images)
+  // Cache first for static assets (JS, CSS, images, fonts)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
@@ -58,38 +70,3 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
-
-// Background sync for recently-played when offline
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-recently-played') {
-    event.waitUntil(syncRecentlyPlayed());
-  }
-});
-
-async function syncRecentlyPlayed() {
-  const db = await openDB();
-  const pending = await db.getAll('pendingPlays');
-  for (const item of pending) {
-    try {
-      await fetch(`/api/users/recently-played/${item.lectureId}`, {
-        method: 'POST',
-        headers: item.token ? { Authorization: `Bearer ${item.token}` } : {},
-      });
-      await db.delete('pendingPlays', item.id);
-    } catch {}
-  }
-}
-
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('nurul-quran-offline', 1);
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains('pendingPlays')) {
-        db.createObjectStore('pendingPlays', { keyPath: 'id', autoIncrement: true });
-      }
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
