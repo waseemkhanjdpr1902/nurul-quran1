@@ -3,13 +3,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from "wouter";
 import {
   Search, TrendingUp, TrendingDown, CheckCircle, RefreshCw,
-  Info, Lock, Crown, ChevronRight, Star, BarChart2, Zap, Shield
+  Info, Star, BarChart2, Zap, Shield
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@/hooks/use-auth";
 
 interface HalalStock {
   symbol: string;
@@ -37,8 +35,6 @@ const SECTOR_COLORS: Record<string, string> = {
   Industrials: "bg-gray-100 text-gray-700 border-gray-200",
   "Clean Energy": "bg-emerald-100 text-emerald-700 border-emerald-200",
 };
-
-const FREE_LIMIT = 3;
 
 function formatMarketCap(cap: number | null): string {
   if (!cap) return "N/A";
@@ -108,9 +104,6 @@ export default function HalalStocks() {
   const [sectors, setSectors] = useState<string[]>(["All"]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchInput, setSearchInput] = useState("");
-  const { user } = useAuth();
-  const isPremium = !!user?.isPremium;
-
   const fetchStocks = async (q = search, sec = sector) => {
     setIsLoading(true);
     try {
@@ -155,8 +148,7 @@ export default function HalalStocks() {
     fetchStocks(search, sec);
   };
 
-  const visibleStocks = isPremium ? stocks : stocks.slice(0, FREE_LIMIT);
-  const lockedStocks = isPremium ? [] : stocks.slice(FREE_LIMIT);
+  const visibleStocks = stocks;
   const positiveStocks = stocks.filter(s => s.changePercent != null && s.changePercent > 0).length;
   const negativeStocks = stocks.filter(s => s.changePercent != null && s.changePercent < 0).length;
 
@@ -198,30 +190,10 @@ export default function HalalStocks() {
         </div>
       </div>
 
-      {/* Free limit notice */}
-      {!isPremium && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground rounded-xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap"
-        >
-          <div className="flex items-center gap-3">
-            <Crown className="w-6 h-6 text-secondary shrink-0" />
-            <div>
-              <p className="font-semibold">Free plan: 3 stocks visible</p>
-              <p className="text-sm text-primary-foreground/80">Subscribe to unlock all {stocks.length > FREE_LIMIT ? stocks.length : "30"}+ screened halal stocks, full analysis, and alerts</p>
-            </div>
-          </div>
-          <Button asChild variant="secondary" size="sm" className="font-semibold shrink-0">
-            <Link href="/support"><Crown className="w-3.5 h-3.5 mr-1.5" /> Upgrade ₹999/mo</Link>
-          </Button>
-        </motion.div>
-      )}
-
       {/* Stats bar */}
       {!isLoading && stocks.length > 0 && (
         <div className="flex items-center gap-6 mb-6 text-sm flex-wrap">
-          <span className="text-muted-foreground">{isPremium ? stocks.length : `${FREE_LIMIT} of ${stocks.length}`} stocks shown</span>
+          <span className="text-muted-foreground">{stocks.length} stocks shown</span>
           {positiveStocks > 0 && (
             <div className="flex items-center gap-1 text-green-600">
               <TrendingUp className="w-4 h-4" /><span>{positiveStocks} gaining</span>
@@ -330,61 +302,7 @@ export default function HalalStocks() {
               </motion.div>
             ))}
 
-            {/* Locked / blurred stock cards for non-premium */}
-            {lockedStocks.slice(0, 6).map((stock, i) => (
-              <motion.div
-                key={stock.symbol}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: (visibleStocks.length + i) * 0.04 }}
-                className="relative bg-card border border-border rounded-xl p-4 overflow-hidden"
-              >
-                {/* Blurred content */}
-                <div className="blur-sm select-none pointer-events-none">
-                  <div className="flex items-start justify-between mb-2 gap-2">
-                    <div>
-                      <p className="font-bold text-sm font-mono">{stock.symbol}</p>
-                      <p className="text-xs text-muted-foreground truncate">{stock.name}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-base">$---</p>
-                      <p className="text-xs text-green-600">+-.-- %</p>
-                    </div>
-                  </div>
-                  <Badge className="text-[10px] px-1.5 py-0 border bg-gray-100 text-gray-700 border-gray-200 mb-2">{stock.sector}</Badge>
-                  <p className="text-[10px] text-muted-foreground mt-1.5">••••••••••••••••••••</p>
-                </div>
-                {/* Lock overlay */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/70 backdrop-blur-[1px]">
-                  <Lock className="w-5 h-5 text-primary mb-1.5" />
-                  <p className="text-xs font-semibold text-foreground text-center px-2">Premium</p>
-                </div>
-              </motion.div>
-            ))}
           </div>
-
-          {/* Premium upsell row */}
-          {!isPremium && lockedStocks.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="mt-6 bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/20 rounded-xl p-6 text-center"
-            >
-              <Crown className="w-8 h-8 text-primary mx-auto mb-3" />
-              <h3 className="text-lg font-serif font-bold text-foreground mb-1">
-                {lockedStocks.length} more halal stocks locked
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-                Subscribe to Nurul Quran Premium to access all screened stocks, real-time price alerts, detailed analysis reports, and portfolio tracking tools.
-              </p>
-              <div className="flex items-center justify-center gap-3 flex-wrap">
-                <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold">
-                  <Link href="/support"><Crown className="w-4 h-4 mr-1.5" /> Subscribe — ₹999/month</Link>
-                </Button>
-              </div>
-            </motion.div>
-          )}
         </>
       )}
 

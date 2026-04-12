@@ -5,11 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import { useAuth } from "@/hooks/use-auth";
-import { PremiumGate } from "@/components/premium-gate";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronLeft, ChevronDown, BookOpen, Lock, Play, Pause, Clock,
-  GraduationCap, Globe, SkipForward, Crown, User, Youtube, ExternalLink
+  ChevronLeft, ChevronDown, BookOpen, Play, Pause, Clock,
+  GraduationCap, Globe, SkipForward, User, Youtube, ExternalLink
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Lecture } from "@workspace/api-client-react";
@@ -63,7 +62,6 @@ export default function CourseDetail() {
   const courseId = parseInt(params.id ?? "0", 10);
   const { playLecture, currentLecture, isPlaying, onEnded } = useAudioPlayer();
   const { user } = useAuth();
-  const [premiumGate, setPremiumGate] = useState<{ title: string } | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [autoPlay, setAutoPlay] = useState(true);
   const lecturesRef = useRef<Lecture[]>([]);
@@ -93,23 +91,13 @@ export default function CourseDetail() {
       const idx = list.findIndex(l => l.id === currentId);
       if (idx >= 0 && idx < list.length - 1) {
         const next = list[idx + 1];
-        if (!next.isPremium || user?.isPremium) {
-          playLecture(next);
-        }
+        playLecture(next);
       }
     });
     return unsubscribe;
   }, [onEnded, currentLecture, autoPlay, user, playLecture]);
 
   const handlePlay = (lecture: Lecture) => {
-    if (course?.isPremium && !user?.isPremium) {
-      setPremiumGate({ title: lecture.title });
-      return;
-    }
-    if (lecture.isPremium && !user?.isPremium) {
-      setPremiumGate({ title: lecture.title });
-      return;
-    }
     // YouTube lecture → open in new tab
     if (!lecture.audioUrl && lecture.youtubeUrl) {
       window.open(lecture.youtubeUrl, "_blank", "noopener,noreferrer");
@@ -146,12 +134,6 @@ export default function CourseDetail() {
 
   return (
     <>
-      <AnimatePresence>
-        {premiumGate && (
-          <PremiumGate lectureTitle={premiumGate.title} onClose={() => setPremiumGate(null)} />
-        )}
-      </AnimatePresence>
-
       <div className="container mx-auto max-w-4xl px-4 py-6 pb-40">
         {/* Back */}
         <Button variant="ghost" asChild className="mb-4 -ml-2">
@@ -168,11 +150,6 @@ export default function CourseDetail() {
           <div className="relative">
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <Badge className="bg-primary-foreground/20 text-primary-foreground border-0 text-xs">{course.category}</Badge>
-              {course.isPremium && (
-                <Badge className="bg-secondary text-secondary-foreground text-xs gap-1">
-                  <Crown className="w-3 h-3" /> Premium
-                </Badge>
-              )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-serif font-bold mb-3 leading-snug">{course.title}</h1>
             {course.description && (
@@ -256,8 +233,6 @@ export default function CourseDetail() {
                         }`}>
                           {isCurrentlyPlaying ? (
                             <Pause className="w-4 h-4" />
-                          ) : lecture.isPremium ? (
-                            <Lock className="w-3.5 h-3.5 text-amber-500" />
                           ) : (!lecture.audioUrl && lecture.youtubeUrl) ? (
                             <>
                               <span className="text-xs font-mono text-muted-foreground group-hover:hidden">{i + 1}</span>
@@ -282,9 +257,6 @@ export default function CourseDetail() {
                               <span className="text-xs text-muted-foreground flex items-center gap-0.5">
                                 <Clock className="w-3 h-3" /> {formatDuration(lecture.duration)}
                               </span>
-                            )}
-                            {lecture.isPremium && (
-                              <Badge className="text-[10px] px-1.5 py-0 bg-amber-500/10 text-amber-600 border-0">Premium</Badge>
                             )}
                           </div>
                         </div>
@@ -357,38 +329,27 @@ export default function CourseDetail() {
               </ul>
             </div>
 
-            {/* Enroll / Premium */}
-            {course.isPremium ? (
-              <div className="bg-primary text-primary-foreground rounded-xl p-5">
-                <Crown className="w-6 h-6 text-secondary mb-2" />
-                <h3 className="font-semibold mb-1">Premium Course</h3>
-                <p className="text-sm text-primary-foreground/70 mb-4">Unlock this and all premium content for ₹999/month</p>
-                <Button asChild variant="secondary" className="w-full font-semibold">
-                  <Link href="/support"><Crown className="w-4 h-4 mr-1.5" /> Subscribe Now</Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
-                <BookOpen className="w-6 h-6 text-primary mb-2" />
-                <h3 className="font-semibold text-foreground mb-1">Free Course</h3>
-                <p className="text-sm text-muted-foreground mb-4">This course is freely available to all learners</p>
-                <Button
-                  className={`w-full font-semibold ${
-                    lectures?.[0] && !lectures[0].audioUrl && lectures[0].youtubeUrl
-                      ? "bg-red-600 hover:bg-red-700 text-white"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90"
-                  }`}
-                  onClick={() => lectures?.[0] && handlePlay(lectures[0])}
-                  disabled={!lectures?.length}
-                >
-                  {lectures?.[0] && !lectures[0].audioUrl && lectures[0].youtubeUrl ? (
-                    <><Youtube className="w-4 h-4 mr-1.5" /> Watch on YouTube</>
-                  ) : (
-                    <><Play className="w-4 h-4 mr-1.5" /> Start Learning</>
-                  )}
-                </Button>
-              </div>
-            )}
+            {/* Start Learning */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
+              <BookOpen className="w-6 h-6 text-primary mb-2" />
+              <h3 className="font-semibold text-foreground mb-1">Free Course</h3>
+              <p className="text-sm text-muted-foreground mb-4">This course is freely available to all learners</p>
+              <Button
+                className={`w-full font-semibold ${
+                  lectures?.[0] && !lectures[0].audioUrl && lectures[0].youtubeUrl
+                    ? "bg-red-600 hover:bg-red-700 text-white"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                }`}
+                onClick={() => lectures?.[0] && handlePlay(lectures[0])}
+                disabled={!lectures?.length}
+              >
+                {lectures?.[0] && !lectures[0].audioUrl && lectures[0].youtubeUrl ? (
+                  <><Youtube className="w-4 h-4 mr-1.5" /> Watch on YouTube</>
+                ) : (
+                  <><Play className="w-4 h-4 mr-1.5" /> Start Learning</>
+                )}
+              </Button>
+            </div>
 
             {/* Course stats */}
             <div className="bg-card border border-border rounded-xl p-4 space-y-3">

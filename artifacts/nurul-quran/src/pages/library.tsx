@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { useGetLectures } from "@workspace/api-client-react";
-import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, ChevronRight, ChevronLeft, Youtube, ExternalLink, Lock, CheckCircle2 } from "lucide-react";
+import { Search, ChevronRight, ChevronLeft, Youtube, ExternalLink, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useLocation } from "wouter";
 
 type CategoryDef = { label: string; value: string; color: string; bg: string; border: string };
 
@@ -19,7 +17,6 @@ const CATEGORIES: CategoryDef[] = [
 ];
 
 const PAGE_SIZE = 9;
-const FREE_LECTURE_ID = "sl-10";
 
 interface StaticLecture {
   id: string;
@@ -31,7 +28,6 @@ interface StaticLecture {
   thumbnailUrl: string;
   youtubeUrl: string;
   duration: number;
-  isPremium: boolean;
 }
 
 const STATIC_LECTURES: StaticLecture[] = [
@@ -45,7 +41,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=arabic+alphabet+full+course+beginners+ArabicPod101",
     duration: 3240,
-    isPremium: true,
   },
   {
     id: "sl-2",
@@ -57,7 +52,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=learn+arabic+3+hours+all+basics+ArabicPod101",
     duration: 10800,
-    isPremium: true,
   },
   {
     id: "sl-3",
@@ -69,7 +63,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=quranic+arabic+introduction+lesson+1+nouman+ali+khan+bayyinah",
     duration: 2700,
-    isPremium: true,
   },
   {
     id: "sl-4",
@@ -81,7 +74,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=arabic+grammar+nouns+gender+mudhakkar+muannath+learn+arabic+with+maha",
     duration: 1620,
-    isPremium: true,
   },
   {
     id: "sl-5",
@@ -93,7 +85,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=understand+50+percent+quran+125+most+common+words+understand+quran+academy",
     duration: 32400,
-    isPremium: true,
   },
   {
     id: "sl-6",
@@ -105,7 +96,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=arabic+verb+conjugation+past+present+future+learn+arabic+with+maha",
     duration: 2100,
-    isPremium: true,
   },
   {
     id: "sl-7",
@@ -117,7 +107,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=arabic+pronunciation+letters+makharij+huruf+beginners",
     duration: 3600,
-    isPremium: true,
   },
   {
     id: "sl-8",
@@ -129,7 +118,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=quranic+arabic+root+words+word+families+nouman+ali+khan",
     duration: 4200,
-    isPremium: true,
   },
   {
     id: "sl-9",
@@ -141,7 +129,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=arabic+sentence+structure+jumlah+ismiyyah+filiyyah+learn+arabic+with+maha",
     duration: 1980,
-    isPremium: true,
   },
   {
     id: "sl-10",
@@ -153,7 +140,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=100+essential+arabic+phrases+daily+conversations+learn+arabic+with+maha",
     duration: 5400,
-    isPremium: false,
   },
   {
     id: "sl-11",
@@ -165,7 +151,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=100+most+common+quranic+words+vocabulary+understand+quran",
     duration: 7200,
-    isPremium: true,
   },
   {
     id: "sl-12",
@@ -177,7 +162,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=arabic+plurals+sound+broken+plural+forms+learn+arabic+with+maha",
     duration: 2400,
-    isPremium: true,
   },
   {
     id: "sl-13",
@@ -189,7 +173,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=learn+read+write+arabic+script+alphabet+beginners",
     duration: 2700,
-    isPremium: true,
   },
   {
     id: "sl-14",
@@ -201,7 +184,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=tajweed+rules+noon+sakinah+tanween+ithhar+idgham+iqlab+ikhfa",
     duration: 3300,
-    isPremium: true,
   },
   {
     id: "sl-15",
@@ -213,7 +195,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=arabic+prepositions+huroof+al+jarr+learn+arabic+with+maha",
     duration: 2880,
-    isPremium: true,
   },
   {
     id: "sl-16",
@@ -225,7 +206,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=modern+standard+arabic+MSA+fusha+beginner+course",
     duration: 1500,
-    isPremium: true,
   },
   {
     id: "sl-17",
@@ -237,7 +217,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=surah+al+fatiha+word+by+word+explanation+nouman+ali+khan",
     duration: 5100,
-    isPremium: true,
   },
   {
     id: "sl-18",
@@ -249,7 +228,6 @@ const STATIC_LECTURES: StaticLecture[] = [
     thumbnailUrl: "",
     youtubeUrl: "https://www.youtube.com/results?search_query=arabic+numbers+1+to+100+pronunciation+writing+ArabicPod101",
     duration: 1800,
-    isPremium: true,
   },
 ];
 
@@ -267,10 +245,6 @@ export default function Library() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [offset, setOffset] = useState(0);
-  const [, setLocation] = useLocation();
-
-  const { user } = useAuth();
-  const isPremiumUser = !!user?.isPremium;
 
   const { data, isLoading } = useGetLectures({
     search: debouncedSearch || undefined,
@@ -288,23 +262,9 @@ export default function Library() {
     }, 350);
   };
 
-
   const handleLectureClick = (lecture: StaticLecture | any, isStatic: boolean) => {
-    if (!isStatic) {
-      const url = (lecture as any).youtubeUrl;
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
-      return;
-    }
-    const sl = lecture as StaticLecture;
-    if (!sl.isPremium) {
-      window.open(sl.youtubeUrl, "_blank", "noopener,noreferrer");
-    } else {
-      if (isPremiumUser) {
-        window.open(sl.youtubeUrl, "_blank", "noopener,noreferrer");
-      } else {
-        setLocation("/support");
-      }
-    }
+    const url = isStatic ? (lecture as StaticLecture).youtubeUrl : (lecture as any).youtubeUrl;
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const apiLectures = data?.lectures ?? [];
@@ -341,12 +301,11 @@ export default function Library() {
         <div className="flex items-center gap-2 mb-8">
           <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           <span className="text-sm text-emerald-700 font-medium">
-            1 free lesson available · Premium unlocks all {STATIC_LECTURES.length} lessons
+            All {STATIC_LECTURES.length} lessons available free
           </span>
         </div>
       </motion.div>
 
-      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -360,7 +319,6 @@ export default function Library() {
         </div>
       </div>
 
-      {/* Category tab chips */}
       <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-none" style={{ scrollbarWidth: "none" }}>
         {CATEGORIES.map((cat) => {
           const active = cat.value === category;
@@ -383,14 +341,12 @@ export default function Library() {
         })}
       </div>
 
-      {/* Results count */}
       {!isLoading && (
         <p className="text-sm text-muted-foreground mb-4" data-testid="text-results-count">
           {total} lesson{total !== 1 ? "s" : ""} found
         </p>
       )}
 
-      {/* Lecture grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {isLoading
           ? Array.from({ length: PAGE_SIZE }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)
@@ -399,8 +355,6 @@ export default function Library() {
               const youtubeUrl = sl ? sl.youtubeUrl : (lecture as any).youtubeUrl;
               const thumb = lecture.thumbnailUrl;
               const speakerName = sl ? sl.speakerName : (lecture as any).speakerName;
-              const isFree = sl ? !sl.isPremium : true;
-              const isLocked = !isFree && !isPremiumUser;
 
               return (
                 <motion.div
@@ -409,20 +363,15 @@ export default function Library() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                   data-testid={`card-lecture-${lecture.id}`}
-                  className={`group bg-card border rounded-xl overflow-hidden transition-all cursor-pointer ${
-                    isFree
-                      ? "border-emerald-200 hover:border-emerald-400 hover:shadow-md ring-1 ring-emerald-100"
-                      : "border-border hover:shadow-md hover:border-amber-300"
-                  }`}
+                  className="group bg-card border border-emerald-200 rounded-xl overflow-hidden transition-all cursor-pointer hover:border-emerald-400 hover:shadow-md ring-1 ring-emerald-100"
                   onClick={() => handleLectureClick(lecture, isStatic)}
                 >
-                  {/* Thumbnail */}
                   <div className="relative w-full aspect-video bg-muted overflow-hidden">
                     {thumb ? (
                       <img
                         src={thumb}
                         alt={lecture.title}
-                        className={`w-full h-full object-cover transition-transform duration-300 ${isLocked ? "blur-sm scale-105" : "group-hover:scale-105"}`}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
@@ -433,46 +382,26 @@ export default function Library() {
                       </div>
                     )}
 
-                    {/* Free badge */}
-                    {isFree && (
-                      <div className="absolute top-2 left-2 flex items-center gap-1 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
-                        <CheckCircle2 className="w-3 h-3" />
-                        FREE
-                      </div>
-                    )}
+                    <div className="absolute top-2 left-2 flex items-center gap-1 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+                      <CheckCircle2 className="w-3 h-3" />
+                      FREE
+                    </div>
 
-                    {/* Lock overlay for premium */}
-                    {isLocked && (
-                      <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2">
-                        <div className="w-10 h-10 rounded-full bg-amber-500/90 flex items-center justify-center shadow-lg">
-                          <Lock className="w-5 h-5 text-white" />
-                        </div>
-                        <span className="text-white text-xs font-semibold bg-black/40 px-2 py-0.5 rounded">Premium</span>
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center shadow-lg">
+                        <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6 ml-0.5">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
                       </div>
-                    )}
-
-                    {/* Play button for free / unlocked */}
-                    {!isLocked && (
-                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center shadow-lg">
-                          <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6 ml-0.5">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </div>
 
-                  {/* Card body */}
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h3 className="font-semibold text-sm text-foreground line-clamp-2 leading-snug flex-1">
                         {lecture.title}
                       </h3>
-                      <div className="flex items-center gap-1 shrink-0 mt-0.5">
-                        {!isLocked && <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
-                        {isLocked && <Lock className="w-3.5 h-3.5 text-amber-500" />}
-                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
                     </div>
 
                     <p className="text-xs text-muted-foreground mb-3">{speakerName ?? "Unknown"}</p>
@@ -489,25 +418,16 @@ export default function Library() {
                       )}
                     </div>
 
-                    {isLocked && (
-                      <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-amber-600">
-                        <Lock className="w-3 h-3" />
-                        Unlock with Premium
-                      </div>
-                    )}
-                    {isFree && (
-                      <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Watch for free
-                      </div>
-                    )}
+                    <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Watch for free
+                    </div>
                   </div>
                 </motion.div>
               );
             })}
       </div>
 
-      {/* Empty state */}
       {!isLoading && lectures.length === 0 && (
         <div className="text-center py-16 text-muted-foreground">
           <Youtube className="w-12 h-12 mx-auto mb-4 opacity-30" />
@@ -515,7 +435,6 @@ export default function Library() {
         </div>
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           <Button

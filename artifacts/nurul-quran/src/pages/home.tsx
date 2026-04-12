@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Play, Lock, BookOpen, Users, MicVocal, LayoutGrid, Compass, ChevronRight, Clock, ScrollText, Star, BookMarked, CalendarDays, Languages } from "lucide-react";
+import { Play, BookOpen, Users, MicVocal, LayoutGrid, Compass, ChevronRight, Clock, ScrollText, Star, BookMarked, CalendarDays, Languages } from "lucide-react";
 import { motion } from "framer-motion";
 import { HijriCalendar } from "@/components/hijri-calendar";
 import { PrayerTimesWidget } from "@/components/prayer-times-widget";
@@ -274,22 +274,16 @@ export default function Home() {
                     transition={{ delay: i * 0.05 }}
                     data-testid={`card-lecture-${lecture.id}`}
                     className="group bg-card border border-border rounded-xl p-4 hover:shadow-md transition-all cursor-pointer hover:border-primary/30"
-                    onClick={() => !lecture.isPremium && playLecture(lecture)}
+                    onClick={() => playLecture(lecture)}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0 pr-2">
                         <h3 className="font-semibold text-sm text-foreground truncate">{lecture.title}</h3>
                         <p className="text-xs text-muted-foreground mt-0.5">{lecture.speakerName}</p>
                       </div>
-                      {lecture.isPremium ? (
-                        <div className="shrink-0 w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
-                          <Lock className="w-4 h-4 text-amber-500" />
-                        </div>
-                      ) : (
-                        <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                          <Play className="w-4 h-4 text-primary group-hover:text-primary-foreground ml-0.5" />
-                        </div>
-                      )}
+                      <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                        <Play className="w-4 h-4 text-primary group-hover:text-primary-foreground ml-0.5" />
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="secondary" className="text-[10px] px-2 py-0.5">{lecture.category}</Badge>
@@ -324,7 +318,6 @@ export default function Home() {
                     >
                       <div className="flex items-start justify-between mb-3">
                         <Badge className="text-[10px] bg-primary/10 text-primary border-0">{course.category}</Badge>
-                        {course.isPremium && <Lock className="w-4 h-4 text-amber-500" />}
                       </div>
                       <h3 className="font-semibold text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors">{course.title}</h3>
                       <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{course.description}</p>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Heart, Clock, Crown, LogOut, Lock } from "lucide-react";
+import { Play, Heart, Clock, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 
 function formatDuration(seconds?: number | null) {
@@ -22,18 +22,14 @@ function LectureRow({ lecture, onPlay }: { lecture: any; onPlay: () => void }) {
   return (
     <div
       className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer"
-      onClick={() => !lecture.isPremium && onPlay()}
+      onClick={() => onPlay()}
       data-testid={`row-lecture-${lecture.id}`}
     >
       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-        {lecture.isPremium ? (
-          <Lock className="w-4 h-4 text-amber-500" />
-        ) : (
-          <div className="group-hover:block hidden">
-            <Play className="w-4 h-4 text-primary" />
-          </div>
-        )}
-        {!lecture.isPremium && <Play className="w-4 h-4 text-primary group-hover:hidden" />}
+        <div className="group-hover:block hidden">
+          <Play className="w-4 h-4 text-primary" />
+        </div>
+        <Play className="w-4 h-4 text-primary group-hover:hidden" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground truncate">{lecture.title}</p>
@@ -90,12 +86,6 @@ export default function Profile() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-semibold text-foreground truncate" data-testid="text-username">{user.name}</h1>
           <p className="text-sm text-muted-foreground truncate" data-testid="text-email">{user.email}</p>
-          {user.isPremium && (
-            <div className="flex items-center gap-1.5 mt-1">
-              <Crown className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-medium text-amber-600" data-testid="status-premium">Premium Member</span>
-            </div>
-          )}
         </div>
         <Button
           variant="ghost"
@@ -109,20 +99,6 @@ export default function Profile() {
         </Button>
       </motion.div>
 
-      {!user.isPremium && (
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-medium text-foreground text-sm">Unlock Premium Content</p>
-            <p className="text-xs text-muted-foreground">Access all courses and premium lectures</p>
-          </div>
-          <Button asChild size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0" data-testid="button-go-premium">
-            <Link href="/support">
-              <Crown className="w-4 h-4 mr-1.5" />
-              Go Premium
-            </Link>
-          </Button>
-        </div>
-      )}
 
       <Tabs defaultValue="favorites">
         <TabsList className="w-full mb-6">
