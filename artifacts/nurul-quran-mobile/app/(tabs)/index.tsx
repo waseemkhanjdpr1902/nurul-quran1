@@ -54,6 +54,7 @@ const QUICK_LINKS = [
   { icon: "heart", label: "Duas", href: "/(tabs)/library", color: "#7C3AED" },
   { icon: "star", label: "Learn Islam", href: "/(tabs)/courses", color: "#B45309" },
   { icon: "globe", label: "Discover", href: "/discover", color: "#1E40AF" },
+  { icon: "mail", label: "Contact Us", href: "/contact", color: "#0F766E" },
 ];
 
 export default function HomeScreen() {
