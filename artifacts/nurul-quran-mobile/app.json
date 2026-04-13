@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "nurul-quran-mobile",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "owner": "mohammedwaseem",
     "splash": {
       "image": "./assets/images/splash.png",
@@ -21,10 +21,7 @@
     },
     "android": {
       "package": "com.nurulquran.mobile",
-      "versionCode": 1,
-      "compileSdkVersion": 35,
-      "targetSdkVersion": 35,
-      "minSdkVersion": 24,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#004D40"
