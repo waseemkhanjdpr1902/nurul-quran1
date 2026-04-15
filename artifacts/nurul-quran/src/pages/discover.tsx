@@ -243,7 +243,7 @@ export default function DiscoverPage() {
                   <Link href="/quran">Read the Quran →</Link>
                 </Button>
                 <Button asChild variant="outline" className="border-green-600 text-green-700">
-                  <a href="mailto:learn@nurulquran.com?subject=I%20have%20taken%20the%20Shahada">
+                  <a href="mailto:support@nurulquran.info?subject=I%20have%20taken%20the%20Shahada">
                     Connect with a Scholar
                   </a>
                 </Button>
@@ -300,7 +300,7 @@ export default function DiscoverPage() {
               { href: "/quran", icon: BookOpen, title: "Read the Quran", desc: "Start with Al-Fatiha — the Opening" },
               { href: "/library", icon: PlayCircle, title: "Watch Lectures", desc: "79 free Islamic lectures" },
               { href: "/courses", icon: GraduationCap, title: "Take a Course", desc: "Structured beginner courses" },
-              { href: "mailto:learn@nurulquran.com", icon: Mail, title: "Ask a Scholar", desc: "Get personal guidance" },
+              { href: "mailto:support@nurulquran.info", icon: Mail, title: "Ask a Scholar", desc: "Get personal guidance" },
             ].map((item) => (
               <Link
                 key={item.title}
