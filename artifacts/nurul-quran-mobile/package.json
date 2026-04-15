@@ -46,6 +46,6 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "6.1.2",
-    "expo-av": "~15.0.6"
+    "expo-av": "~16.0.8"
   }
 }
