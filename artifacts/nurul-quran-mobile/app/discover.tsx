@@ -309,13 +309,13 @@ export default function DiscoverScreen() {
             </Pressable>
 
             <Pressable
-              onPress={() => Linking.openURL("mailto:learn@nurulquran.com?subject=New Muslim Support")}
+              onPress={() => router.push("/contact" as any)}
               style={[styles.journeyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             >
               <Feather name="mail" size={26} color={colors.teal} />
               <Text style={[styles.journeyCardTitle, { color: colors.foreground }]}>Ask a Scholar</Text>
               <Text style={[styles.journeyCardSub, { color: colors.mutedForeground }]}>
-                Get personal guidance
+                support@nurulquran.info
               </Text>
             </Pressable>
           </View>

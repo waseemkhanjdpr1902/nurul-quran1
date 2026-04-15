@@ -17,6 +17,16 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
+const TOPICS = [
+  "General Question",
+  "Islamic Guidance",
+  "Quran Help",
+  "Prayer / Salah",
+  "New Muslim Support",
+  "App Feedback",
+  "Other",
+];
+
 export default function ContactScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -24,17 +34,19 @@ export default function ContactScreen() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [topic, setTopic] = useState(TOPICS[0]);
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
+  const [showTopics, setShowTopics] = useState(false);
 
   const handleSend = () => {
     if (!name.trim() || !email.trim() || !message.trim()) {
       Alert.alert("Missing fields", "Please fill in your name, email and message.");
       return;
     }
-    const subject = encodeURIComponent(`Nurul Quran App — Message from ${name}`);
+    const subject = encodeURIComponent(`[${topic}] Message from ${name} — Nurul Quran App`);
     const body = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
+      `Name: ${name}\nEmail: ${email}\nTopic: ${topic}\n\nMessage:\n${message}\n\n---\nSent from Nurul Quran App`
     );
     Linking.openURL(`mailto:support@nurulquran.info?subject=${subject}&body=${body}`)
       .then(() => {
@@ -42,11 +54,12 @@ export default function ContactScreen() {
         setName("");
         setEmail("");
         setMessage("");
+        setTopic(TOPICS[0]);
       })
       .catch(() =>
         Alert.alert(
-          "Could not open email",
-          "Please send your message directly to support@nurulquran.info"
+          "Could not open email app",
+          "Please send your message directly to:\nsupport@nurulquran.info"
         )
       );
   };
@@ -63,84 +76,91 @@ export default function ContactScreen() {
         <Pressable onPress={() => router.back()} style={styles.back}>
           <Feather name="arrow-left" size={22} color="#fff" />
         </Pressable>
-        <Text style={styles.appName}>Nurul Quran</Text>
-        <Text style={styles.tagline}>Free Islamic Learning App</Text>
+        <View style={styles.headerCenter}>
+          <View style={styles.avatarCircle}>
+            <Feather name="book-open" size={28} color="#fff" />
+          </View>
+          <Text style={styles.headerTitle}>Connect to a Scholar</Text>
+          <Text style={styles.headerSub}>Nurul Quran — Free Islamic Guidance</Text>
+        </View>
       </LinearGradient>
 
       <ScrollView
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.content, { paddingBottom: 60 }]}
       >
-        {/* Contact info cards */}
-        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.infoIcon, { backgroundColor: colors.tealLight }]}>
-            <Feather name="mail" size={18} color={colors.teal} />
-          </View>
-          <View>
-            <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Email</Text>
-            <Pressable onPress={() => Linking.openURL("mailto:support@nurulquran.info")}>
-              <Text style={[styles.infoValue, { color: colors.teal }]}>
-                support@nurulquran.info
-              </Text>
-            </Pressable>
-          </View>
+        {/* Contact info */}
+        <View style={styles.infoRow}>
+          <Pressable
+            onPress={() => Linking.openURL("mailto:support@nurulquran.info")}
+            style={[styles.infoChip, { backgroundColor: colors.tealLight, borderColor: colors.teal }]}
+          >
+            <Feather name="mail" size={14} color={colors.teal} />
+            <Text style={[styles.infoChipText, { color: colors.teal }]}>support@nurulquran.info</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => Linking.openURL("https://www.nurulquran.info")}
+            style={[styles.infoChip, { backgroundColor: colors.tealLight, borderColor: colors.teal }]}
+          >
+            <Feather name="globe" size={14} color={colors.teal} />
+            <Text style={[styles.infoChipText, { color: colors.teal }]}>nurulquran.info</Text>
+          </Pressable>
         </View>
 
-        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.infoIcon, { backgroundColor: colors.tealLight }]}>
+        <View style={[styles.creatorCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[styles.creatorIcon, { backgroundColor: colors.tealLight }]}>
             <Feather name="user" size={18} color={colors.teal} />
           </View>
-          <View>
-            <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Created by</Text>
-            <Text style={[styles.infoValue, { color: colors.foreground }]}>Mohammed Waseem</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.creatorLabel, { color: colors.mutedForeground }]}>Created & maintained by</Text>
+            <Text style={[styles.creatorName, { color: colors.foreground }]}>Mohammed Waseem</Text>
+            <Text style={[styles.creatorSub, { color: colors.mutedForeground }]}>
+              Nurul Quran is completely free — no subscriptions, no ads
+            </Text>
           </View>
         </View>
 
-        <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.infoIcon, { backgroundColor: colors.tealLight }]}>
-            <Feather name="globe" size={18} color={colors.teal} />
-          </View>
-          <View>
-            <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Website</Text>
-            <Pressable onPress={() => Linking.openURL("https://www.nurulquran.info")}>
-              <Text style={[styles.infoValue, { color: colors.teal }]}>www.nurulquran.info</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Contact form */}
-        <Text style={[styles.formTitle, { color: colors.foreground }]}>Send us a message</Text>
+        {/* Form */}
+        <Text style={[styles.formTitle, { color: colors.foreground }]}>Send a Message</Text>
+        <Text style={[styles.formSub, { color: colors.mutedForeground }]}>
+          Ask a question, seek guidance, or share feedback — we reply to every message InshaAllah.
+        </Text>
 
         {sent ? (
           <View style={[styles.successBox, { backgroundColor: colors.tealLight, borderColor: colors.teal }]}>
-            <Feather name="check-circle" size={32} color={colors.teal} style={{ marginBottom: 8 }} />
-            <Text style={[styles.successText, { color: colors.teal }]}>JazakAllah Khair!</Text>
+            <Feather name="check-circle" size={40} color={colors.teal} style={{ marginBottom: 10 }} />
+            <Text style={[styles.successTitle, { color: colors.teal }]}>JazakAllah Khair!</Text>
             <Text style={[styles.successSub, { color: colors.teal }]}>
-              Your email app opened. We will reply to you soon InshaAllah.
+              Your email app opened with your message ready to send.{"\n"}We will reply soon InshaAllah.
             </Text>
-            <Pressable onPress={() => setSent(false)} style={styles.resetBtn}>
+            <Pressable
+              onPress={() => setSent(false)}
+              style={[styles.resetBtn, { borderColor: colors.teal }]}
+            >
               <Text style={[styles.resetText, { color: colors.teal }]}>Send another message</Text>
             </Pressable>
           </View>
         ) : (
           <View style={styles.form}>
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>Your Name</Text>
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>Your Name *</Text>
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder="Enter your name"
+                placeholder="Enter your full name"
                 placeholderTextColor={colors.mutedForeground}
                 style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
               />
             </View>
 
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>Your Email</Text>
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>Your Email *</Text>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
-                placeholder="Enter your email"
+                placeholder="Enter your email address"
                 placeholderTextColor={colors.mutedForeground}
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -148,15 +168,40 @@ export default function ContactScreen() {
               />
             </View>
 
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>Message</Text>
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>Topic</Text>
+              <Pressable
+                onPress={() => setShowTopics(!showTopics)}
+                style={[styles.input, styles.dropdown, { backgroundColor: colors.card, borderColor: showTopics ? colors.teal : colors.border }]}
+              >
+                <Text style={[styles.dropdownText, { color: colors.foreground }]}>{topic}</Text>
+                <Feather name={showTopics ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
+              </Pressable>
+              {showTopics && (
+                <View style={[styles.dropdownList, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                  {TOPICS.map((t) => (
+                    <Pressable
+                      key={t}
+                      onPress={() => { setTopic(t); setShowTopics(false); }}
+                      style={[styles.dropdownItem, { borderBottomColor: colors.border, backgroundColor: t === topic ? colors.tealLight : "transparent" }]}
+                    >
+                      <Text style={[styles.dropdownItemText, { color: t === topic ? colors.teal : colors.foreground }]}>{t}</Text>
+                      {t === topic && <Feather name="check" size={14} color={colors.teal} />}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>Your Message *</Text>
               <TextInput
                 value={message}
                 onChangeText={setMessage}
-                placeholder="Type your message here..."
+                placeholder="Type your question or message here..."
                 placeholderTextColor={colors.mutedForeground}
                 multiline
-                numberOfLines={5}
+                numberOfLines={6}
                 textAlignVertical="top"
                 style={[styles.input, styles.textarea, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
               />
@@ -166,9 +211,13 @@ export default function ContactScreen() {
               onPress={handleSend}
               style={({ pressed }) => [styles.sendBtn, { backgroundColor: colors.teal, opacity: pressed ? 0.85 : 1 }]}
             >
-              <Feather name="send" size={16} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.sendText}>Send Message</Text>
+              <Feather name="send" size={16} color="#fff" />
+              <Text style={styles.sendText}>Send to Scholar</Text>
             </Pressable>
+
+            <Text style={[styles.footnote, { color: colors.mutedForeground }]}>
+              Messages go directly to support@nurulquran.info
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -178,25 +227,38 @@ export default function ContactScreen() {
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingBottom: 24 },
-  back: { marginBottom: 16 },
-  appName: { fontSize: 26, fontFamily: "Inter_700Bold", color: "#fff", marginBottom: 4 },
-  tagline: { fontSize: 13, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)" },
-  content: { padding: 16, gap: 12 },
-  infoCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
-  infoIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  infoLabel: { fontSize: 11, fontFamily: "Inter_500Medium", marginBottom: 2 },
-  infoValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  formTitle: { fontSize: 17, fontFamily: "Inter_700Bold", marginTop: 8, marginBottom: 4 },
+  back: { marginBottom: 8 },
+  headerCenter: { alignItems: "center", gap: 8 },
+  avatarCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff" },
+  headerSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.75)", textAlign: "center" },
+  content: { padding: 16, gap: 14 },
+  infoRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
+  infoChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  infoChipText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  creatorCard: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
+  creatorIcon: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  creatorLabel: { fontSize: 11, fontFamily: "Inter_500Medium", marginBottom: 2 },
+  creatorName: { fontSize: 15, fontFamily: "Inter_700Bold", marginBottom: 2 },
+  creatorSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  formTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginTop: 4 },
+  formSub: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19, marginTop: -8 },
   form: { gap: 14 },
-  fieldGroup: { gap: 6 },
-  label: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  input: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, fontFamily: "Inter_400Regular" },
-  textarea: { height: 110, paddingTop: 11 },
-  sendBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: 14, marginTop: 4 },
+  field: { gap: 6 },
+  label: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  input: { borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, fontFamily: "Inter_400Regular" },
+  textarea: { height: 130, paddingTop: 12 },
+  dropdown: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  dropdownText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  dropdownList: { borderWidth: 1.5, borderRadius: 12, overflow: "hidden", marginTop: -8 },
+  dropdownItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1 },
+  dropdownItemText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  sendBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 15, borderRadius: 14 },
   sendText: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" },
-  successBox: { borderWidth: 1.5, borderRadius: 16, padding: 24, alignItems: "center" },
-  successText: { fontSize: 20, fontFamily: "Inter_700Bold", marginBottom: 6 },
-  successSub: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 19 },
-  resetBtn: { marginTop: 16 },
-  resetText: { fontSize: 13, fontFamily: "Inter_600SemiBold", textDecorationLine: "underline" },
+  footnote: { fontSize: 11, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: -6 },
+  successBox: { borderWidth: 1.5, borderRadius: 16, padding: 28, alignItems: "center", gap: 8 },
+  successTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  successSub: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  resetBtn: { marginTop: 8, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, borderWidth: 1.5 },
+  resetText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
