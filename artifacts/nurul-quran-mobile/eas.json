@@ -7,14 +7,12 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "jsEngine": "hermes"
+        "buildType": "apk"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle",
-        "jsEngine": "hermes",
         "credentialsSource": "local"
       }
     }
