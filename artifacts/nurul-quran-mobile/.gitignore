@@ -39,3 +39,9 @@ yarn-error.*
 .vercel
 
 .env
+
+# EAS Credentials — NEVER commit these
+credentials.json
+*.jks
+*.keystore
+google-play-service-account.json

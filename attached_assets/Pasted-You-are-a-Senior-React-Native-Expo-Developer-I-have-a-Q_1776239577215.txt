@@ -1,0 +1,139 @@
+You are a Senior React Native / Expo Developer. I have a Quran app called 
+"Nurul Quran" built using Expo + EAS Build. The app was uploaded to Google 
+Play Store as an AAB file but shows a BLANK WHITE SCREEN after installing.
+
+---
+
+## MY SITUATION
+- App: Nurul Quran (nurulquran.info)
+- Built with: Expo + EAS Build on Replit
+- Problem: App installs from Play Store but shows blank white screen
+- AAB was generated and uploaded but something is broken in the build
+
+---
+
+## TASK 1 — FIX BLANK SCREEN (Do this first)
+The blank screen is caused by one or more of these — check and fix ALL:
+
+1. Check app.json / app.config.js:
+   - Ensure "entryPoint" is correct
+   - Ensure "android.package" is set (e.g., com.nurulquran.app)
+   - Ensure "sdkVersion" matches installed expo version
+   - Ensure "splash" screen config is valid and image exists
+
+2. Check package.json:
+   - Verify "main" field points to correct entry file
+   - Run: npx expo-doctor to catch any mismatches
+
+3. Check index.js / App.js:
+   - Make sure registerRootComponent(App) is called correctly
+   - No missing imports or undefined components on launch
+
+4. Check for runtime errors hidden in release build:
+   - Add try/catch around root App component
+   - Add a simple fallback: if app crashes, show error text instead 
+     of blank screen
+
+5. Enable Hermes engine in app.json:
+   "android": { "jsEngine": "hermes" }
+
+6. Check all assets (images, fonts, audio):
+   - All local assets must be bundled using require(), not dynamic URLs
+   - Fonts must be loaded using expo-font before rendering
+
+---
+
+## TASK 2 — SET UP PROPER EAS BUILD WITH MY KEYSTORE
+
+I have an existing keystore file with credentials. Configure EAS to use it:
+
+1. Create/update eas.json with this structure:
+{
+  "cli": { "version": ">= 5.0.0" },
+  "build": {
+    "production": {
+      "android": {
+        "buildType": "app-bundle",
+        "credentialsSource": "local"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "production"
+      }
+    }
+  }
+}
+
+2. Create credentials.json to use my existing keystore:
+{
+  "android": {
+    "keystore": {
+      "keystorePath": "./my-keystore.jks",
+      "keystorePassword": "YOUR_KEYSTORE_PASSWORD",
+      "keyAlias": "YOUR_KEY_ALIAS",
+      "keyPassword": "YOUR_KEY_PASSWORD"
+    }
+  }
+}
+
+3. Make sure .gitignore excludes credentials.json and *.jks for security
+
+---
+
+## TASK 3 — AUTO UPLOAD TO GOOGLE PLAY STORE
+
+Set up EAS Submit to auto-upload AAB after build:
+
+1. I will provide a Google Play Service Account JSON key file
+   (downloaded from Google Play Console → Setup → API Access)
+
+2. Add this to package.json scripts:
+   "build:production": "eas build --platform android --profile production",
+   "submit:production": "eas submit --platform android --profile production",
+   "deploy": "eas build --platform android --profile production 
+              --auto-submit"
+
+3. The "deploy" command should:
+   - Build signed AAB using my keystore
+   - Automatically upload to Google Play Store production track
+   - No manual steps needed
+
+---
+
+## TASK 4 — GOOGLE PLAY SERVICE ACCOUNT SETUP GUIDE
+Generate a step-by-step guide for me to:
+1. Create a Service Account in Google Cloud Console
+2. Grant it permissions in Google Play Console
+3. Download the JSON key file
+4. Place it correctly in the project
+
+---
+
+## TASK 5 — PRE-FLIGHT CHECKLIST
+Before building, verify and fix:
+- [ ] All splash screen and icon images exist and correct size 
+      (icon: 1024x1024, splash: 1242x2436)
+- [ ] No console.log statements that could cause issues in release
+- [ ] Metro bundler config is correct
+- [ ] All environment variables are hardcoded or via app.config.js 
+      (not .env in release builds)
+- [ ] Android permissions in app.json match actual app usage
+- [ ] app.json "version" and "android.versionCode" are incremented
+
+---
+
+## DELIVERABLES — IN THIS ORDER:
+1. Fix all blank screen issues in existing code
+2. Updated app.json with all correct settings
+3. eas.json (production build + submit config)
+4. credentials.json template (I will fill in my keystore details)
+5. Updated package.json with deploy scripts
+6. Google Play Service Account setup guide
+7. Run: eas build --platform android --profile production --auto-submit
+
+Make sure the final APK/AAB works correctly with NO blank screen 
+before submitting to Play Store.

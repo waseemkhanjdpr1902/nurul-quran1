@@ -21,7 +21,8 @@
     },
     "android": {
       "package": "com.nurulquran.mobile",
-      "versionCode": 2,
+      "versionCode": 3,
+      "jsEngine": "hermes",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#004D40"
