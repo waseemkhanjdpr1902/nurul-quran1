@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "nurul-quran-mobile",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "owner": "mohammedwaseem",
     "splash": {
       "image": "./assets/images/splash.png",
