@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { useGetLectures } from "@workspace/api-client-react";
+import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -246,13 +245,6 @@ export default function Library() {
   const [category, setCategory] = useState("All");
   const [offset, setOffset] = useState(0);
 
-  const { data, isLoading } = useGetLectures({
-    search: debouncedSearch || undefined,
-    category: category !== "All" ? category : undefined,
-    limit: PAGE_SIZE,
-    offset,
-  });
-
   const handleSearch = (val: string) => {
     setSearch(val);
     clearTimeout((window as any)._searchTimer);
@@ -262,14 +254,9 @@ export default function Library() {
     }, 350);
   };
 
-  const handleLectureClick = (lecture: StaticLecture | any, isStatic: boolean) => {
-    const url = isStatic ? (lecture as StaticLecture).youtubeUrl : (lecture as any).youtubeUrl;
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  const handleLectureClick = (lecture: StaticLecture) => {
+    if (lecture.youtubeUrl) window.open(lecture.youtubeUrl, "_blank", "noopener,noreferrer");
   };
-
-  const apiLectures = data?.lectures ?? [];
-  const apiTotal = data?.total ?? 0;
-  const hasApiData = !isLoading && apiTotal > 0;
 
   const filteredStatic = STATIC_LECTURES.filter(l => {
     const matchCat = category === "All" || l.category === category;
@@ -280,10 +267,9 @@ export default function Library() {
     return matchCat && matchSearch;
   });
 
-  const staticPage = filteredStatic.slice(offset, offset + PAGE_SIZE);
-  const lectures = hasApiData ? apiLectures : staticPage;
-  const total = hasApiData ? apiTotal : filteredStatic.length;
-  const isStatic = !hasApiData;
+  const lectures = filteredStatic.slice(offset, offset + PAGE_SIZE);
+  const total = filteredStatic.length;
+  const isLoading = false;
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
@@ -351,10 +337,9 @@ export default function Library() {
         {isLoading
           ? Array.from({ length: PAGE_SIZE }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)
           : lectures.map((lecture, i) => {
-              const sl = isStatic ? (lecture as StaticLecture) : null;
-              const youtubeUrl = sl ? sl.youtubeUrl : (lecture as any).youtubeUrl;
+              const youtubeUrl = lecture.youtubeUrl;
               const thumb = lecture.thumbnailUrl;
-              const speakerName = sl ? sl.speakerName : (lecture as any).speakerName;
+              const speakerName = lecture.speakerName;
 
               return (
                 <motion.div
@@ -364,7 +349,7 @@ export default function Library() {
                   transition={{ delay: i * 0.03 }}
                   data-testid={`card-lecture-${lecture.id}`}
                   className="group bg-card border border-emerald-200 rounded-xl overflow-hidden transition-all cursor-pointer hover:border-emerald-400 hover:shadow-md ring-1 ring-emerald-100"
-                  onClick={() => handleLectureClick(lecture, isStatic)}
+                  onClick={() => handleLectureClick(lecture as StaticLecture)}
                 >
                   <div className="relative w-full aspect-video bg-muted overflow-hidden">
                     {thumb ? (

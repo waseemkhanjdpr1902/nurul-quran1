@@ -297,26 +297,34 @@ export default function DiscoverPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { href: "/quran", icon: BookOpen, title: "Read the Quran", desc: "Start with Al-Fatiha — the Opening" },
-              { href: "/library", icon: PlayCircle, title: "Watch Lectures", desc: "79 free Islamic lectures" },
-              { href: "/courses", icon: GraduationCap, title: "Take a Course", desc: "Structured beginner courses" },
-              { href: "mailto:support@nurulquran.info", icon: Mail, title: "Ask a Scholar", desc: "Get personal guidance" },
-            ].map((item) => (
-              <Link
-                key={item.title}
-                href={item.href}
-                className="group flex flex-col items-start gap-3 rounded-xl border bg-card p-5 transition-all hover:border-emerald-400 hover:shadow-sm"
-              >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 transition-colors group-hover:bg-emerald-200">
-                  <item.icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground text-sm">{item.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 mt-auto" />
-              </Link>
-            ))}
+              { href: "/quran", icon: BookOpen, title: "Read the Quran", desc: "Start with Al-Fatiha — the Opening", external: false },
+              { href: "/library", icon: PlayCircle, title: "Watch Lectures", desc: "18 free Arabic lessons", external: false },
+              { href: "/courses", icon: GraduationCap, title: "Take a Course", desc: "Structured beginner courses", external: false },
+              { href: "mailto:support@nurulquran.info", icon: Mail, title: "Ask a Scholar", desc: "Get personal guidance", external: true },
+            ].map((item) => {
+              const cardClass = "group flex flex-col items-start gap-3 rounded-xl border bg-card p-5 transition-all hover:border-emerald-400 hover:shadow-sm";
+              const inner = (
+                <>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 transition-colors group-hover:bg-emerald-200">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground text-sm">{item.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 mt-auto" />
+                </>
+              );
+              return item.external ? (
+                <a key={item.title} href={item.href} className={cardClass}>
+                  {inner}
+                </a>
+              ) : (
+                <Link key={item.title} href={item.href} className={cardClass}>
+                  {inner}
+                </Link>
+              );
+            })}
           </div>
         </section>
 

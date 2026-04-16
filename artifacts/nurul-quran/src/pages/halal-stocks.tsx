@@ -90,16 +90,15 @@ async function fetchPrices(symbols: string[]): Promise<Record<string, { price: n
   symbols.forEach(s => { result[s] = { price: null, change: null, changePercent: null }; });
   try {
     const syms = symbols.join(",");
-    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    const url = `/api/stock-prices?symbols=${encodeURIComponent(syms)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) return result;
-    const data = await res.json() as any;
-    const quotes: any[] = data?.quoteResponse?.result ?? [];
-    quotes.forEach((q: any) => {
-      result[q.symbol] = {
-        price: q.regularMarketPrice ?? null,
-        change: q.regularMarketChange ?? null,
-        changePercent: q.regularMarketChangePercent ?? null,
+    const data = await res.json() as Record<string, { price: number | null; change: number | null; changePercent: number | null; marketCap: number | null; currency: string }>;
+    Object.entries(data).forEach(([sym, q]) => {
+      result[sym] = {
+        price: q.price,
+        change: q.change,
+        changePercent: q.changePercent,
       };
     });
   } catch {
