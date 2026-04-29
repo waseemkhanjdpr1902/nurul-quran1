@@ -28,20 +28,16 @@
           "value": "camera=(), microphone=(), payment=(), usb=(), bluetooth=(), geolocation=(self)"
         },
         {
-          <meta http-equiv="Content-Security-Policy"
-content="
-default-src 'self';
-script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://cdn-cookieyes.com;
-connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://cdn-cookieyes.com;
-img-src 'self' data: https:;
-style-src 'self' 'unsafe-inline' https:;
-font-src 'self' data: https:;
-">
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://cdn-cookieyes.com https://www.google-analytics.com; connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://cdn-cookieyes.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:;"
         }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
