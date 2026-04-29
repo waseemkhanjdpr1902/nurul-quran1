@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result: Record<string, { price: number | null; change: number | null; changePercent: number | null; marketCap: number | null; currency: string }> = {};
 
     if (Array.isArray(data)) {
-      data.forEach((q: any) => {
+      data.forEach((q) => {
         result[q.symbol] = {
           price: q.price ?? null,
           change: q.change ?? null,
