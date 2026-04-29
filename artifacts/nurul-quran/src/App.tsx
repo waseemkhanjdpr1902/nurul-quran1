@@ -8,7 +8,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
-
 import Home from "@/pages/home";
 import QuranReader from "@/pages/quran-reader";
 import Discover from "@/pages/discover";
@@ -19,10 +18,6 @@ import AsmaulHusna from "@/pages/asmaul-husna";
 import Calendar from "@/pages/calendar";
 import LearnArabic from "@/pages/learn-arabic";
 import Contact from "@/pages/contact";
-import Library from "@/pages/library";
-import Courses from "@/pages/courses";
-import CourseDetail from "@/pages/course-detail";
-import HalalStocks from "@/pages/halal-stocks";
 
 const queryClient = new QueryClient();
 
@@ -50,10 +45,6 @@ function Router() {
         <Route path="/calendar" component={Calendar} />
         <Route path="/learn-arabic" component={LearnArabic} />
         <Route path="/contact" component={Contact} />
-        <Route path="/library" component={Library} />
-        <Route path="/courses" component={Courses} />
-        <Route path="/courses/:id" component={CourseDetail} />
-        <Route path="/halal-stocks" component={HalalStocks} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -64,16 +55,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-      <AuthProvider>
-        <AudioPlayerProvider>
-          <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <Router />
-            </WouterRouter>
-            <Toaster />
-          </TooltipProvider>
-        </AudioPlayerProvider>
-      </AuthProvider>
+        <AuthProvider>
+          <AudioPlayerProvider>
+            <TooltipProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <Router />
+              </WouterRouter>
+              <Toaster />
+            </TooltipProvider>
+          </AudioPlayerProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
