@@ -39,39 +39,102 @@ interface SurahData {
   ayahs: Ayah[];
 }
 
-function useQuranData(surahId: string) {
+// ── Fetch helpers ──────────────────────────────────────────────────────────────
+
+async function fetchFromPrimary(surahId: string): Promise<[SurahData, SurahData]> {
+  const [ar, en] = await Promise.all([
+    fetch(`https://api.alquran.cloud/v1/surah/${surahId}`, { cache: "no-store" }).then((r) => r.json()),
+    fetch(`https://api.alquran.cloud/v1/surah/${surahId}/en.sahih`, { cache: "no-store" }).then((r) => r.json()),
+  ]);
+  if (ar.code === 200 && en.code === 200) return [ar.data, en.data];
+  throw new Error("Primary API returned non-200");
+}
+
+async function fetchFromFallback(surahId: string): Promise<[SurahData, SurahData]> {
+  // jsdelivr hosts quran-json which mirrors alquran.cloud structure
+  const [ar, en] = await Promise.all([
+    fetch(`https://cdn.jsdelivr.net/npm/quran-json@3.1.2/data/surah/ar/${surahId}.json`).then((r) => r.json()),
+    fetch(`https://cdn.jsdelivr.net/npm/quran-json@3.1.2/data/surah/en/${surahId}.json`).then((r) => r.json()),
+  ]);
+  if (!ar || !en) throw new Error("Fallback API returned empty data");
+
+  // quran-json uses a slightly different shape — normalise it
+  const normalise = (data: any, isArabic: boolean): SurahData => ({
+    number: data.id ?? Number(surahId),
+    name: data.transliteration ?? data.name ?? "",
+    englishName: data.transliteration ?? data.name ?? "",
+    englishNameTranslation: data.translation ?? "",
+    numberOfAyahs: data.total_verses ?? (data.verses?.length || 0),
+    revelationType: data.type ?? "",
+    ayahs: (data.verses ?? []).map((v: any, i: number) => ({
+      number: (data.id - 1) * 1000 + i + 1,
+      numberInSurah: i + 1,
+      text: isArabic ? v.text : v.translation ?? v.text,
+      translation: isArabic ? undefined : v.translation ?? v.text,
+    })),
+  });
+
+  return [normalise(ar, true), normalise(en, false)];
+}
+
+// ── Custom hook ───────────────────────────────────────────────────────────────
+
+function useQuranData(surahId: string, retry: number) {
   const [arabic, setArabic] = React.useState<SurahData | null>(null);
   const [english, setEnglish] = React.useState<SurahData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([
-      fetch(`https://api.alquran.cloud/v1/surah/${surahId}`).then((r) => r.json()),
-      fetch(`https://api.alquran.cloud/v1/surah/${surahId}/en.sahih`).then((r) => r.json()),
-    ])
-      .then(([ar, en]) => {
-        if (ar.code === 200 && en.code === 200) {
-          setArabic(ar.data);
-          setEnglish(en.data);
-        } else {
-          setError("Failed to load surah");
+    setArabic(null);
+    setEnglish(null);
+
+    const load = async () => {
+      try {
+        // Try primary API first
+        const [ar, en] = await fetchFromPrimary(surahId);
+        if (!cancelled) {
+          setArabic(ar);
+          setEnglish(en);
         }
-      })
-      .catch(() => setError("Network error"))
-      .finally(() => setLoading(false));
-  }, [surahId]);
+      } catch {
+        // Primary failed — try fallback
+        try {
+          const [ar, en] = await fetchFromFallback(surahId);
+          if (!cancelled) {
+            setArabic(ar);
+            setEnglish(en);
+          }
+        } catch {
+          if (!cancelled) {
+            setError("Could not load surah. Please check your internet connection and try again.");
+          }
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [surahId, retry]);
 
   return { arabic, english, loading, error };
 }
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function SurahDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { arabic, english, loading, error } = useQuranData(id || "1");
+
+  const [retry, setRetry] = useState(0);
+  const { arabic, english, loading, error } = useQuranData(id || "1", retry);
+
   const [showTranslation, setShowTranslation] = useState(true);
   const [reciterIdx, setReciterIdx] = useState(0);
 
@@ -197,6 +260,7 @@ export default function SurahDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+
       {/* ── Header ── */}
       <View
         style={[
@@ -204,7 +268,10 @@ export default function SurahDetailScreen() {
           { backgroundColor: colors.tealDark, paddingTop: insets.top + 12 },
         ]}
       >
-        <Pressable onPress={() => { stopRecitation(); router.back(); }} style={styles.backBtn}>
+        <Pressable
+          onPress={() => { stopRecitation(); router.back(); }}
+          style={styles.backBtn}
+        >
           <Feather name="arrow-left" size={22} color="#fff" />
         </Pressable>
         <View style={{ flex: 1 }}>
@@ -264,11 +331,7 @@ export default function SurahDetailScreen() {
             {recitationLoading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Feather
-                name={isReciting ? "pause" : "play"}
-                size={22}
-                color="#fff"
-              />
+              <Feather name={isReciting ? "pause" : "play"} size={22} color="#fff" />
             )}
           </Pressable>
         </View>
@@ -285,12 +348,19 @@ export default function SurahDetailScreen() {
       ) : error ? (
         <View style={styles.center}>
           <Feather name="wifi-off" size={40} color={colors.mutedForeground} />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.mutedForeground }]}>{error}</Text>
+          <Pressable
+            onPress={() => setRetry((r) => r + 1)}
+            style={[styles.actionBtn, { backgroundColor: colors.teal }]}
+          >
+            <Feather name="refresh-cw" size={15} color="#fff" />
+            <Text style={styles.actionBtnText}>Try Again</Text>
+          </Pressable>
           <Pressable
             onPress={() => router.back()}
-            style={[styles.retryBtn, { backgroundColor: colors.teal }]}
+            style={[styles.actionBtn, { backgroundColor: "transparent", borderWidth: 1, borderColor: colors.border }]}
           >
-            <Text style={{ color: "#fff", fontWeight: "600" }}>Go Back</Text>
+            <Text style={[styles.actionBtnText, { color: colors.mutedForeground }]}>Go Back</Text>
           </Pressable>
         </View>
       ) : (
@@ -315,6 +385,8 @@ export default function SurahDetailScreen() {
     </View>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   header: {
@@ -395,9 +467,20 @@ const styles = StyleSheet.create({
   },
 
   // Content
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, paddingHorizontal: 32 },
   loadingText: { fontSize: 14 },
-  retryBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
+  errorText: { fontSize: 14, textAlign: "center", lineHeight: 20 },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 11,
+    borderRadius: 12,
+    minWidth: 140,
+    justifyContent: "center",
+  },
+  actionBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
   bismillahWrap: {
     borderRadius: 14,
     padding: 18,
