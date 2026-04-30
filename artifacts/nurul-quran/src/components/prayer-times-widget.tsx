@@ -71,12 +71,12 @@ export function PrayerTimesWidget() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [loading, setLoading] = useState(!timings);
+  const [loading, setLoading] = useState(false);           // Changed default
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState({ name: "", countdown: "" });
-  const [locationName, setLocationName] = useState<string>("Local");
+  const [locationName, setLocationName] = useState("Detecting...");
 
-  const fetchTimes = useCallback(async (latitude: number, longitude: number, source: string = "Geolocation") => {
+  const fetchTimes = useCallback(async (latitude: number, longitude: number, source = "Your Location") => {
     setLoading(true);
     setError(null);
 
@@ -87,86 +87,78 @@ export function PrayerTimesWidget() {
       const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${latitude}&longitude=${longitude}&method=2`;
 
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error("Network response was not ok");
 
       const json = await res.json();
 
       if (json.code !== 200 || !json.data?.timings) {
-        throw new Error("Invalid API response");
+        throw new Error("Invalid data from prayer API");
       }
 
-      const newTimings = json.data.timings as PrayerTimings;
-      
+      const newTimings: PrayerTimings = json.data.timings;
       setTimings(newTimings);
       localStorage.setItem("cached_prayer_times", JSON.stringify(newTimings));
       setLocationName(source);
       setError(null);
     } catch (err: any) {
-      console.error("Prayer times fetch failed:", err);
-      setError("Unable to fetch prayer times. Please check your internet connection.");
+      console.error("Failed to fetch prayer times:", err);
+      setError(err.message || "Failed to load prayer times. Please check your connection.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Main Geolocation Effect
+  // Geolocation
   useEffect(() => {
-    let isMounted = true;
-
-    const getUserLocation = () => {
+    const getLocation = () => {
       if (!navigator.geolocation) {
         setError("Geolocation not supported");
         setLoading(false);
         return;
       }
 
+      setLocationName("Detecting location...");
+      setLoading(true);
+
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          if (isMounted) {
-            fetchTimes(pos.coords.latitude, pos.coords.longitude, "Your Location");
-          }
+          fetchTimes(pos.coords.latitude, pos.coords.longitude, "Your Location");
         },
         (geoError) => {
-          console.warn("Geolocation error:", geoError.code, geoError.message);
-          
-          let errorMsg = "Location access denied or unavailable.";
-          
-          if (geoError.code === 1) errorMsg = "Please allow location access to get accurate prayer times.";
-          else if (geoError.code === 2) errorMsg = "Location unavailable. Using approximate location.";
-          else if (geoError.code === 3) errorMsg = "Location request timed out.";
+          console.warn("Geolocation failed:", geoError.code, geoError.message);
+          let msg = "Could not get your location. Please allow location access.";
+          if (geoError.code === 1) msg = "Location permission denied. Please allow it in browser settings.";
+          if (geoError.code === 3) msg = "Location request timed out.";
 
-          if (isMounted) {
-            setError(errorMsg);
-            // Optional: You can add Jodhpur fallback here if you want
-            // fetchTimes(26.2389, 73.0243, "Jodhpur");
-          }
+          setError(msg);
+          setLoading(false);
         },
         {
-          enableHighAccuracy: true,     // Best for mobile accuracy
-          timeout: 15000,               // 15 seconds
-          maximumAge: 300000            // Cache for 5 minutes
+          enableHighAccuracy: true,
+          timeout: 20000,        // Increased for mobile
+          maximumAge: 600000     // 10 minutes
         }
       );
     };
 
-    getUserLocation();
+    // If we have cached data, still try to update in background
+    if (timings) {
+      getLocation(); // Try to refresh
+    } else {
+      getLocation();
+    }
+  }, [fetchTimes, timings]);   // Note: removed unnecessary dependency
 
-    return () => {
-      isMounted = false;
-    };
-  }, [fetchTimes]);
-
-  // Countdown Timer
+  // Countdown
   useEffect(() => {
     if (!timings) return;
-
-    const updateCountdown = () => setCountdown(getNextPrayer(timings));
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-
-    return () => clearInterval(interval);
+    const update = () => setCountdown(getNextPrayer(timings));
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
   }, [timings]);
 
+  // Render Logic
   if (loading && !timings) {
     return <Skeleton className="h-40 w-full rounded-2xl" />;
   }
@@ -176,37 +168,40 @@ export function PrayerTimesWidget() {
       <div className="rounded-2xl p-6 border-2 flex flex-col items-center gap-4 text-center"
         style={{ borderColor: "#1a472a", background: "linear-gradient(135deg, #1a472a, #2d6a4f)" }}>
         <MapPin className="h-8 w-8 text-white/40" />
-        <p className="text-sm text-white/90 font-medium">{error}</p>
+        <p className="text-sm text-white/90">{error}</p>
         <button 
           onClick={() => window.location.reload()} 
           className="text-xs font-bold px-5 py-2 rounded-full shadow-lg"
           style={{ background: "#d4af37", color: "#1a472a" }}
         >
-          Try Again
+          Retry
         </button>
       </div>
     );
   }
 
-  if (!timings) return null;
+  if (!timings) {
+    return (
+      <div className="rounded-2xl p-6 border-2 text-center" style={{ borderColor: "#1a472a" }}>
+        <p className="text-sm text-gray-500">Loading prayer times...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border-2 overflow-hidden shadow-xl" style={{ borderColor: "#1a472a" }}>
-      <div className="px-5 py-4 flex items-center justify-between"
-        style={{ background: "linear-gradient(135deg, #1a472a, #2d6a4f)" }}>
+      <div className="px-5 py-4 flex items-center justify-between bg-gradient-to-r from-emerald-900 to-emerald-800 text-white">
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5" style={{ color: "#d4af37" }} />
-          <span className="text-sm font-bold text-white tracking-tight">
+          <span className="text-sm font-bold tracking-tight">
             Prayer Times • {locationName}
           </span>
         </div>
-        
+
         {countdown.name && (
           <div className="text-right">
-            <p className="text-[10px] text-white/70 uppercase font-black tracking-tighter">
-              Next: {countdown.name}
-            </p>
-            <p className="text-xl font-mono font-bold leading-none" style={{ color: "#d4af37" }}>
+            <p className="text-[10px] uppercase font-black tracking-tighter text-white/70">Next: {countdown.name}</p>
+            <p className="text-xl font-mono font-bold" style={{ color: "#d4af37" }}>
               {countdown.countdown}
             </p>
           </div>
@@ -221,17 +216,10 @@ export function PrayerTimesWidget() {
           return (
             <div 
               key={p.key} 
-              className={`flex flex-col items-center py-4 px-1 gap-1 transition-colors ${isNext ? 'bg-emerald-50/50' : ''}`}
+              className={`flex flex-col items-center py-4 px-1 gap-1 ${isNext ? 'bg-emerald-50' : ''}`}
             >
-              <span className="text-[10px] font-black uppercase tracking-tighter" style={{ color: "#1a472a" }}>
-                {p.key}
-              </span>
-              <span 
-                className="text-xs" 
-                dir="rtl" 
-                lang="ar" 
-                style={{ fontFamily: "Amiri, serif", color: "#d4af37" }}
-              >
+              <span className="text-[10px] font-black uppercase tracking-tighter text-emerald-900">{p.key}</span>
+              <span className="text-xs" dir="rtl" lang="ar" style={{ fontFamily: "Amiri, serif", color: "#d4af37" }}>
                 {p.arabic}
               </span>
               <span className={`text-sm font-mono font-bold ${isNext ? 'text-emerald-700' : 'text-slate-700'}`}>
