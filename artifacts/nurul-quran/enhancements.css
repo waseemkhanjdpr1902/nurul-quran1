@@ -1,0 +1,74 @@
+/* Salah Top Bar Ticker */
+#salah-ticker-wrap {
+    background: #004d40;
+    color: #e0f2f1;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 8px 0;
+    text-align: center;
+    border-bottom: 1px solid #00695c;
+    overflow-x: auto;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+}
+
+#salah-display b {
+    color: #ffd54f;
+    margin-left: 10px;
+}
+
+/* Audio Ribbon Bottom Bar */
+#audio-ribbon-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 77, 64, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 2px solid #ffd54f;
+    padding: 10px 15px;
+    display: flex;
+    justify-content: center;
+    z-index: 10000;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
+}
+
+.ribbon-content {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+#audio-title {
+    color: #ffd54f;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+}
+
+#global-audio-player {
+    width: 100%;
+    height: 35px;
+}
+
+#close-ribbon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+    #audio-ribbon-container { padding-bottom: 20px; }
+}
