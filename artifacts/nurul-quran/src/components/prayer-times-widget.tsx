@@ -9,7 +9,6 @@ interface PrayerTimings {
   Asr: string;
   Maghrib: string;
   Isha: string;
-  Sunrise?: string;   // optional, good to have
 }
 
 const PRAYERS = [
@@ -23,7 +22,6 @@ const PRAYERS = [
 function parsePrayerTime(timeStr: string): Date {
   const now = new Date();
   const [hours, minutes] = timeStr.split(":").map(Number);
-  
   const date = new Date(now);
   date.setHours(hours, minutes, 0, 0);
   return date;
@@ -38,16 +36,15 @@ function formatCountdown(ms: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function getNextPrayer(timings: PrayerTimings): { name: string; countdown: string } {
+function getNextPrayer(timings: PrayerTimings) {
   const now = new Date();
   let nextMs = Infinity;
   let nextName = "";
 
   for (const p of PRAYERS) {
-    const pDate = parsePrayerTime(timings[p.key as keyof PrayerTimings]);
+    let pDate = parsePrayerTime(timings[p.key as keyof PrayerTimings]);
     let diff = pDate.getTime() - now.getTime();
 
-    // If prayer time has already passed today, consider tomorrow
     if (diff < 0) {
       pDate.setDate(pDate.getDate() + 1);
       diff = pDate.getTime() - now.getTime();
@@ -60,13 +57,9 @@ function getNextPrayer(timings: PrayerTimings): { name: string; countdown: strin
   }
 
   if (!nextName) {
-    // Fallback to next Fajr
     const fajrDate = parsePrayerTime(timings.Fajr);
     fajrDate.setDate(fajrDate.getDate() + 1);
-    return { 
-      name: "Fajr", 
-      countdown: formatCountdown(fajrDate.getTime() - now.getTime()) 
-    };
+    return { name: "Fajr", countdown: formatCountdown(fajrDate.getTime() - now.getTime()) };
   }
 
   return { name: nextName, countdown: formatCountdown(nextMs) };
@@ -81,8 +74,9 @@ export function PrayerTimesWidget() {
   const [loading, setLoading] = useState(!timings);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState({ name: "", countdown: "" });
+  const [locationName, setLocationName] = useState<string>("Local");
 
-  const fetchTimes = useCallback(async (latitude: number, longitude: number) => {
+  const fetchTimes = useCallback(async (latitude: number, longitude: number, source: string = "Geolocation") => {
     setLoading(true);
     setError(null);
 
@@ -92,13 +86,8 @@ export function PrayerTimesWidget() {
 
       const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${latitude}&longitude=${longitude}&method=2`;
 
-      const res = await fetch(url, { 
-        cache: "no-cache"   // optional: avoid stale cached responses
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const json = await res.json();
 
@@ -110,73 +99,78 @@ export function PrayerTimesWidget() {
       
       setTimings(newTimings);
       localStorage.setItem("cached_prayer_times", JSON.stringify(newTimings));
+      setLocationName(source);
       setError(null);
     } catch (err: any) {
-      console.error("Prayer times fetch error:", err);
-      setError(err.message || "Failed to fetch prayer times");
-      
-      // Keep cached data if available
-      if (!timings) {
-        setError("Unable to load prayer times. Please check your connection and location permission.");
-      }
+      console.error("Prayer times fetch failed:", err);
+      setError("Unable to fetch prayer times. Please check your internet connection.");
     } finally {
       setLoading(false);
     }
-  }, [timings]);
+  }, []);
 
-  // Geolocation
+  // Main Geolocation Effect
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setError("Geolocation not supported by your browser");
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        fetchTimes(pos.coords.latitude, pos.coords.longitude);
-      },
-      (geoError) => {
-        console.error("Geolocation error:", geoError);
-        let msg = "Please enable location access to get accurate local prayer times.";
-        
-        if (geoError.code === geoError.PERMISSION_DENIED) {
-          msg = "Location permission denied. Please allow access and try again.";
-        } else if (geoError.code === geoError.POSITION_UNAVAILABLE) {
-          msg = "Location information is unavailable.";
-        }
-
-        setError(msg);
+    const getUserLocation = () => {
+      if (!navigator.geolocation) {
+        setError("Geolocation not supported");
         setLoading(false);
-      },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 15000, 
-        maximumAge: 600000   // 10 minutes
+        return;
       }
-    );
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (isMounted) {
+            fetchTimes(pos.coords.latitude, pos.coords.longitude, "Your Location");
+          }
+        },
+        (geoError) => {
+          console.warn("Geolocation error:", geoError.code, geoError.message);
+          
+          let errorMsg = "Location access denied or unavailable.";
+          
+          if (geoError.code === 1) errorMsg = "Please allow location access to get accurate prayer times.";
+          else if (geoError.code === 2) errorMsg = "Location unavailable. Using approximate location.";
+          else if (geoError.code === 3) errorMsg = "Location request timed out.";
+
+          if (isMounted) {
+            setError(errorMsg);
+            // Optional: You can add Jodhpur fallback here if you want
+            // fetchTimes(26.2389, 73.0243, "Jodhpur");
+          }
+        },
+        {
+          enableHighAccuracy: true,     // Best for mobile accuracy
+          timeout: 15000,               // 15 seconds
+          maximumAge: 300000            // Cache for 5 minutes
+        }
+      );
+    };
+
+    getUserLocation();
+
+    return () => {
+      isMounted = false;
+    };
   }, [fetchTimes]);
 
-  // Countdown updater
+  // Countdown Timer
   useEffect(() => {
     if (!timings) return;
 
-    const updateCountdown = () => {
-      setCountdown(getNextPrayer(timings));
-    };
-
+    const updateCountdown = () => setCountdown(getNextPrayer(timings));
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
   }, [timings]);
 
-  // Loading skeleton
   if (loading && !timings) {
     return <Skeleton className="h-40 w-full rounded-2xl" />;
   }
 
-  // Error state
   if (error && !timings) {
     return (
       <div className="rounded-2xl p-6 border-2 flex flex-col items-center gap-4 text-center"
@@ -198,12 +192,13 @@ export function PrayerTimesWidget() {
 
   return (
     <div className="rounded-2xl border-2 overflow-hidden shadow-xl" style={{ borderColor: "#1a472a" }}>
-      {/* Header */}
       <div className="px-5 py-4 flex items-center justify-between"
         style={{ background: "linear-gradient(135deg, #1a472a, #2d6a4f)" }}>
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5" style={{ color: "#d4af37" }} />
-          <span className="text-sm font-bold text-white tracking-tight">Local Prayer Times</span>
+          <span className="text-sm font-bold text-white tracking-tight">
+            Prayer Times • {locationName}
+          </span>
         </div>
         
         {countdown.name && (
@@ -218,7 +213,6 @@ export function PrayerTimesWidget() {
         )}
       </div>
 
-      {/* Prayer Times Grid */}
       <div className="grid grid-cols-5 divide-x divide-zinc-100 bg-white">
         {PRAYERS.map((p) => {
           const t = timings[p.key as keyof PrayerTimings];
@@ -248,7 +242,6 @@ export function PrayerTimesWidget() {
         })}
       </div>
 
-      {/* Footer */}
       <div className="px-4 py-2 bg-zinc-50 flex justify-end border-t border-zinc-100">
         <Link href="/prayer-times">
           <span className="text-xs font-bold flex items-center gap-1 hover:gap-2 transition-all" style={{ color: "#1a472a" }}>
