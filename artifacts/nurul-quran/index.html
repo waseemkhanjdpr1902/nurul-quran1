@@ -5,7 +5,6 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover" />
 
-    <!-- ✅ CSP FIX -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
       script-src 'self' 'unsafe-inline' 'unsafe-eval'
@@ -33,14 +32,16 @@
         https://cdn.jsdelivr.net
         https:;
       img-src 'self' data: blob: https:;
-      media-src 'self'
+      media-src 'self' blob:
         https://cdn.islamic.network
         https://verses.quran.com;
       worker-src 'self' blob:;
     ">
 
     <title>Nurul Quran — Islamic Education</title>
-    <!-- Google Analytics -->
+    
+    <link rel="stylesheet" href="/enhancements.css" />
+
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-1MRBMDGBLC"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -48,26 +49,22 @@
       gtag('js', new Date());
       gtag('config', 'G-1MRBMDGBLC');
     </script>
-    <!-- CookieYes -->
     <script
       id="cookieyes"
       type="text/javascript"
       src="https://cdn-cookieyes.com/client_data/9b1b6d43c536d2caa21d2936/script.js">
     </script>
-    <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#004d40" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Nurul Quran" />
-    <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
     <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152.svg" />
     <link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144.svg" />
     <link rel="apple-touch-icon" sizes="128x128" href="/icons/icon-128.svg" />
-    <!-- SEO & Social -->
     <meta name="description" content="Authentic Islamic lectures, Quran recitation, structured courses, and Halal investment guidance — all in one app." />
     <meta name="keywords" content="Islam, Quran, Islamic lectures, hadith, tafseer, fiqh, halal stocks, Islamic education" />
     <meta property="og:title" content="Nurul Quran — Islamic Education" />
@@ -78,19 +75,36 @@
     <meta name="twitter:title" content="Nurul Quran" />
     <meta name="twitter:description" content="Authentic Islamic education — lectures, Quran recitation, and Halal stocks." />
     <meta name="twitter:image" content="/opengraph.jpg" />
-    <!-- Splash screen / Windows tile -->
     <meta name="msapplication-navbutton-color" content="#004d40" />
     <meta name="msapplication-TileColor" content="#004d40" />
     <meta name="msapplication-TileImage" content="/icons/icon-144.svg" />
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&family=Amiri+Quran&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <div id="salah-ticker-wrap">
+        <div id="salah-display">Calculating Prayer Times...</div>
+    </div>
+
     <div id="root"></div>
+
+    <div id="audio-ribbon-container" style="display: none;">
+        <div class="ribbon-content">
+            <div class="audio-meta">
+                <span id="audio-title">Quran Recitation</span>
+            </div>
+            <audio id="global-audio-player" controls preload="metadata">
+                <source id="audio-source" src="" type="audio/mpeg">
+            </audio>
+            <button id="close-ribbon" onclick="closeAudioRibbon()">×</button>
+        </div>
+    </div>
+
     <script type="module" src="/src/main.tsx"></script>
-    <!-- Register Service Worker -->
+
+    <script src="/enhancements.js"></script>
+
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
