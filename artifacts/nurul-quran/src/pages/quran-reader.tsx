@@ -63,7 +63,7 @@ function useSurahContent(surahNum: number) {
   return { ayahs, loading };
 }
 
-// ─── Module-level cache — never re-fetches across re-renders ───────────────
+// Module-level cache — survives re-renders, cleared on hard reload
 const tafseerCache: Record<string, string> = {};
 
 function useTafseer(surahNum: number, ayahNum: number, enabled: boolean) {
@@ -83,8 +83,7 @@ function useTafseer(surahNum: number, ayahNum: number, enabled: boolean) {
     setLoading(true);
     setError(false);
 
-    // ✅ Using api.quran.com — already whitelisted in the project's CSP
-    // Ibn Kathir tafseer ID: 169
+    // ✅ api.quran.com — same backend as qurancdn, already in CSP whitelist
     fetch(`https://api.quran.com/api/v4/tafsirs/169/by_ayah/${surahNum}:${ayahNum}`, {
       headers: { Accept: "application/json" },
     })
@@ -94,7 +93,6 @@ function useTafseer(surahNum: number, ayahNum: number, enabled: boolean) {
       })
       .then(d => {
         let text = d?.tafsir?.text || "";
-        // Strip HTML tags and decode entities
         text = text
           .replace(/<br\s*\/?>/gi, "\n")
           .replace(/<[^>]*>/g, "")
@@ -117,7 +115,7 @@ function useTafseer(surahNum: number, ayahNum: number, enabled: boolean) {
   return { tafseer, loading, error };
 }
 
-// ─── Only become true once the card scrolls into view ─────────────────────
+// Fires true once the card scrolls into viewport (200px pre-load buffer)
 function useIsVisible(ref: React.RefObject<Element>) {
   const [isVisible, setIsVisible] = useState(false);
   useEffect(() => {
@@ -132,7 +130,6 @@ function useIsVisible(ref: React.RefObject<Element>) {
   return isVisible;
 }
 
-// ─── Single Ayah Card ──────────────────────────────────────────────────────
 function AyahCard({
   ayah,
   surahNum,
@@ -147,45 +144,39 @@ function AyahCard({
   const isVisible = useIsVisible(cardRef);
 
   const globalTafseerOn = displayLangs.includes("tafseer");
-  // Fetch only when card is visible (lazy) or user manually expands
   const shouldFetch = (globalTafseerOn && isVisible) || expandedTafseer;
   const showTafseerBlock = globalTafseerOn || expandedTafseer;
 
-  const { tafseer, loading, error } = useTafseer(
-    surahNum,
-    ayah.numberInSurah,
-    shouldFetch
-  );
+  const { tafseer, loading, error } = useTafseer(surahNum, ayah.numberInSurah, shouldFetch);
 
   return (
     <div ref={cardRef} className="border rounded-xl p-4 mb-4 bg-card shadow-sm">
-      {/* Ayah number badge */}
       <div className="flex justify-between items-center mb-3">
         <Badge variant="secondary" className="text-xs font-semibold">
           {ayah.numberInSurah}
         </Badge>
       </div>
 
-      {/* Arabic text */}
+      {/* Arabic */}
       <p dir="rtl" className="text-2xl text-right font-['Amiri_Quran'] leading-loose mb-4">
         {ayah.text}
       </p>
 
-      {/* English translation */}
+      {/* English */}
       {displayLangs.includes("english") && (
         <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
           {ayah.translation}
         </p>
       )}
 
-      {/* Urdu translation */}
+      {/* Urdu */}
       {displayLangs.includes("urdu") && (
         <p dir="rtl" className="text-sm text-right mb-3 leading-loose">
           {ayah.urduTranslation}
         </p>
       )}
 
-      {/* Per-ayah expand button — shown only when global Tafseer toggle is OFF */}
+      {/* Per-ayah expand button — only when global toggle is OFF */}
       {!globalTafseerOn && (
         <Button
           variant="ghost"
@@ -201,7 +192,7 @@ function AyahCard({
         </Button>
       )}
 
-      {/* Tafseer content block */}
+      {/* Tafseer block */}
       {showTafseerBlock && (
         <div className="mt-3 p-3 bg-muted/60 rounded-lg text-sm leading-relaxed border-l-4 border-primary/40">
           <p className="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">
@@ -226,7 +217,6 @@ function AyahCard({
   );
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────
 export default function QuranReader() {
   const { surahId } = useParams();
   const [, navigate] = useLocation();
