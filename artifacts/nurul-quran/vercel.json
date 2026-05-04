@@ -1,19 +1,14 @@
 {
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://cdn.jsdelivr.net; connect-src 'self' https://api.alquran.cloud https://api.quran.com https://api.qurancdn.com https://api.aladhan.com https://cdn.jsdelivr.net https://cdn.islamic.network https://nominatim.openstreetmap.org https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https:; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https:; img-src 'self' data: blob: https:; media-src 'self' blob: https://cdn.islamic.network https://verses.quran.com; worker-src 'self' blob:;"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://cdn-cookieyes.com https://cdn.jsdelivr.net; connect-src 'self' https://api.alquran.cloud https://api.quran.com https://api.qurancdn.com https://api.aladhan.com https://cdn.jsdelivr.net https://cdn.islamic.network https://nominatim.openstreetmap.org https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com https://cdn-cookieyes.com https://client.api.cookieyes.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https:; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https:; img-src 'self' data: blob: https:; media-src 'self' blob: https://cdn.islamic.network https://verses.quran.com; worker-src 'self' blob:;"
         }
       ]
     }
