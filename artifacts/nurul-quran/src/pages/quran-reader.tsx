@@ -90,30 +90,48 @@ function useTafseer(surahNum: number, ayahNum: number, enabled: boolean) {
 
   useEffect(() => {
     if (!enabled || !surahNum || !ayahNum) return;
+    
     const key = `${surahNum}-${ayahNum}`;
-    if (cacheRef.current[key]) { setTafseer(cacheRef.current[key]); return; }
+    if (cacheRef.current[key]) { 
+      setTafseer(cacheRef.current[key]); 
+      return; 
+    }
 
     setLoading(true);
-    // Fetching from Quran.com API v4 (Tafsir Ibn Katheer English ID: 169)
-    fetch(`https://api.quran.com/api/v4/tafsirs/169/by_ayah/${surahNum}:${ayahNum}`)
-      .then(r => r.json())
+    // Added 'locale=en' to ensure the English Tafseer is forced
+    fetch(`https://api.quran.com/api/v4/tafsirs/169/by_ayah/${surahNum}:${ayahNum}?locale=en`)
+      .then(r => {
+        if (!r.ok) throw new Error("API Limit or Network Error");
+        return r.json();
+      })
       .then(d => {
-        // Clean HTML tags and fix spacing
-        let text = d?.tafsir?.text || "";
-        text = text.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, "").trim();
-        cacheRef.current[key] = text;
-        setTafseer(text);
+        let text = d?.tafsir?.text;
+        
+        if (!text || text.trim() === "") {
+          setTafseer(""); // Triggers the 'not available' message
+        } else {
+          // Better cleaning: removes HTML and fixes common encoding issues
+          const cleanText = text
+            .replace(/<br\s*\/?>/gi, "\n")
+            .replace(/<[^>]*>/g, "")
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&')
+            .trim();
+            
+          cacheRef.current[key] = cleanText;
+          setTafseer(cleanText);
+        }
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Tafseer Error:", err);
+        console.error("Tafseer Fetch failed:", err);
+        setTafseer("");
         setLoading(false);
       });
   }, [surahNum, ayahNum, enabled]);
 
   return { tafseer, loading };
 }
-
 function AyahCard({
   ayah, surahNum, displayLangs, isPlaying, onPlay
 }: {
