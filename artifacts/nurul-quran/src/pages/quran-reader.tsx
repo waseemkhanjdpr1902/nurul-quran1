@@ -3,8 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { motion } from "framer-motion";
-import { ChevronLeft, ChevronDown, ChevronUp, Star, Play, Pause } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 
 interface SurahMeta {
   number: number;
@@ -34,7 +33,7 @@ function useSurahList() {
   return { surahs, loading };
 }
 
-function useSurahContent(surahNum: number, displayLangs: DisplayLang[]) {
+function useSurahContent(surahNum: number) {
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -64,69 +63,170 @@ function useSurahContent(surahNum: number, displayLangs: DisplayLang[]) {
   return { ayahs, loading };
 }
 
+// ─── Module-level cache — never re-fetches across re-renders ───────────────
+const tafseerCache: Record<string, string> = {};
+
 function useTafseer(surahNum: number, ayahNum: number, enabled: boolean) {
-  const [tafseer, setTafseer] = useState<string>("");
+  const [tafseer, setTafseer] = useState<string>(
+    () => tafseerCache[`${surahNum}-${ayahNum}`] || ""
+  );
   const [loading, setLoading] = useState(false);
-  const cacheRef = useRef<Record<string, string>>({});
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!enabled || !surahNum || !ayahNum) return;
     const key = `${surahNum}-${ayahNum}`;
-    if (cacheRef.current[key]) { setTafseer(cacheRef.current[key]); return; }
-
+    if (tafseerCache[key]) {
+      setTafseer(tafseerCache[key]);
+      return;
+    }
     setLoading(true);
-    fetch(`https://api.qurancdn.com/api/v4/tafsirs/169/by_ayah/${surahNum}:${ayahNum}`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
+    setError(false);
+
+    // ✅ Using api.quran.com — already whitelisted in the project's CSP
+    // Ibn Kathir tafseer ID: 169
+    fetch(`https://api.quran.com/api/v4/tafsirs/169/by_ayah/${surahNum}:${ayahNum}`, {
+      headers: { Accept: "application/json" },
     })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => {
         let text = d?.tafsir?.text || "";
-        text = text.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]*>/g, "").replace(/&quot;/g, '"').trim();
-        cacheRef.current[key] = text;
-        setTafseer(text);
+        // Strip HTML tags and decode entities
+        text = text
+          .replace(/<br\s*\/?>/gi, "\n")
+          .replace(/<[^>]*>/g, "")
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&#\d+;/g, "")
+          .trim();
+        tafseerCache[key] = text || "Tafseer not available for this ayah.";
+        setTafseer(tafseerCache[key]);
         setLoading(false);
       })
       .catch(() => {
-        setTafseer("");
+        setError(true);
         setLoading(false);
       });
   }, [surahNum, ayahNum, enabled]);
 
-  return { tafseer, loading };
+  return { tafseer, loading, error };
 }
 
-function AyahCard({ ayah, surahNum, displayLangs }: { ayah: Ayah, surahNum: number, displayLangs: DisplayLang[] }) {
-  const [showTafseer, setShowTafseer] = useState(false);
-  // Auto-expand tafseer if "tafseer" lang is toggled on globally
-  const tafseerEnabled = showTafseer || displayLangs.includes("tafseer");
-  const { tafseer, loading } = useTafseer(surahNum, ayah.numberInSurah, tafseerEnabled);
+// ─── Only become true once the card scrolls into view ─────────────────────
+function useIsVisible(ref: React.RefObject<Element>) {
+  const [isVisible, setIsVisible] = useState(false);
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setIsVisible(true); },
+      { rootMargin: "200px" }
+    );
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [ref]);
+  return isVisible;
+}
+
+// ─── Single Ayah Card ──────────────────────────────────────────────────────
+function AyahCard({
+  ayah,
+  surahNum,
+  displayLangs,
+}: {
+  ayah: Ayah;
+  surahNum: number;
+  displayLangs: DisplayLang[];
+}) {
+  const [expandedTafseer, setExpandedTafseer] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const isVisible = useIsVisible(cardRef);
+
+  const globalTafseerOn = displayLangs.includes("tafseer");
+  // Fetch only when card is visible (lazy) or user manually expands
+  const shouldFetch = (globalTafseerOn && isVisible) || expandedTafseer;
+  const showTafseerBlock = globalTafseerOn || expandedTafseer;
+
+  const { tafseer, loading, error } = useTafseer(
+    surahNum,
+    ayah.numberInSurah,
+    shouldFetch
+  );
 
   return (
-    <div className="border rounded-xl p-4 mb-4 bg-card">
-      <div className="flex justify-between mb-2">
-        <Badge variant="secondary">{ayah.numberInSurah}</Badge>
+    <div ref={cardRef} className="border rounded-xl p-4 mb-4 bg-card shadow-sm">
+      {/* Ayah number badge */}
+      <div className="flex justify-between items-center mb-3">
+        <Badge variant="secondary" className="text-xs font-semibold">
+          {ayah.numberInSurah}
+        </Badge>
       </div>
-      <p dir="rtl" className="text-2xl text-right font-['Amiri_Quran'] mb-4">{ayah.text}</p>
-      {displayLangs.includes("english") && <p className="text-sm text-muted-foreground mb-2">{ayah.translation}</p>}
-      {displayLangs.includes("urdu") && <p dir="rtl" className="text-sm text-right mb-2">{ayah.urduTranslation}</p>}
 
-      {/* Tafseer: show inline if global toggle is on, or expandable per-ayah */}
-      {!displayLangs.includes("tafseer") && (
-        <Button variant="ghost" size="sm" onClick={() => setShowTafseer(!showTafseer)} className="text-primary h-8 px-2">
-          <Star className="w-3 h-3 mr-1" /> Tafseer {showTafseer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+      {/* Arabic text */}
+      <p dir="rtl" className="text-2xl text-right font-['Amiri_Quran'] leading-loose mb-4">
+        {ayah.text}
+      </p>
+
+      {/* English translation */}
+      {displayLangs.includes("english") && (
+        <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+          {ayah.translation}
+        </p>
+      )}
+
+      {/* Urdu translation */}
+      {displayLangs.includes("urdu") && (
+        <p dir="rtl" className="text-sm text-right mb-3 leading-loose">
+          {ayah.urduTranslation}
+        </p>
+      )}
+
+      {/* Per-ayah expand button — shown only when global Tafseer toggle is OFF */}
+      {!globalTafseerOn && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpandedTafseer(prev => !prev)}
+          className="text-primary h-8 px-2 mt-1"
+        >
+          <BookOpen className="w-3 h-3 mr-1" />
+          Tafseer Ibn Kathir
+          {expandedTafseer
+            ? <ChevronUp className="w-3 h-3 ml-1" />
+            : <ChevronDown className="w-3 h-3 ml-1" />}
         </Button>
       )}
 
-      {tafseerEnabled && (
-        <div className="mt-2 p-3 bg-muted rounded-lg text-sm">
-          {loading ? <Skeleton className="h-4 w-full" /> : (tafseer || "Tafseer not available.")}
+      {/* Tafseer content block */}
+      {showTafseerBlock && (
+        <div className="mt-3 p-3 bg-muted/60 rounded-lg text-sm leading-relaxed border-l-4 border-primary/40">
+          <p className="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">
+            Tafseer Ibn Kathir
+          </p>
+          {loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-5/6" />
+              <Skeleton className="h-3 w-4/6" />
+            </div>
+          ) : error ? (
+            <p className="text-muted-foreground italic">
+              Unable to load tafseer. Please try again.
+            </p>
+          ) : (
+            <p className="whitespace-pre-line text-foreground/80">{tafseer}</p>
+          )}
         </div>
       )}
     </div>
   );
 }
 
+// ─── Main Page ─────────────────────────────────────────────────────────────
 export default function QuranReader() {
   const { surahId } = useParams();
   const [, navigate] = useLocation();
@@ -134,28 +234,55 @@ export default function QuranReader() {
   const [displayLangs, setDisplayLangs] = useState<DisplayLang[]>(["english"]);
 
   const currentSurah = surahs.find(s => s.number === parseInt(surahId || "1"));
-  const { ayahs, loading } = useSurahContent(currentSurah?.number || 0, displayLangs);
+  const { ayahs, loading } = useSurahContent(currentSurah?.number || 0);
+
+  const toggleLang = (lang: DisplayLang) =>
+    setDisplayLangs(prev =>
+      prev.includes(lang) ? prev.filter(x => x !== lang) : [...prev, lang]
+    );
 
   return (
     <div className="container max-w-3xl mx-auto py-8 px-4">
-      <Button variant="ghost" onClick={() => navigate("/quran")} className="mb-4"><ChevronLeft className="mr-1" /> Back</Button>
+      <Button variant="ghost" onClick={() => navigate("/quran")} className="mb-4">
+        <ChevronLeft className="mr-1" /> Back
+      </Button>
+
       {currentSurah && (
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold">{currentSurah.englishName}</h1>
           <p className="text-muted-foreground">{currentSurah.englishNameTranslation}</p>
         </div>
       )}
+
       <div className="flex gap-2 mb-6">
-        {(["english", "urdu", "tafseer"] as DisplayLang[]).map((l) => (
-          <Button key={l} variant={displayLangs.includes(l) ? "default" : "outline"} size="sm"
-            onClick={() => setDisplayLangs(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l])}>
+        {(["english", "urdu", "tafseer"] as DisplayLang[]).map(l => (
+          <Button
+            key={l}
+            variant={displayLangs.includes(l) ? "default" : "outline"}
+            size="sm"
+            onClick={() => toggleLang(l)}
+          >
             {l.charAt(0).toUpperCase() + l.slice(1)}
           </Button>
         ))}
       </div>
-      {loading ? <Skeleton className="h-40 w-full" /> : ayahs.map(a => (
-        <AyahCard key={a.number} ayah={a} surahNum={currentSurah?.number || 0} displayLangs={displayLangs} />
-      ))}
+
+      {loading ? (
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        ayahs.map(a => (
+          <AyahCard
+            key={a.number}
+            ayah={a}
+            surahNum={currentSurah?.number || 0}
+            displayLangs={displayLangs}
+          />
+        ))
+      )}
     </div>
   );
 }
