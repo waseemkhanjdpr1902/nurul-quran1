@@ -1,18 +1,14 @@
-// src/App.tsx
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
-// Import existing pages (adjust paths as needed)
-import Home from "./pages/Home";
-import Quran from "./pages/Quran";
-import Discover from "./pages/Discover";
-import NotFound from "./pages/NotFound";
+// Your existing pages – change these paths to match your actual file names
+import Home from './pages/Home';
+import Quran from './pages/Quran';
+import Discover from './pages/Discover';
+import NotFound from './pages/NotFound';  // create this if missing
 
-// Import the two new pages
-import Library from "./pages/Library";
-import Courses from "./pages/Courses";
-
-// If you have a layout component (e.g., with navbar), wrap routes inside it.
-// Otherwise, directly use Routes.
+// New pages
+import Library from './pages/Library';
+import Courses from './pages/Courses';
 
 function App() {
   return (
@@ -23,7 +19,6 @@ function App() {
         <Route path="/discover" element={<Discover />} />
         <Route path="/library" element={<Library />} />
         <Route path="/courses" element={<Courses />} />
-        {/* Catch-all 404 route – must be last */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
