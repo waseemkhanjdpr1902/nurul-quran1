@@ -18,6 +18,8 @@ import AsmaulHusna from "@/pages/asmaul-husna";
 import Calendar from "@/pages/calendar";
 import LearnArabic from "@/pages/learn-arabic";
 import Contact from "@/pages/contact";
+import Courses from "@/pages/courses";
+import Library from "@/pages/library";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,9 @@ function Router() {
         <Route path="/calendar" component={Calendar} />
         <Route path="/learn-arabic" component={LearnArabic} />
         <Route path="/contact" component={Contact} />
+        <Route path="/courses" component={Courses} />
+        <Route path="/courses/:id" component={Courses} />
+        <Route path="/library" component={Library} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
