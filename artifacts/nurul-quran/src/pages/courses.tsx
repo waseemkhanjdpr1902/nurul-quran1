@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { BookOpen, Star, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { STATIC_COURSES } from "@/lib/courses-data";
+import { Badge } from "@/components/ui/badge";
 
 const CATEGORIES = ["All", "Quran Recitation", "Tafseer", "Fiqh", "Aqeedah", "Hadith", "Spirituality", "Islamic History", "Word-to-Word"];
 
@@ -33,7 +32,6 @@ export default function Courses() {
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            data-testid={`button-category-${cat.toLowerCase().replace(/\s+/g, '-')}`}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
               category === cat
                 ? "bg-primary text-primary-foreground shadow-sm"
@@ -54,10 +52,7 @@ export default function Courses() {
             transition={{ delay: i * 0.06 }}
           >
             <Link href={`/courses/${course.id}`}>
-              <div
-                data-testid={`card-course-${course.id}`}
-                className="group bg-card border border-emerald-200 rounded-xl p-6 transition-all flex flex-col h-full cursor-pointer hover:shadow-lg hover:border-emerald-400 ring-1 ring-emerald-100"
-              >
+              <div className="group bg-card border border-emerald-200 rounded-xl p-6 transition-all flex flex-col h-full cursor-pointer hover:shadow-lg hover:border-emerald-400 ring-1 ring-emerald-100">
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-12 h-12 rounded-xl bg-emerald-50 group-hover:bg-emerald-100 flex items-center justify-center transition-colors">
                     <BookOpen className="w-6 h-6 text-emerald-600" />
@@ -91,25 +86,11 @@ export default function Courses() {
                   </div>
                   <p className="text-xs text-muted-foreground truncate max-w-[140px]">{course.speakerName}</p>
                 </div>
-
-                <div
-                  className="mt-4 flex items-center gap-1.5 text-sm font-medium text-emerald-700 group-hover:gap-2.5 transition-all"
-                  data-testid={`button-enroll-${course.id}`}
-                >
-                  <BookOpen className="w-4 h-4" /> Start Learning — Free
-                </div>
               </div>
             </Link>
           </motion.div>
         ))}
       </div>
-
-      {displayCourses.length === 0 && (
-        <div className="text-center py-16 text-muted-foreground">
-          <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <p>No courses found in this category.</p>
-        </div>
-      )}
     </div>
   );
 }
