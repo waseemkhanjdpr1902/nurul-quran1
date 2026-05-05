@@ -18,8 +18,10 @@ import AsmaulHusna from "@/pages/asmaul-husna";
 import Calendar from "@/pages/calendar";
 import LearnArabic from "@/pages/learn-arabic";
 import Contact from "@/pages/contact";
+
+// Import the new pages
 import Courses from "@/pages/courses";
-import Library from "@/pages/library";
+import HalalStocks from "@/pages/halalstocks";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +42,8 @@ function Router() {
         <Route path="/quran" component={QuranReader} />
         <Route path="/quran/:surahId" component={QuranReader} />
         <Route path="/discover" component={Discover} />
+        <Route path="/courses" component={Courses} />
+        <Route path="/halal-stocks" component={HalalStocks} />
         <Route path="/prayer-times" component={PrayerTimes} />
         <Route path="/hadith" component={Hadith} />
         <Route path="/duas" component={Duas} />
@@ -47,9 +51,6 @@ function Router() {
         <Route path="/calendar" component={Calendar} />
         <Route path="/learn-arabic" component={LearnArabic} />
         <Route path="/contact" component={Contact} />
-        <Route path="/courses" component={Courses} />
-        <Route path="/courses/:id" component={Courses} />
-        <Route path="/library" component={Library} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
