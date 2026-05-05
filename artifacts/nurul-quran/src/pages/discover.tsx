@@ -14,6 +14,7 @@ import {
   PlayCircle,
   Share2,
   Sun,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -103,7 +104,6 @@ export default function DiscoverPage() {
             <em>all of humanity</em>, and we are honoured you are here.
           </p>
 
-          {/* Stats row */}
           <div className="flex justify-center gap-10 md:gap-20">
             {[
               { value: "1.8B", label: "Muslims worldwide" },
@@ -120,7 +120,6 @@ export default function DiscoverPage() {
       </div>
 
       <div className="container mx-auto max-w-4xl px-4 py-12 space-y-16">
-
         {/* What is Islam */}
         <section>
           <div className="flex items-center gap-3 mb-6">
@@ -142,11 +141,6 @@ export default function DiscoverPage() {
               <strong className="text-emerald-700">One God (Allah)</strong>, in the prophets from
               Adam to Muhammad ﷺ, and that the Quran is the final divine revelation to guide all of
               humanity.
-            </p>
-            <p className="text-foreground text-base">
-              Islam is not a new religion — it is the same message of monotheism (Tawhid) brought
-              by all the prophets: Abraham, Moses, Jesus, and finally Muhammad ﷺ (peace be upon
-              them all). Muslims consider themselves part of the same Abrahamic family.
             </p>
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
@@ -195,23 +189,15 @@ export default function DiscoverPage() {
           </div>
         </section>
 
-        {/* Shahada CTA */}
+        {/* Shahada CTA Section */}
         {!shahadaDone ? (
           <section>
             <div className="rounded-2xl bg-gradient-to-br from-[#0D4A3E] to-[#1A6B5A] p-10 text-center text-white shadow-xl">
-              <p
-                className="text-3xl font-bold mb-4 leading-loose"
-                dir="rtl"
-                lang="ar"
-              >
+              <p className="text-3xl font-bold mb-4 leading-loose" dir="rtl" lang="ar">
                 لَا إِلَٰهَ إِلَّا ٱللَّٰهُ مُحَمَّدٌ رَسُولُ ٱللَّٰهِ
               </p>
               <p className="text-white/80 italic mb-3 text-base">
                 "There is no god but Allah, and Muhammad is the messenger of Allah"
-              </p>
-              <p className="text-white/65 text-sm mb-8 max-w-md mx-auto leading-relaxed">
-                This is the Shahada — the declaration of faith. Reciting this sincerely, believing
-                in its meaning, is how one enters Islam.
               </p>
               <button
                 onClick={() => setShahadaDone(true)}
@@ -225,19 +211,7 @@ export default function DiscoverPage() {
           <section>
             <div className="rounded-2xl border-2 border-green-400 bg-green-50 dark:bg-green-950/30 p-10 text-center space-y-4">
               <div className="text-5xl">🌟</div>
-              <h3 className="text-2xl font-bold text-green-800 dark:text-green-300">
-                MashaAllah — Welcome to Islam!
-              </h3>
-              <p className="text-green-700 dark:text-green-400 leading-relaxed max-w-xl mx-auto">
-                All your previous sins are forgiven. You are now part of a global family of 1.8
-                billion Muslims.
-              </p>
-              <p className="text-3xl font-bold text-green-800 dark:text-green-300 py-4 leading-loose" dir="rtl" lang="ar">
-                لَا إِلَٰهَ إِلَّا ٱللَّٰهُ مُحَمَّدٌ رَسُولُ ٱللَّٰهِ
-              </p>
-              <p className="text-sm text-green-600 dark:text-green-500 italic">
-                Your journey begins now. May Allah guide you always. Ameen.
-              </p>
+              <h3 className="text-2xl font-bold text-green-800 dark:text-green-300">MashaAllah — Welcome to Islam!</h3>
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4">
                 <Button asChild className="bg-green-700 hover:bg-green-800">
                   <Link href="/quran">Read the Quran →</Link>
@@ -260,7 +234,6 @@ export default function DiscoverPage() {
             </div>
             <h2 className="text-2xl font-bold text-foreground">Common Questions</h2>
           </div>
-
           <div className="space-y-3">
             {FAQS.map((faq, i) => (
               <div
@@ -270,23 +243,17 @@ export default function DiscoverPage() {
               >
                 <div className="flex items-center justify-between p-5">
                   <span className="font-semibold text-foreground text-sm md:text-base pr-4">{faq.q}</span>
-                  {openFaq === i ? (
-                    <ChevronUp className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
-                  )}
+                  {openFaq === i ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                 </div>
                 {openFaq === i && (
-                  <div className="px-5 pb-5">
-                    <p className="text-muted-foreground text-sm leading-relaxed">{faq.a}</p>
-                  </div>
+                  <div className="px-5 pb-5 text-muted-foreground text-sm leading-relaxed">{faq.a}</div>
                 )}
               </div>
             ))}
           </div>
         </section>
 
-        {/* Begin Your Journey */}
+        {/* Begin Your Journey - FIXED ROUTING & ADDED HALAL STOCKS */}
         <section>
           <div className="flex items-center gap-3 mb-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
@@ -297,48 +264,35 @@ export default function DiscoverPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { href: "/quran", icon: BookOpen, title: "Read the Quran", desc: "Start with Al-Fatiha — the Opening", external: false },
-              { href: "/library", icon: PlayCircle, title: "Watch Lectures", desc: "18 free Arabic lessons", external: false },
-              { href: "/courses", icon: GraduationCap, title: "Take a Course", desc: "Structured beginner courses", external: false },
-              { href: "mailto:support@nurulquran.info", icon: Mail, title: "Ask a Scholar", desc: "Get personal guidance", external: true },
-            ].map((item) => {
-              const cardClass = "group flex flex-col items-start gap-3 rounded-xl border bg-card p-5 transition-all hover:border-emerald-400 hover:shadow-sm";
-              const inner = (
-                <>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 transition-colors group-hover:bg-emerald-200">
-                    <item.icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground text-sm">{item.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{item.desc}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 mt-auto" />
-                </>
-              );
-              return item.external ? (
-                <a key={item.title} href={item.href} className={cardClass}>
-                  {inner}
-                </a>
-              ) : (
-                <Link key={item.title} href={item.href} className={cardClass}>
-                  {inner}
-                </Link>
-              );
-            })}
+              { href: "/quran", icon: BookOpen, title: "Read the Quran", desc: "Start with Al-Fatiha" },
+              { href: "/library", icon: PlayCircle, title: "Watch Lectures", desc: "18 free Arabic lessons" },
+              { href: "/courses", icon: GraduationCap, title: "Take a Course", desc: "Beginner courses" },
+              { href: "/halal-stocks", icon: TrendingUp, title: "Halal Stocks", desc: "Ethical investing" },
+            ].map((item) => (
+              <Link key={item.title} href={item.href} className="group flex flex-col items-start gap-3 rounded-xl border bg-card p-5 transition-all hover:border-emerald-400 hover:shadow-sm">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200">
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground text-sm">{item.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 mt-auto" />
+              </Link>
+            ))}
           </div>
         </section>
 
         {/* Share bar */}
-        <section className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 p-6 flex items-start gap-4">
+        <section className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 p-6 flex items-start gap-4">
           <Share2 className="h-6 w-6 text-emerald-700 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-emerald-800 dark:text-emerald-300 mb-1">Share with a Friend</p>
-            <p className="text-sm text-emerald-700/80 dark:text-emerald-400/80 italic leading-relaxed">
+            <p className="text-sm text-emerald-700/80 italic leading-relaxed">
               "The best of you are those who learn the Quran and teach it." — Prophet Muhammad ﷺ
             </p>
           </div>
         </section>
-
       </div>
     </div>
   );
