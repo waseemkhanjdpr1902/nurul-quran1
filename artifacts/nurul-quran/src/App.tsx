@@ -1,81 +1,33 @@
-import { Layout } from "@/components/layout";
-import { AuthProvider } from "@/hooks/use-auth";
-import { AudioPlayerProvider } from "@/hooks/use-audio-player";
-import { ThemeProvider } from "@/contexts/theme-context";
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
-import { useEffect } from "react";
+// src/App.tsx
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-// Page Imports
-import Home from "@/pages/home";
-import QuranReader from "@/pages/quran-reader";
-import Discover from "@/pages/discover";
-import PrayerTimes from "@/pages/prayer-times";
-import Hadith from "@/pages/hadith";
-import Duas from "@/pages/duas";
-import AsmaulHusna from "@/pages/asmaul-husna";
-import Calendar from "@/pages/calendar";
-import LearnArabic from "@/pages/learn-arabic";
-import Contact from "@/pages/contact";
-import Courses from "@/pages/courses";
-import HalalStocks from "@/pages/halalstocks";
+// Import existing pages (adjust paths as needed)
+import Home from "./pages/Home";
+import Quran from "./pages/Quran";
+import Discover from "./pages/Discover";
+import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Import the two new pages
+import Library from "./pages/Library";
+import Courses from "./pages/Courses";
 
-function ScrollToTop() {
-  const [location] = useLocation();
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, [location]);
-  return null;
-}
+// If you have a layout component (e.g., with navbar), wrap routes inside it.
+// Otherwise, directly use Routes.
 
-function Router() {
+function App() {
   return (
-    <Layout>
-      <ScrollToTop />
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/quran" component={QuranReader} />
-        <Route path="/quran/:surahId" component={QuranReader} />
-        <Route path="/discover" component={Discover} />
-        
-        {/* FIXED ROUTES */}
-        <Route path="/courses" component={Courses} />
-        <Route path="/library" component={Courses} /> {/* Links Watch Lectures to Courses */}
-        <Route path="/halal-stocks" component={HalalStocks} />
-        
-        <Route path="/prayer-times" component={PrayerTimes} />
-        <Route path="/hadith" component={Hadith} />
-        <Route path="/duas" component={Duas} />
-        <Route path="/asmaul-husna" component={AsmaulHusna} />
-        <Route path="/calendar" component={Calendar} />
-        <Route path="/learn-arabic" component={LearnArabic} />
-        <Route path="/contact" component={Contact} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/quran" element={<Quran />} />
+        <Route path="/discover" element={<Discover />} />
+        <Route path="/library" element={<Library />} />
+        <Route path="/courses" element={<Courses />} />
+        {/* Catch-all 404 route – must be last */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
-export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider>
-          <AudioPlayerProvider>
-            <TooltipProvider>
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <Router />
-              </WouterRouter>
-              <Toaster />
-            </TooltipProvider>
-          </AudioPlayerProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
-}
+export default App;
