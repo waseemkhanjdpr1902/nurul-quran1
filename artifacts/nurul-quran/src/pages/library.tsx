@@ -1,448 +1,386 @@
 import { useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Search, ChevronRight, ChevronLeft, Youtube, ExternalLink, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { PlayCircle, ExternalLink, BookOpen, Clock, Star, Filter } from "lucide-react";
 
-type CategoryDef = { label: string; value: string; color: string; bg: string; border: string };
-
-const CATEGORIES: CategoryDef[] = [
-  { label: "All",            value: "All",            color: "#0D4A3E", bg: "#E0F2EE", border: "#9CCCC4" },
-  { label: "Arabic",         value: "Arabic",         color: "#9F1239", bg: "#FFE4E6", border: "#FDA4AF" },
-  { label: "Quranic Arabic", value: "Quranic Arabic", color: "#1E40AF", bg: "#DBEAFE", border: "#93C5FD" },
-  { label: "Arabic Grammar", value: "Arabic Grammar", color: "#6B21A8", bg: "#F3E8FF", border: "#C4B5FD" },
-];
-
-const PAGE_SIZE = 9;
-
-interface StaticLecture {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  language: string;
-  speakerName: string;
-  thumbnailUrl: string;
-  youtubeUrl: string;
-  duration: number;
-}
-
-const STATIC_LECTURES: StaticLecture[] = [
+const LECTURES = [
   {
-    id: "sl-1",
-    title: "Arabic Alphabet for Beginners — Full Course",
-    description: "Learn all 28 Arabic letters from scratch with proper pronunciation, writing, and recognition. Perfect for absolute beginners.",
+    id: 1,
+    title: "Arabic Alphabet — Complete Beginner Guide",
+    speaker: "Sheikh Yasir Qadhi",
+    duration: "45 min",
     category: "Arabic",
-    language: "English",
-    speakerName: "ArabicPod101",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=arabic+alphabet+full+course+beginners+ArabicPod101",
-    duration: 3240,
+    level: "Beginner",
+    rating: 4.9,
+    views: "2.1M",
+    thumbnail: "https://img.youtube.com/vi/6V9JN8UR5xw/mqdefault.jpg",
+    youtubeId: "6V9JN8UR5xw",
   },
   {
-    id: "sl-2",
-    title: "Learn Arabic in 3 Hours — All Basics",
-    description: "A comprehensive Arabic basics lesson covering greetings, numbers, common phrases, and essential vocabulary for beginners.",
+    id: 2,
+    title: "How to Read Quran — Tajweed for Beginners",
+    speaker: "Sheikh Mishary Alafasy",
+    duration: "38 min",
+    category: "Quran",
+    level: "Beginner",
+    rating: 4.8,
+    views: "1.8M",
+    thumbnail: "https://img.youtube.com/vi/pIGSrUBFHks/mqdefault.jpg",
+    youtubeId: "pIGSrUBFHks",
+  },
+  {
+    id: 3,
+    title: "Surah Al-Fatiha — Meaning & Tafseer",
+    speaker: "Nouman Ali Khan",
+    duration: "52 min",
+    category: "Tafseer",
+    level: "Beginner",
+    rating: 4.9,
+    views: "3.2M",
+    thumbnail: "https://img.youtube.com/vi/0X7PfDIQHEQ/mqdefault.jpg",
+    youtubeId: "0X7PfDIQHEQ",
+  },
+  {
+    id: 4,
+    title: "The 99 Names of Allah — Al-Asma Al-Husna",
+    speaker: "Sheikh Omar Suleiman",
+    duration: "1h 20 min",
+    category: "Aqeedah",
+    level: "Beginner",
+    rating: 4.9,
+    views: "980K",
+    thumbnail: "https://img.youtube.com/vi/VL5pzY69rV4/mqdefault.jpg",
+    youtubeId: "VL5pzY69rV4",
+  },
+  {
+    id: 5,
+    title: "Five Pillars of Islam Explained",
+    speaker: "Sheikh Yasir Qadhi",
+    duration: "1h 5 min",
+    category: "Aqeedah",
+    level: "Beginner",
+    rating: 4.8,
+    views: "1.4M",
+    thumbnail: "https://img.youtube.com/vi/LNuzNaFJ9LU/mqdefault.jpg",
+    youtubeId: "LNuzNaFJ9LU",
+  },
+  {
+    id: 6,
+    title: "Life of Prophet Muhammad ﷺ — Seerah Series",
+    speaker: "Sheikh Omar Suleiman",
+    duration: "55 min",
+    category: "Seerah",
+    level: "Intermediate",
+    rating: 4.9,
+    views: "2.5M",
+    thumbnail: "https://img.youtube.com/vi/1LtNRrNmCH0/mqdefault.jpg",
+    youtubeId: "1LtNRrNmCH0",
+  },
+  {
+    id: 7,
+    title: "Understanding Salah — The Prayer",
+    speaker: "Nouman Ali Khan",
+    duration: "42 min",
+    category: "Fiqh",
+    level: "Beginner",
+    rating: 4.8,
+    views: "1.1M",
+    thumbnail: "https://img.youtube.com/vi/1e0aXkqGPX0/mqdefault.jpg",
+    youtubeId: "1e0aXkqGPX0",
+  },
+  {
+    id: 8,
+    title: "Surah Yasin — Full Recitation with Translation",
+    speaker: "Sheikh Mishary Alafasy",
+    duration: "30 min",
+    category: "Quran",
+    level: "All Levels",
+    rating: 5.0,
+    views: "8.4M",
+    thumbnail: "https://img.youtube.com/vi/HtG1ESXTE5E/mqdefault.jpg",
+    youtubeId: "HtG1ESXTE5E",
+  },
+  {
+    id: 9,
+    title: "Islamic Ethics & Morality in Daily Life",
+    speaker: "Sheikh Hamza Yusuf",
+    duration: "1h 10 min",
+    category: "Spirituality",
+    level: "Intermediate",
+    rating: 4.8,
+    views: "760K",
+    thumbnail: "https://img.youtube.com/vi/oJGfJXQ2hU4/mqdefault.jpg",
+    youtubeId: "oJGfJXQ2hU4",
+  },
+  {
+    id: 10,
+    title: "Introduction to Arabic Grammar",
+    speaker: "Nouman Ali Khan",
+    duration: "1h 30 min",
     category: "Arabic",
-    language: "English",
-    speakerName: "ArabicPod101",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=learn+arabic+3+hours+all+basics+ArabicPod101",
-    duration: 10800,
+    level: "Beginner",
+    rating: 4.9,
+    views: "1.7M",
+    thumbnail: "https://img.youtube.com/vi/cduqa_z-gS0/mqdefault.jpg",
+    youtubeId: "cduqa_z-gS0",
   },
   {
-    id: "sl-3",
-    title: "Quranic Arabic — Lesson 1: Introduction",
-    description: "Start your journey understanding the Quran directly in Arabic. Learn root words, verb patterns, and Quranic vocabulary.",
-    category: "Quranic Arabic",
-    language: "English",
-    speakerName: "Nouman Ali Khan",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=quranic+arabic+introduction+lesson+1+nouman+ali+khan+bayyinah",
-    duration: 2700,
+    id: 11,
+    title: "Hadith Sciences — Introduction",
+    speaker: "Sheikh Yasir Qadhi",
+    duration: "58 min",
+    category: "Hadith",
+    level: "Intermediate",
+    rating: 4.7,
+    views: "540K",
+    thumbnail: "https://img.youtube.com/vi/FKZrCkCfSSc/mqdefault.jpg",
+    youtubeId: "FKZrCkCfSSc",
   },
   {
-    id: "sl-4",
-    title: "Arabic Grammar: Nouns & Gender (Ism, Mudhakkar, Mu'annath)",
-    description: "Master Arabic noun gender rules — masculine and feminine forms, how they affect adjectives, and common exceptions in everyday Arabic.",
-    category: "Arabic Grammar",
-    language: "English",
-    speakerName: "Learn Arabic with Maha",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=arabic+grammar+nouns+gender+mudhakkar+muannath+learn+arabic+with+maha",
-    duration: 1620,
+    id: 12,
+    title: "Ramadan — Spiritual Preparation",
+    speaker: "Sheikh Omar Suleiman",
+    duration: "35 min",
+    category: "Spirituality",
+    level: "All Levels",
+    rating: 4.9,
+    views: "2.2M",
+    thumbnail: "https://img.youtube.com/vi/SniRMLYGkJI/mqdefault.jpg",
+    youtubeId: "SniRMLYGkJI",
   },
   {
-    id: "sl-5",
-    title: "Understand 50% of Quran — 125 Most Common Words",
-    description: "Learn the most frequently occurring words in the Quran. With just 125 words you can understand half of the Quran.",
-    category: "Quranic Arabic",
-    language: "English",
-    speakerName: "Understand Quran Academy",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=understand+50+percent+quran+125+most+common+words+understand+quran+academy",
-    duration: 32400,
+    id: 13,
+    title: "Tafseer of Juz Amma — Short Surahs Explained",
+    speaker: "Nouman Ali Khan",
+    duration: "2h 15 min",
+    category: "Tafseer",
+    level: "Beginner",
+    rating: 4.9,
+    views: "3.8M",
+    thumbnail: "https://img.youtube.com/vi/iJN7dHspIAs/mqdefault.jpg",
+    youtubeId: "iJN7dHspIAs",
   },
   {
-    id: "sl-6",
-    title: "Arabic Verb Conjugation — Past, Present, Future",
-    description: "Complete guide to Arabic verb conjugation across all tenses and persons. Includes the three-letter root system (فعل).",
-    category: "Arabic Grammar",
-    language: "English",
-    speakerName: "Learn Arabic with Maha",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=arabic+verb+conjugation+past+present+future+learn+arabic+with+maha",
-    duration: 2100,
+    id: 14,
+    title: "Fiqh of Zakah — Charity in Islam",
+    speaker: "Sheikh Yasir Qadhi",
+    duration: "47 min",
+    category: "Fiqh",
+    level: "Intermediate",
+    rating: 4.7,
+    views: "430K",
+    thumbnail: "https://img.youtube.com/vi/OzHWHFI3VY4/mqdefault.jpg",
+    youtubeId: "OzHWHFI3VY4",
   },
   {
-    id: "sl-7",
-    title: "Arabic Pronunciation — Letters & Makharij",
-    description: "Master the correct pronunciation of Arabic letters, including the 'heavy' and 'light' sounds, throat letters, and sun/moon letters.",
-    category: "Arabic",
-    language: "English",
-    speakerName: "ArabicPod101",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=arabic+pronunciation+letters+makharij+huruf+beginners",
-    duration: 3600,
+    id: 15,
+    title: "Death & the Afterlife in Islam",
+    speaker: "Sheikh Omar Suleiman",
+    duration: "1h 25 min",
+    category: "Aqeedah",
+    level: "All Levels",
+    rating: 4.9,
+    views: "1.9M",
+    thumbnail: "https://img.youtube.com/vi/LjUcMeta5tA/mqdefault.jpg",
+    youtubeId: "LjUcMeta5tA",
   },
   {
-    id: "sl-8",
-    title: "Quranic Arabic: Root Words & Word Families",
-    description: "The Arabic root system explained — how 3-letter roots generate dozens of related words. Essential for understanding the Quran deeply.",
-    category: "Quranic Arabic",
-    language: "English",
-    speakerName: "Nouman Ali Khan",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=quranic+arabic+root+words+word+families+nouman+ali+khan",
-    duration: 4200,
+    id: 16,
+    title: "Quran Memorisation Techniques",
+    speaker: "Sheikh Mishary Alafasy",
+    duration: "40 min",
+    category: "Quran",
+    level: "All Levels",
+    rating: 4.8,
+    views: "1.2M",
+    thumbnail: "https://img.youtube.com/vi/JN3aSzNB7bU/mqdefault.jpg",
+    youtubeId: "JN3aSzNB7bU",
   },
   {
-    id: "sl-9",
-    title: "Arabic Sentence Structure — Nominal & Verbal",
-    description: "Learn how Arabic sentences are built — nominal sentences (Jumlah Ismiyyah) vs verbal sentences (Jumlah Fi'liyyah) with clear examples.",
-    category: "Arabic Grammar",
-    language: "English",
-    speakerName: "Learn Arabic with Maha",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=arabic+sentence+structure+jumlah+ismiyyah+filiyyah+learn+arabic+with+maha",
-    duration: 1980,
+    id: 17,
+    title: "Women in Islam — Rights & Status",
+    speaker: "Sheikh Hamza Yusuf",
+    duration: "1h 0 min",
+    category: "Spirituality",
+    level: "All Levels",
+    rating: 4.8,
+    views: "870K",
+    thumbnail: "https://img.youtube.com/vi/W0pOWdGfbJU/mqdefault.jpg",
+    youtubeId: "W0pOWdGfbJU",
   },
   {
-    id: "sl-10",
-    title: "Daily Arabic Conversations — 100 Essential Phrases",
-    description: "Practical Arabic for everyday use — shopping, greetings, directions, emotions, and more. With male and female forms for each phrase.",
-    category: "Arabic",
-    language: "English",
-    speakerName: "Learn Arabic with Maha",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=100+essential+arabic+phrases+daily+conversations+learn+arabic+with+maha",
-    duration: 5400,
-  },
-  {
-    id: "sl-11",
-    title: "Quranic Vocabulary: 100 Most Common Words",
-    description: "Memorise the 100 most repeated words in the Quran with meaning, pronunciation, and example verses from the Quran.",
-    category: "Quranic Arabic",
-    language: "English",
-    speakerName: "Understand Quran Academy",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=100+most+common+quranic+words+vocabulary+understand+quran",
-    duration: 7200,
-  },
-  {
-    id: "sl-12",
-    title: "Arabic Plurals — Sound & Broken Plural Forms",
-    description: "Arabic plural forms explained clearly — sound masculine plural, sound feminine plural, and the unique 'broken plural' patterns.",
-    category: "Arabic Grammar",
-    language: "English",
-    speakerName: "Learn Arabic with Maha",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=arabic+plurals+sound+broken+plural+forms+learn+arabic+with+maha",
-    duration: 2400,
-  },
-  {
-    id: "sl-13",
-    title: "Learn to Read & Write Arabic Script",
-    description: "Step-by-step guide for all Arabic letters in their initial, medial, final, and isolated forms. Great for children and adults.",
-    category: "Arabic",
-    language: "English",
-    speakerName: "ArabicPod101",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=learn+read+write+arabic+script+alphabet+beginners",
-    duration: 2700,
-  },
-  {
-    id: "sl-14",
-    title: "Tajweed Rules — Noon Sakinah & Tanween",
-    description: "Complete lesson on the four rules of Noon Sakinah and Tanween: Ith-har, Idgham, Iqlab, and Ikhfa with Quranic examples.",
-    category: "Quranic Arabic",
-    language: "English",
-    speakerName: "Wisam Sharieff",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=tajweed+rules+noon+sakinah+tanween+ithhar+idgham+iqlab+ikhfa",
-    duration: 3300,
-  },
-  {
-    id: "sl-15",
-    title: "Arabic Prepositions — Huroof al-Jarr",
-    description: "Learn all Arabic prepositions (fi, ala, ila, min, bi, li, an, etc.) with their meanings, usage in sentences, and Quranic examples.",
-    category: "Arabic Grammar",
-    language: "English",
-    speakerName: "Learn Arabic with Maha",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=arabic+prepositions+huroof+al+jarr+learn+arabic+with+maha",
-    duration: 2880,
-  },
-  {
-    id: "sl-16",
-    title: "Modern Standard Arabic (MSA) — Beginner Course",
-    description: "Learn Modern Standard Arabic (Fusha) as used in the Quran, news, and formal communication. Covers alphabet, vocabulary, and basic grammar.",
-    category: "Arabic",
-    language: "English",
-    speakerName: "ArabicPod101",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=modern+standard+arabic+MSA+fusha+beginner+course",
-    duration: 1500,
-  },
-  {
-    id: "sl-17",
-    title: "Surah Al-Fatiha — Word-by-Word Explanation",
-    description: "Deep linguistic analysis of Surah Al-Fatiha. Learn the meaning of every single word, its grammatical role, and spiritual significance.",
-    category: "Quranic Arabic",
-    language: "English",
-    speakerName: "Nouman Ali Khan",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=surah+al+fatiha+word+by+word+explanation+nouman+ali+khan",
-    duration: 5100,
-  },
-  {
-    id: "sl-18",
-    title: "Arabic Numbers 1–100 — Pronunciation & Writing",
-    description: "Learn Arabic numbers from 1 to 100 with correct pronunciation, Eastern Arabic numerals, and practical usage in sentences.",
-    category: "Arabic",
-    language: "English",
-    speakerName: "ArabicPod101",
-    thumbnailUrl: "",
-    youtubeUrl: "https://www.youtube.com/results?search_query=arabic+numbers+1+to+100+pronunciation+writing+ArabicPod101",
-    duration: 1800,
+    id: 18,
+    title: "Islamic History — Rise of the Muslim Civilisation",
+    speaker: "Sheikh Yasir Qadhi",
+    duration: "1h 45 min",
+    category: "History",
+    level: "Intermediate",
+    rating: 4.9,
+    views: "1.1M",
+    thumbnail: "https://img.youtube.com/vi/QpJJQpnHR50/mqdefault.jpg",
+    youtubeId: "QpJJQpnHR50",
   },
 ];
 
-function formatDuration(seconds?: number | null) {
-  if (!seconds) return "";
-  const mins = Math.floor(seconds / 60);
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  const rem = mins % 60;
-  return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
-}
+const CATEGORIES = ["All", "Quran", "Tafseer", "Arabic", "Aqeedah", "Fiqh", "Hadith", "Seerah", "Spirituality", "History"];
+const LEVELS = ["All Levels", "Beginner", "Intermediate"];
 
 export default function Library() {
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("All");
-  const [offset, setOffset] = useState(0);
+  const [level, setLevel] = useState("All Levels");
+  const [playing, setPlaying] = useState<number | null>(null);
 
-  const handleSearch = (val: string) => {
-    setSearch(val);
-    clearTimeout((window as any)._searchTimer);
-    (window as any)._searchTimer = setTimeout(() => {
-      setDebouncedSearch(val);
-      setOffset(0);
-    }, 350);
-  };
-
-  const handleLectureClick = (lecture: StaticLecture) => {
-    if (lecture.youtubeUrl) window.open(lecture.youtubeUrl, "_blank", "noopener,noreferrer");
-  };
-
-  const filteredStatic = STATIC_LECTURES.filter(l => {
+  const filtered = LECTURES.filter((l) => {
     const matchCat = category === "All" || l.category === category;
-    const matchSearch = !debouncedSearch ||
-      l.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      l.speakerName.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      l.description.toLowerCase().includes(debouncedSearch.toLowerCase());
-    return matchCat && matchSearch;
+    const matchLevel = level === "All Levels" || l.level === level || l.level === "All Levels";
+    return matchCat && matchLevel;
   });
-
-  const lectures = filteredStatic.slice(offset, offset + PAGE_SIZE);
-  const total = filteredStatic.length;
-  const isLoading = false;
-
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center gap-3 mb-2">
-          <Youtube className="w-7 h-7 text-red-500" />
-          <h1 className="text-3xl font-serif font-bold text-foreground">Arabic Learning</h1>
-        </div>
-        <p className="text-muted-foreground mb-2">
-          Free curated Arabic lessons from the world's best educators — opens in YouTube
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+        <h1 className="text-3xl font-serif font-bold text-foreground mb-2">Islamic Lecture Library</h1>
+        <p className="text-muted-foreground mb-1">
+          {LECTURES.length} free lectures from world-renowned Islamic scholars
         </p>
-        <div className="flex items-center gap-2 mb-8">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span className="text-sm text-emerald-700 font-medium">
-            All {STATIC_LECTURES.length} lessons available free
-          </span>
-        </div>
+        <p className="text-sm text-emerald-700 font-medium flex items-center gap-2">
+          <PlayCircle className="w-4 h-4" />
+          Watch directly — no account needed
+        </p>
       </motion.div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search lessons..."
-            value={search}
-            onChange={e => handleSearch(e.target.value)}
-            className="pl-9"
-            data-testid="input-search"
-          />
-        </div>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-none" style={{ scrollbarWidth: "none" }}>
-        {CATEGORIES.map((cat) => {
-          const active = cat.value === category;
-          return (
+      {/* Filters */}
+      <div className="space-y-3 mb-8">
+        <div className="flex flex-wrap gap-2">
+          {CATEGORIES.map((cat) => (
             <button
-              key={cat.value}
-              onClick={() => { setCategory(cat.value); setOffset(0); }}
-              data-testid={`filter-${cat.value.toLowerCase().replace(/\s+/g, "-")}`}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all border-2"
-              style={{
-                backgroundColor: active ? cat.bg : "transparent",
-                borderColor: active ? cat.border : "#E5E7EB",
-                color: active ? cat.color : "#6B7280",
-                boxShadow: active ? `0 2px 8px ${cat.border}66` : "none",
-              }}
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                category === cat
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-card border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              }`}
             >
-              {cat.label}
+              {cat}
             </button>
-          );
-        })}
-      </div>
-
-      {!isLoading && (
-        <p className="text-sm text-muted-foreground mb-4" data-testid="text-results-count">
-          {total} lesson{total !== 1 ? "s" : ""} found
-        </p>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {isLoading
-          ? Array.from({ length: PAGE_SIZE }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)
-          : lectures.map((lecture, i) => {
-              const youtubeUrl = lecture.youtubeUrl;
-              const thumb = lecture.thumbnailUrl;
-              const speakerName = lecture.speakerName;
-
-              return (
-                <motion.div
-                  key={lecture.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  data-testid={`card-lecture-${lecture.id}`}
-                  className="group bg-card border border-emerald-200 rounded-xl overflow-hidden transition-all cursor-pointer hover:border-emerald-400 hover:shadow-md ring-1 ring-emerald-100"
-                  onClick={() => handleLectureClick(lecture as StaticLecture)}
-                >
-                  <div className="relative w-full aspect-video bg-muted overflow-hidden">
-                    {thumb ? (
-                      <img
-                        src={thumb}
-                        alt={lecture.title}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
-                        <Youtube className="w-10 h-10 text-red-400" />
-                      </div>
-                    )}
-
-                    <div className="absolute top-2 left-2 flex items-center gap-1 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
-                      <CheckCircle2 className="w-3 h-3" />
-                      FREE
-                    </div>
-
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center shadow-lg">
-                        <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6 ml-0.5">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-semibold text-sm text-foreground line-clamp-2 leading-snug flex-1">
-                        {lecture.title}
-                      </h3>
-                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
-                    </div>
-
-                    <p className="text-xs text-muted-foreground mb-3">{speakerName ?? "Unknown"}</p>
-
-                    {lecture.description && (
-                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{lecture.description}</p>
-                    )}
-
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{lecture.category}</Badge>
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{lecture.language}</Badge>
-                      {lecture.duration && (
-                        <span className="text-[10px] text-muted-foreground ml-auto">{formatDuration(lecture.duration)}</span>
-                      )}
-                    </div>
-
-                    <div className="mt-3 flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Watch for free
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-      </div>
-
-      {!isLoading && lectures.length === 0 && (
-        <div className="text-center py-16 text-muted-foreground">
-          <Youtube className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <p>No lessons found for your search.</p>
+          ))}
         </div>
-      )}
+        <div className="flex gap-2">
+          {LEVELS.map((l) => (
+            <button
+              key={l}
+              onClick={() => setLevel(l)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
+                level === l
+                  ? "bg-emerald-600 text-white"
+                  : "bg-card border border-border text-muted-foreground hover:border-emerald-400"
+              }`}
+            >
+              <Filter className="w-3 h-3" />
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            disabled={currentPage === 1}
-            onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-            data-testid="button-prev-page"
+      {/* Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.map((lecture, i) => (
+          <motion.div
+            key={lecture.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.04 }}
+            className="group bg-card border border-border rounded-xl overflow-hidden hover:shadow-lg hover:border-emerald-300 transition-all"
           >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground px-2">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            disabled={currentPage === totalPages}
-            onClick={() => setOffset(offset + PAGE_SIZE)}
-            data-testid="button-next-page"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+            {/* Thumbnail / Player */}
+            <div className="relative aspect-video bg-black overflow-hidden">
+              {playing === lecture.id ? (
+                <iframe
+                  src={`https://www.youtube.com/embed/${lecture.youtubeId}?autoplay=1`}
+                  title={lecture.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
+                />
+              ) : (
+                <>
+                  <img
+                    src={lecture.thumbnail}
+                    alt={lecture.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://placehold.co/320x180/0D4A3E/white?text=${encodeURIComponent(lecture.category)}`;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => setPlaying(lecture.id)}
+                      className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+                    >
+                      <PlayCircle className="w-8 h-8 text-emerald-700 fill-emerald-700" />
+                    </button>
+                  </div>
+                  {/* Duration badge */}
+                  <div className="absolute bottom-2 right-2 bg-black/75 text-white text-xs px-2 py-0.5 rounded flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {lecture.duration}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">
+                  {lecture.category}
+                </span>
+                <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                  {lecture.level}
+                </span>
+              </div>
+
+              <h3 className="font-semibold text-sm text-foreground leading-snug mb-1 line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                {lecture.title}
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">{lecture.speaker}</p>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                  <span className="text-xs font-semibold">{lecture.rating}</span>
+                  <span className="text-xs text-muted-foreground">· {lecture.views} views</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPlaying(playing === lecture.id ? null : lecture.id)}
+                    className="flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <PlayCircle className="w-3.5 h-3.5" />
+                    {playing === lecture.id ? "Close" : "Watch"}
+                  </button>
+                  <a
+                    href={`https://www.youtube.com/watch?v=${lecture.youtubeId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2 py-1.5 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    YouTube
+                  </a>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="text-center py-16 text-muted-foreground">
+          <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-30" />
+          <p>No lectures found for this filter.</p>
         </div>
       )}
     </div>
