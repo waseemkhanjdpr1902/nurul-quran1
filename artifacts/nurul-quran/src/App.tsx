@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
+
+// Page Imports
 import Home from "@/pages/home";
 import QuranReader from "@/pages/quran-reader";
 import Discover from "@/pages/discover";
@@ -18,8 +20,6 @@ import AsmaulHusna from "@/pages/asmaul-husna";
 import Calendar from "@/pages/calendar";
 import LearnArabic from "@/pages/learn-arabic";
 import Contact from "@/pages/contact";
-
-// Import the new pages
 import Courses from "@/pages/courses";
 import HalalStocks from "@/pages/halalstocks";
 
@@ -42,8 +42,12 @@ function Router() {
         <Route path="/quran" component={QuranReader} />
         <Route path="/quran/:surahId" component={QuranReader} />
         <Route path="/discover" component={Discover} />
+        
+        {/* FIXED ROUTES */}
         <Route path="/courses" component={Courses} />
+        <Route path="/library" component={Courses} /> {/* Links Watch Lectures to Courses */}
         <Route path="/halal-stocks" component={HalalStocks} />
+        
         <Route path="/prayer-times" component={PrayerTimes} />
         <Route path="/hadith" component={Hadith} />
         <Route path="/duas" component={Duas} />
@@ -57,7 +61,7 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
@@ -75,5 +79,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-export default App;
