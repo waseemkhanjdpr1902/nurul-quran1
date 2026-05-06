@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom"; // ✅ FIXED: was importing from "wouter" — wrong library
 import {
   BookOpen,
   ChevronDown,
@@ -10,7 +10,6 @@ import {
   HelpCircle,
   Info,
   Layers,
-  Mail,
   PlayCircle,
   Share2,
   Sun,
@@ -83,6 +82,40 @@ const FAQS = [
   {
     q: "What is Jihad?",
     a: "The word 'Jihad' means 'struggle' or 'striving'. The greatest Jihad, according to the Prophet ﷺ, is the inner struggle to be a better person — to overcome one's ego, desires, and bad habits. It is fundamentally about self-improvement and justice.",
+  },
+];
+
+// Internal routes use react-router-dom <Link to="...">
+// External links (nurulquran.info) use plain <a href="..." target="_blank">
+const JOURNEY_CARDS = [
+  {
+    type: "internal" as const,
+    to: "/quran",
+    icon: BookOpen,
+    title: "Read the Quran",
+    desc: "Start with Al-Fatiha",
+  },
+  {
+    type: "internal" as const,
+    to: "/library",
+    icon: PlayCircle,
+    title: "Islamic Library",
+    desc: "Books, Tafsir & resources",
+  },
+  {
+    type: "internal" as const,
+    to: "/courses",
+    icon: GraduationCap,
+    title: "Take a Course",
+    desc: "Free self-paced courses",
+  },
+  {
+    // ✅ FIXED: /halal-stocks has no internal route — correctly links to nurulquran.info
+    type: "external" as const,
+    href: "https://nurulquran.info/halal-stocks",
+    icon: TrendingUp,
+    title: "Halal Stocks",
+    desc: "Ethical investing guide",
   },
 ];
 
@@ -166,7 +199,9 @@ export default function DiscoverPage() {
             </div>
             <h2 className="text-2xl font-bold text-foreground">The 5 Pillars of Islam</h2>
           </div>
-          <p className="text-muted-foreground ml-13 mb-6 text-sm">The five core practices every Muslim follows</p>
+          <p className="text-muted-foreground ml-13 mb-6 text-sm">
+            The five core practices every Muslim follows
+          </p>
 
           <div className="grid gap-3">
             {PILLARS.map((p) => (
@@ -189,7 +224,7 @@ export default function DiscoverPage() {
           </div>
         </section>
 
-        {/* Shahada CTA Section */}
+        {/* Shahada CTA */}
         {!shahadaDone ? (
           <section>
             <div className="rounded-2xl bg-gradient-to-br from-[#0D4A3E] to-[#1A6B5A] p-10 text-center text-white shadow-xl">
@@ -211,10 +246,13 @@ export default function DiscoverPage() {
           <section>
             <div className="rounded-2xl border-2 border-green-400 bg-green-50 dark:bg-green-950/30 p-10 text-center space-y-4">
               <div className="text-5xl">🌟</div>
-              <h3 className="text-2xl font-bold text-green-800 dark:text-green-300">MashaAllah — Welcome to Islam!</h3>
+              <h3 className="text-2xl font-bold text-green-800 dark:text-green-300">
+                MashaAllah — Welcome to Islam!
+              </h3>
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4">
                 <Button asChild className="bg-green-700 hover:bg-green-800">
-                  <Link href="/quran">Read the Quran →</Link>
+                  {/* ✅ FIXED: react-router-dom Link uses "to" not "href" */}
+                  <Link to="/quran">Read the Quran →</Link>
                 </Button>
                 <Button asChild variant="outline" className="border-green-600 text-green-700">
                   <a href="mailto:support@nurulquran.info?subject=I%20have%20taken%20the%20Shahada">
@@ -238,22 +276,32 @@ export default function DiscoverPage() {
             {FAQS.map((faq, i) => (
               <div
                 key={i}
-                className={`rounded-xl border bg-card transition-all cursor-pointer ${openFaq === i ? "border-emerald-500 shadow-sm" : "hover:border-emerald-300"}`}
+                className={`rounded-xl border bg-card transition-all cursor-pointer ${
+                  openFaq === i ? "border-emerald-500 shadow-sm" : "hover:border-emerald-300"
+                }`}
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
               >
                 <div className="flex items-center justify-between p-5">
-                  <span className="font-semibold text-foreground text-sm md:text-base pr-4">{faq.q}</span>
-                  {openFaq === i ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                  <span className="font-semibold text-foreground text-sm md:text-base pr-4">
+                    {faq.q}
+                  </span>
+                  {openFaq === i ? (
+                    <ChevronUp className="h-5 w-5 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 flex-shrink-0" />
+                  )}
                 </div>
                 {openFaq === i && (
-                  <div className="px-5 pb-5 text-muted-foreground text-sm leading-relaxed">{faq.a}</div>
+                  <div className="px-5 pb-5 text-muted-foreground text-sm leading-relaxed">
+                    {faq.a}
+                  </div>
                 )}
               </div>
             ))}
           </div>
         </section>
 
-        {/* Begin Your Journey - FIXED ROUTING & ADDED HALAL STOCKS */}
+        {/* Begin Your Journey */}
         <section>
           <div className="flex items-center gap-3 mb-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
@@ -263,23 +311,41 @@ export default function DiscoverPage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { href: "/quran", icon: BookOpen, title: "Read the Quran", desc: "Start with Al-Fatiha" },
-              { href: "/library", icon: PlayCircle, title: "Watch Lectures", desc: "18 free Arabic lessons" },
-              { href: "/courses", icon: GraduationCap, title: "Take a Course", desc: "Beginner courses" },
-              { href: "/halal-stocks", icon: TrendingUp, title: "Halal Stocks", desc: "Ethical investing" },
-            ].map((item) => (
-              <Link key={item.title} href={item.href} className="group flex flex-col items-start gap-3 rounded-xl border bg-card p-5 transition-all hover:border-emerald-400 hover:shadow-sm">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200">
-                  <item.icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground text-sm">{item.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 mt-auto" />
-              </Link>
-            ))}
+            {JOURNEY_CARDS.map((item) => {
+              const cardContent = (
+                <>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground text-sm">{item.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 mt-auto" />
+                </>
+              );
+
+              const cardClass =
+                "group flex flex-col items-start gap-3 rounded-xl border bg-card p-5 transition-all hover:border-emerald-400 hover:shadow-sm no-underline";
+
+              return item.type === "internal" ? (
+                // ✅ Internal routes → react-router-dom Link (no page reload)
+                <Link key={item.title} to={item.to} className={cardClass}>
+                  {cardContent}
+                </Link>
+              ) : (
+                // ✅ Halal Stocks → external link to nurulquran.info
+                <a
+                  key={item.title}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cardClass}
+                >
+                  {cardContent}
+                </a>
+              );
+            })}
           </div>
         </section>
 
@@ -287,7 +353,9 @@ export default function DiscoverPage() {
         <section className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 p-6 flex items-start gap-4">
           <Share2 className="h-6 w-6 text-emerald-700 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-emerald-800 dark:text-emerald-300 mb-1">Share with a Friend</p>
+            <p className="font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
+              Share with a Friend
+            </p>
             <p className="text-sm text-emerald-700/80 italic leading-relaxed">
               "The best of you are those who learn the Quran and teach it." — Prophet Muhammad ﷺ
             </p>
