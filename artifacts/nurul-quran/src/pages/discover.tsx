@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom"; // ✅ FIXED: was importing from "wouter" — wrong library
+import { Link } from "wouter"; // ✅ wouter is the installed router — Link uses href="/path"
 import {
   BookOpen,
   ChevronDown,
@@ -85,32 +85,30 @@ const FAQS = [
   },
 ];
 
-// Internal routes use react-router-dom <Link to="...">
-// External links (nurulquran.info) use plain <a href="..." target="_blank">
 const JOURNEY_CARDS = [
   {
     type: "internal" as const,
-    to: "/quran",
+    href: "/quran",
     icon: BookOpen,
     title: "Read the Quran",
     desc: "Start with Al-Fatiha",
   },
   {
     type: "internal" as const,
-    to: "/library",
+    href: "/library",
     icon: PlayCircle,
     title: "Islamic Library",
     desc: "Books, Tafsir & resources",
   },
   {
     type: "internal" as const,
-    to: "/courses",
+    href: "/courses",
     icon: GraduationCap,
     title: "Take a Course",
     desc: "Free self-paced courses",
   },
   {
-    // ✅ FIXED: /halal-stocks has no internal route — correctly links to nurulquran.info
+    // ✅ No internal route — correctly links out to nurulquran.info
     type: "external" as const,
     href: "https://nurulquran.info/halal-stocks",
     icon: TrendingUp,
@@ -251,8 +249,7 @@ export default function DiscoverPage() {
               </h3>
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4">
                 <Button asChild className="bg-green-700 hover:bg-green-800">
-                  {/* ✅ FIXED: react-router-dom Link uses "to" not "href" */}
-                  <Link to="/quran">Read the Quran →</Link>
+                  <Link href="/quran">Read the Quran →</Link>
                 </Button>
                 <Button asChild variant="outline" className="border-green-600 text-green-700">
                   <a href="mailto:support@nurulquran.info?subject=I%20have%20taken%20the%20Shahada">
@@ -329,8 +326,8 @@ export default function DiscoverPage() {
                 "group flex flex-col items-start gap-3 rounded-xl border bg-card p-5 transition-all hover:border-emerald-400 hover:shadow-sm no-underline";
 
               return item.type === "internal" ? (
-                // ✅ Internal routes → react-router-dom Link (no page reload)
-                <Link key={item.title} to={item.to} className={cardClass}>
+                // ✅ Internal routes → wouter Link with href (no page reload)
+                <Link key={item.title} href={item.href} className={cardClass}>
                   {cardContent}
                 </Link>
               ) : (
